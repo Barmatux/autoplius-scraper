@@ -13,8 +13,19 @@ from scraper.logging_setup import setup_logging
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Scrape Autoplius search pages")
+    parser = argparse.ArgumentParser(description="Scrape Autoplius search + detail pages")
     parser.add_argument("--pages", type=int, help="Override SCRAPE_PAGES")
+    parser.add_argument(
+        "--enrich",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Fetch full listing detail pages (default: ENRICH_DETAILS)",
+    )
+    parser.add_argument(
+        "--enrich-limit",
+        type=int,
+        help="Limit how many detail pages to fetch (0 = all)",
+    )
     parser.add_argument(
         "--test-mode",
         action=argparse.BooleanOptionalAction,
@@ -28,6 +39,10 @@ def main(argv: list[str] | None = None) -> int:
     settings = Settings.from_env()
     if args.pages is not None:
         settings = replace(settings, pages=args.pages)
+    if args.enrich is not None:
+        settings = replace(settings, enrich_details=args.enrich)
+    if args.enrich_limit is not None:
+        settings = replace(settings, enrich_limit=args.enrich_limit)
     if args.test_mode is not None:
         settings = replace(settings, test_mode=args.test_mode)
     if args.headed:
@@ -38,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     result = run_job(settings)
     print(
         f"OK: {result.payload['listing_count']} listings, "
+        f"details={result.payload.get('details_scraped', 0)}, "
         f"snapshot={result.snapshot_path}, diff={result.diff}",
         file=sys.stderr,
     )

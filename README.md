@@ -6,9 +6,12 @@
 
 ## Что собирает
 
-- Первые **10 страниц** всех объявлений (`/skelbimai/naudoti-automobiliai`, без фильтра по марке)
-- ~20 объявлений на страницу → **~200 уникальных карточек** за прогон
-- Поля: id, url, title, price, year, mileage, fuel, transmission, city, photo
+- Первые **10 страниц** всех объявлений (`/skelbimai/naudoti-automobiliai`)
+- Затем **детальные страницы** каждого объявления (`ENRICH_DETAILS=true`)
+- Search: id, url, title, price, year, mileage, fuel, transmission, city, photo
+- Detail: phone, VIN (masked), description, все параметры таблицы, галерея фото
+
+~20 объявлений × 10 страниц ≈ **200 карточек/час** (+ ~200 detail-запросов).
 
 ## Быстрый старт
 
@@ -39,7 +42,10 @@ copy .env.example .env
 |------------|--------------|----------|
 | `TEST_MODE` | `true` | `true` → `data/test/snapshots/`, `false` → `data/prod/snapshots/` |
 | `SCRAPE_PAGES` | `10` | Сколько страниц поиска обходить |
-| `PAGE_DELAY_SEC` | `3` | Пауза между страницами |
+| `ENRICH_DETAILS` | `true` | Заходить в каждое объявление за полной карточкой |
+| `ENRICH_LIMIT` | `0` | Лимит detail-страниц (`0` = все) |
+| `DETAIL_DELAY_SEC` | `2` | Пауза между detail-запросами |
+| `PAGE_DELAY_SEC` | `3` | Пауза между страницами поиска |
 | `SCRAPE_INTERVAL_HOURS` | `1` | Интервал для `scheduler.py` |
 | `AUTO_CAPTCHA` | `true` | 2Captcha для Cloudflare Turnstile |
 | `CAPTCHA_2CAPTCHA_API_KEY` | — | Ключ 2Captcha |

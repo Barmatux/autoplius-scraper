@@ -51,6 +51,9 @@ def save_snapshot(
         "test_mode": test_mode,
         "listing_count": payload.get("listing_count", 0),
         "pages_scraped": payload.get("pages_scraped", 0),
+        "details_scraped": payload.get("details_scraped", 0),
+        "details_failed": payload.get("details_failed", 0),
+        "enrich_details": payload.get("enrich_details", False),
     }
     meta_path = data_dir / "last_run.json"
     meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")

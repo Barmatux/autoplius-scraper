@@ -10,12 +10,15 @@
   <header class="top">
     <div class="brand">
       <p class="brand-name">Autoplius Scraper</p>
-      <p class="brand-sub">Результаты парсинга · тестовый режим</p>
+      <p class="brand-sub">Результаты парсинга · search + detail</p>
     </div>
     <div class="meta">
       {% if last_run %}
       <div class="pill">Последний прогон: {{ last_run.saved_at or '—' }}</div>
       <div class="pill">{{ last_run.listing_count or 0 }} объяв. · {{ last_run.pages_scraped or 0 }} стр.</div>
+      {% if last_run.details_scraped is defined %}
+      <div class="pill">Детали: {{ last_run.details_scraped or 0 }}{% if last_run.details_failed %} / fail {{ last_run.details_failed }}{% endif %}</div>
+      {% endif %}
       {% endif %}
       {% if payload.diff_vs_previous %}
       <div class="pill accent">+{{ payload.diff_vs_previous.new }} / −{{ payload.diff_vs_previous.removed }}</div>
@@ -38,7 +41,7 @@
       </label>
       <label>
         Поиск
-        <input type="search" name="q" value="{{ q }}" placeholder="BMW, Kaunas…">
+        <input type="search" name="q" value="{{ q }}" placeholder="BMW, телефон, VIN…">
       </label>
       <label>
         Цена от
@@ -65,6 +68,7 @@
     <section class="summary">
       <p>
         Показано <strong>{{ listings|length }}</strong> из {{ total_in_snapshot }}
+        {% if payload.details_scraped is defined %} · детали {{ payload.details_scraped }}/{{ total_in_snapshot }}{% endif %}
         {% if payload.finished_at %} · снимок {{ payload.finished_at }}{% endif %}
         {% if payload.duration_sec %} · {{ payload.duration_sec }}с{% endif %}
       </p>
@@ -82,31 +86,39 @@
             <th>Цена</th>
             <th>Год</th>
             <th>Пробег</th>
-            <th>Топливо</th>
-            <th>КПП</th>
+            <th>Телефон</th>
             <th>Город</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {% for item in listings %}
           <tr>
             <td class="photo">
-              {% if item.photo_url %}
-              <img src="{{ item.photo_url }}" alt="" loading="lazy" width="72" height="54">
+              {% set thumb = item.photo_url or (item.photo_urls[0] if item.photo_urls else None) %}
+              {% if thumb %}
+              <img src="{{ thumb }}" alt="" loading="lazy" width="72" height="54">
               {% else %}
               <div class="photo-empty"></div>
               {% endif %}
             </td>
             <td>
-              <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title or item.autoplius_id }}</a>
-              <div class="muted">#{{ item.autoplius_id }}{% if item.body_type %} · {{ item.body_type }}{% endif %}</div>
+              <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id, snapshot=snapshot_id) }}">
+                {{ item.title or item.autoplius_id }}
+              </a>
+              <div class="muted">
+                #{{ item.autoplius_id }}
+                {% if item.body_type %} · {{ item.body_type }}{% endif %}
+                {% if item.fuel %} · {{ item.fuel }}{% endif %}
+                {% if item.detail_scraped %}<span class="tag ok">detail</span>{% else %}<span class="tag">preview</span>{% endif %}
+              </div>
             </td>
             <td class="num">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</td>
             <td>{{ item.year or '—' }}</td>
             <td class="num">{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</td>
-            <td>{{ item.fuel or '—' }}</td>
-            <td>{{ item.transmission or '—' }}</td>
+            <td class="num">{{ item.phone or '—' }}</td>
             <td>{{ item.city or '—' }}</td>
+            <td><a class="ext" href="{{ item.url }}" target="_blank" rel="noopener">autoplius</a></td>
           </tr>
           {% endfor %}
         </tbody>

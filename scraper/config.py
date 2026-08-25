@@ -44,6 +44,9 @@ class Settings:
     test_mode: bool
     pages: int
     page_delay_sec: float
+    enrich_details: bool
+    enrich_limit: int
+    detail_delay_sec: float
     interval_hours: int
     data_dir: Path
     profile_dir: Path
@@ -60,6 +63,10 @@ class Settings:
             test_mode=_env_bool("TEST_MODE", True),
             pages=_env_int("SCRAPE_PAGES", 10),
             page_delay_sec=_env_float("PAGE_DELAY_SEC", 3.0),
+            enrich_details=_env_bool("ENRICH_DETAILS", True),
+            # 0 = enrich all listings from search pages
+            enrich_limit=_env_int("ENRICH_LIMIT", 0),
+            detail_delay_sec=_env_float("DETAIL_DELAY_SEC", 2.0),
             interval_hours=_env_int("SCRAPE_INTERVAL_HOURS", 1),
             data_dir=Path(os.environ.get("DATA_DIR", root / "data")),
             profile_dir=Path(os.environ.get("PROFILE_DIR", root / ".browser-profile")),

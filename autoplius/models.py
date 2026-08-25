@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
@@ -19,6 +19,22 @@ class SearchListingPreview:
     city: str | None = None
     photo_url: str | None = None
     has_vin_badge: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class ListingDetail:
+    autoplius_id: int
+    url: str
+    title: str
+    price_eur: int | None = None
+    description: str | None = None
+    phone: str | None = None
+    vin_masked: str | None = None
+    parameters: dict[str, str] = field(default_factory=dict)
+    photo_urls: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

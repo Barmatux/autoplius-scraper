@@ -95,9 +95,23 @@ def filter_listings(
     out: list[dict[str, Any]] = []
     for item in listings:
         if q_norm:
+            params = item.get("parameters") or {}
             hay = " ".join(
-                str(item.get(k) or "")
-                for k in ("title", "city", "fuel", "year", "body_type", "autoplius_id")
+                [
+                    str(item.get(k) or "")
+                    for k in (
+                        "title",
+                        "city",
+                        "fuel",
+                        "year",
+                        "body_type",
+                        "autoplius_id",
+                        "phone",
+                        "vin_masked",
+                        "description",
+                    )
+                ]
+                + [f"{k} {v}" for k, v in params.items()]
             ).lower()
             if q_norm not in hay:
                 continue
@@ -126,6 +140,13 @@ def filter_listings(
 
         out.sort(key=sort_key, reverse=reverse)
     return out
+
+
+def find_listing(payload: dict[str, Any], listing_id: int) -> dict[str, Any] | None:
+    for item in payload.get("listings") or []:
+        if item.get("autoplius_id") == listing_id:
+            return item
+    return None
 
 
 @app.get("/")
@@ -165,12 +186,39 @@ def index():
     )
 
 
+@app.get("/listing/<int:listing_id>")
+def listing_detail(listing_id: int):
+    snapshot_id = request.args.get("snapshot", "latest")
+    path = resolve_snapshot(snapshot_id)
+    payload = load_json(path) or {}
+    item = find_listing(payload, listing_id)
+    if item is None:
+        abort(404, "listing not found in snapshot")
+    return render_template(
+        "detail.html",
+        item=item,
+        snapshot_id=snapshot_id,
+        payload=payload,
+    )
+
+
 @app.get("/api/latest")
 def api_latest():
     payload = load_json(data_dir() / "latest.json")
     if payload is None:
         abort(404)
     return jsonify(payload)
+
+
+@app.get("/api/listings/<int:listing_id>")
+def api_listing(listing_id: int):
+    snapshot_id = request.args.get("snapshot", "latest")
+    path = resolve_snapshot(snapshot_id)
+    payload = load_json(path) or {}
+    item = find_listing(payload, listing_id)
+    if item is None:
+        abort(404)
+    return jsonify(item)
 
 
 @app.get("/api/snapshots")

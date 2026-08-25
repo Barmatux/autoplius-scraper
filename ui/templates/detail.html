@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ item.title or item.autoplius_id }} · Autoplius Scraper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <p class="brand-name">{{ item.title or ('#' ~ item.autoplius_id) }}</p>
+      <p class="brand-sub">
+        <a href="{{ url_for('index', snapshot=snapshot_id) }}">← к списку</a>
+        · #{{ item.autoplius_id }}
+        {% if item.detail_scraped %}<span class="tag ok">detail</span>{% else %}<span class="tag">preview only</span>{% endif %}
+      </p>
+    </div>
+    <div class="meta">
+      <div class="pill accent">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}цена —{% endif %}</div>
+      {% if item.phone %}<div class="pill">{{ item.phone }}</div>{% endif %}
+      <a class="pill" href="{{ item.url }}" target="_blank" rel="noopener">Открыть на autoplius</a>
+    </div>
+  </header>
+
+  <main class="detail-layout">
+    <section class="detail-gallery">
+      {% set photos = item.photo_urls or ([item.photo_url] if item.photo_url else []) %}
+      {% if photos %}
+        <img class="hero" src="{{ photos[0] }}" alt="">
+        {% if photos|length > 1 %}
+        <div class="thumbs">
+          {% for src in photos[:12] %}
+          <img src="{{ src }}" alt="" loading="lazy">
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% else %}
+        <div class="photo-empty hero-empty"></div>
+      {% endif %}
+    </section>
+
+    <section class="detail-info">
+      <h2>Кратко</h2>
+      <dl class="kv">
+        <div><dt>Год</dt><dd>{{ item.year or '—' }}</dd></div>
+        <div><dt>Пробег</dt><dd>{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</dd></div>
+        <div><dt>Топливо</dt><dd>{{ item.fuel or '—' }}</dd></div>
+        <div><dt>КПП</dt><dd>{{ item.transmission or '—' }}</dd></div>
+        <div><dt>Кузов</dt><dd>{{ item.body_type or '—' }}</dd></div>
+        <div><dt>Двигатель</dt><dd>{{ item.engine or '—' }}</dd></div>
+        <div><dt>Город</dt><dd>{{ item.city or '—' }}</dd></div>
+        <div><dt>VIN</dt><dd>{{ item.vin_masked or '—' }}</dd></div>
+        <div><dt>Телефон</dt><dd>{{ item.phone or '—' }}</dd></div>
+      </dl>
+
+      {% if item.description %}
+      <h2>Описание</h2>
+      <p class="description">{{ item.description }}</p>
+      {% endif %}
+
+      {% if item.parameters %}
+      <h2>Параметры ({{ item.parameters|length }})</h2>
+      <dl class="kv">
+        {% for key, value in item.parameters.items() %}
+        <div><dt>{{ key }}</dt><dd>{{ value }}</dd></div>
+        {% endfor %}
+      </dl>
+      {% endif %}
+
+      {% if item.detail_error %}
+      <p class="empty">Ошибка детального парсинга: {{ item.detail_error }}</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>
