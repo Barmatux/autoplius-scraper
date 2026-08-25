@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, abort, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request, Response
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
@@ -14,6 +14,25 @@ DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
 app = Flask(__name__)
 app.config["DATA_DIR"] = DEFAULT_DATA_DIR
 
+
+def _check_basic_auth() -> bool:
+    user = (os.environ.get("UI_USER") or "").strip()
+    password = (os.environ.get("UI_PASSWORD") or "").strip()
+    if not user:
+        return True
+    auth = request.authorization
+    return bool(auth and auth.username == user and auth.password == password)
+
+
+@app.before_request
+def require_auth():
+    if _check_basic_auth():
+        return None
+    return Response(
+        "Authentication required",
+        401,
+        {"WWW-Authenticate": 'Basic realm="Autoplius Scraper"'},
+    )
 
 def data_dir() -> Path:
     return Path(app.config["DATA_DIR"])
