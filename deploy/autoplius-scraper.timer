@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Autoplius scraper every hour
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,20 @@
+[Unit]
+Description=Autoplius search scraper (hourly snapshot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/autoplius-scraper
+EnvironmentFile=-/opt/autoplius-scraper/.env
+ExecStart=/opt/autoplius-scraper/.venv/bin/python /opt/autoplius-scraper/run_scrape.py
+User=autoplius
+Group=autoplius
+
+# Playwright needs a writable profile dir
+Environment=PROFILE_DIR=/var/lib/autoplius-scraper/browser-profile
+Environment=DATA_DIR=/var/lib/autoplius-scraper/data
+Environment=LOGS_DIR=/var/log/autoplius-scraper
+
+[Install]
+WantedBy=multi-user.target
