@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Autoplius Scraper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <p class="brand-name">Autoplius Scraper</p>
+      <p class="brand-sub">Результаты парсинга · тестовый режим</p>
+    </div>
+    <div class="meta">
+      {% if last_run %}
+      <div class="pill">Последний прогон: {{ last_run.saved_at or '—' }}</div>
+      <div class="pill">{{ last_run.listing_count or 0 }} объяв. · {{ last_run.pages_scraped or 0 }} стр.</div>
+      {% endif %}
+      {% if payload.diff_vs_previous %}
+      <div class="pill accent">+{{ payload.diff_vs_previous.new }} / −{{ payload.diff_vs_previous.removed }}</div>
+      {% endif %}
+    </div>
+  </header>
+
+  <main>
+    <form class="filters" method="get">
+      <label>
+        Снимок
+        <select name="snapshot">
+          <option value="latest" {% if snapshot_id == 'latest' %}selected{% endif %}>latest.json</option>
+          {% for s in snapshots %}
+          <option value="{{ s.id }}" {% if snapshot_id == s.id %}selected{% endif %}>
+            {{ s.mode }} · {{ s.date }} · {{ s.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Поиск
+        <input type="search" name="q" value="{{ q }}" placeholder="BMW, Kaunas…">
+      </label>
+      <label>
+        Цена от
+        <input type="number" name="min_price" value="{{ min_price }}" min="0" step="100">
+      </label>
+      <label>
+        Цена до
+        <input type="number" name="max_price" value="{{ max_price }}" min="0" step="100">
+      </label>
+      <label>
+        Сортировка
+        <select name="sort">
+          <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Цена ↑</option>
+          <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Цена ↓</option>
+          <option value="mileage_asc" {% if sort == 'mileage_asc' %}selected{% endif %}>Пробег ↑</option>
+          <option value="mileage_desc" {% if sort == 'mileage_desc' %}selected{% endif %}>Пробег ↓</option>
+          <option value="year_desc" {% if sort == 'year_desc' %}selected{% endif %}>Год ↓</option>
+          <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Название</option>
+        </select>
+      </label>
+      <button type="submit">Показать</button>
+    </form>
+
+    <section class="summary">
+      <p>
+        Показано <strong>{{ listings|length }}</strong> из {{ total_in_snapshot }}
+        {% if payload.finished_at %} · снимок {{ payload.finished_at }}{% endif %}
+        {% if payload.duration_sec %} · {{ payload.duration_sec }}с{% endif %}
+      </p>
+    </section>
+
+    {% if not listings %}
+    <p class="empty">Нет объявлений по фильтру (или ещё не было прогонов).</p>
+    {% else %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Авто</th>
+            <th>Цена</th>
+            <th>Год</th>
+            <th>Пробег</th>
+            <th>Топливо</th>
+            <th>КПП</th>
+            <th>Город</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in listings %}
+          <tr>
+            <td class="photo">
+              {% if item.photo_url %}
+              <img src="{{ item.photo_url }}" alt="" loading="lazy" width="72" height="54">
+              {% else %}
+              <div class="photo-empty"></div>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title or item.autoplius_id }}</a>
+              <div class="muted">#{{ item.autoplius_id }}{% if item.body_type %} · {{ item.body_type }}{% endif %}</div>
+            </td>
+            <td class="num">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</td>
+            <td>{{ item.year or '—' }}</td>
+            <td class="num">{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</td>
+            <td>{{ item.fuel or '—' }}</td>
+            <td>{{ item.transmission or '—' }}</td>
+            <td>{{ item.city or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </main>
+</body>
+</html>

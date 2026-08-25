@@ -70,6 +70,19 @@ sudo systemctl enable --now autoplius-scraper.timer
 sudo systemctl start autoplius-scraper.service
 ```
 
+## UI результатов
+
+Простой веб-интерфейс для просмотра снимков:
+
+```powershell
+.\.venv\Scripts\pip install flask
+$env:DATA_DIR = "data"
+.\.venv\Scripts\python -m ui.app
+# http://127.0.0.1:8080
+```
+
+На VM сервис `autoplius-ui.service` слушает порт **8080**.
+
 ## Docker
 
 ```bash
