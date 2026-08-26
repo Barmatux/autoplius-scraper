@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 import os
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -39,127 +37,15 @@ def require_auth():
     )
 
 
-def data_dir() -> Path:
-    return Path(app.config["DATA_DIR"])
-
-
 def db_path() -> Path:
     return Path(app.config["DB_PATH"])
 
 
-def load_json(path: Path) -> dict[str, Any] | None:
+def require_db() -> Path:
+    path = db_path()
     if not path.is_file():
-        return None
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-
-
-def list_snapshots() -> list[dict[str, Any]]:
-    base = data_dir()
-    items: list[dict[str, Any]] = []
-    for mode in ("test", "prod"):
-        snap_root = base / mode / "snapshots"
-        if not snap_root.is_dir():
-            continue
-        for path in sorted(snap_root.rglob("*.json"), reverse=True):
-            rel = path.relative_to(base).as_posix()
-            stat = path.stat()
-            items.append(
-                {
-                    "id": rel,
-                    "mode": mode,
-                    "name": path.name,
-                    "date": path.parent.name,
-                    "size_kb": round(stat.st_size / 1024, 1),
-                    "mtime": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
-                }
-            )
-    return items
-
-
-def resolve_snapshot(snapshot_id: str | None) -> Path:
-    base = data_dir()
-    if not snapshot_id or snapshot_id == "latest":
-        return base / "latest.json"
-    candidate = (base / snapshot_id).resolve()
-    if not str(candidate).startswith(str(base.resolve())):
-        abort(400, "invalid snapshot path")
-    if not candidate.is_file():
-        abort(404, "snapshot not found")
-    return candidate
-
-
-def filter_listings(
-    listings: list[dict[str, Any]],
-    *,
-    q: str,
-    min_price: int | None,
-    max_price: int | None,
-    sort: str,
-    details_only: bool,
-) -> list[dict[str, Any]]:
-    q_norm = q.strip().lower()
-    out: list[dict[str, Any]] = []
-    for item in listings:
-        if details_only and not item.get("detail_scraped"):
-            continue
-        if q_norm:
-            params = item.get("parameters") or {}
-            hay = " ".join(
-                [
-                    str(item.get(k) or "")
-                    for k in (
-                        "title",
-                        "city",
-                        "fuel",
-                        "year",
-                        "body_type",
-                        "autoplius_id",
-                        "phone",
-                        "vin_masked",
-                        "description",
-                        "transmission",
-                        "engine",
-                    )
-                ]
-                + [f"{k} {v}" for k, v in params.items()]
-            ).lower()
-            if q_norm not in hay:
-                continue
-        price = item.get("price_eur")
-        if min_price is not None and (price is None or price < min_price):
-            continue
-        if max_price is not None and (price is None or price > max_price):
-            continue
-        out.append(item)
-
-    reverse = sort.endswith("_desc")
-    key = sort.removesuffix("_asc").removesuffix("_desc")
-    if key in {"price", "mileage", "year", "title"}:
-        field = {
-            "price": "price_eur",
-            "mileage": "mileage_km",
-            "year": "year",
-            "title": "title",
-        }[key]
-
-        def sort_key(row: dict[str, Any]):
-            val = row.get(field)
-            if val is None:
-                return (1, "")
-            return (0, val)
-
-        out.sort(key=sort_key, reverse=reverse)
-    return out
-
-
-def find_listing(payload: dict[str, Any], listing_id: int) -> dict[str, Any] | None:
-    for item in payload.get("listings") or []:
-        if item.get("autoplius_id") == listing_id:
-            return item
-    return None
+        abort(503, "SQLite database not found. Run import_to_db.py first.")
+    return path
 
 
 def thumb_url(item: dict[str, Any]) -> str | None:
@@ -169,74 +55,30 @@ def thumb_url(item: dict[str, Any]) -> str | None:
     return photos[0] if photos else None
 
 
-def use_db(snapshot_id: str) -> bool:
-    source = request.args.get("source", "db")
-    if source == "json":
-        return False
-    if snapshot_id not in {"latest", ""}:
-        return False
-    return db_path().is_file()
-
-
 @app.get("/")
 def index():
-    snapshots = list_snapshots()
-    snapshot_id = request.args.get("snapshot", "latest")
+    path = require_db()
     q = request.args.get("q", "")
     sort = request.args.get("sort", "price_asc")
-    details_only_raw = request.args.get("details_only")
-    if not request.args:
-        details_only = True
-    else:
-        details_only = details_only_raw == "1"
+    # Show ALL listings by default; optional filter for enriched only.
+    details_only = request.args.get("details_only") == "1"
     page = max(1, int(request.args.get("page", "1") or "1"))
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
     min_price = int(min_price_raw) if min_price_raw.isdigit() else None
     max_price = int(max_price_raw) if max_price_raw.isdigit() else None
 
-    last_run = load_json(data_dir() / "last_run.json") or {}
-    stats = db_stats(db_path())
-    from_db = use_db(snapshot_id)
+    stats = db_stats(path)
+    filtered = fetch_listings(
+        path,
+        q=q,
+        min_price=min_price,
+        max_price=max_price,
+        sort=sort,
+        details_only=details_only,
+    )
 
-    if from_db:
-        filtered = fetch_listings(
-            db_path(),
-            q=q,
-            min_price=min_price,
-            max_price=max_price,
-            sort=sort,
-            details_only=details_only,
-        )
-        payload = {
-            "mode": "db",
-            "details_scraped": stats.get("enriched"),
-            "listing_count": stats.get("listings"),
-            "diff_vs_previous": None,
-            "duration_sec": None,
-            "finished_at": (stats.get("last_run") or {}).get("finished_at"),
-        }
-        total_in_snapshot = int(stats.get("listings") or 0)
-        enriched = int(stats.get("enriched") or 0)
-        with_phone = int(stats.get("with_phone") or 0)
-        with_vin = int(stats.get("with_vin") or 0)
-    else:
-        path = resolve_snapshot(snapshot_id)
-        payload = load_json(path) or {}
-        all_listings = payload.get("listings") or []
-        filtered = filter_listings(
-            all_listings,
-            q=q,
-            min_price=min_price,
-            max_price=max_price,
-            sort=sort,
-            details_only=details_only,
-        )
-        total_in_snapshot = len(all_listings)
-        enriched = sum(1 for x in all_listings if x.get("detail_scraped"))
-        with_phone = sum(1 for x in all_listings if x.get("phone"))
-        with_vin = sum(1 for x in all_listings if x.get("vin_masked"))
-
+    total_in_db = int(stats.get("listings") or 0)
     total_filtered = len(filtered)
     pages = max(1, (total_filtered + PAGE_SIZE - 1) // PAGE_SIZE)
     page = min(page, pages)
@@ -245,16 +87,13 @@ def index():
 
     return render_template(
         "index.html",
-        snapshots=snapshots,
-        snapshot_id=snapshot_id,
-        payload=payload,
         listings=listings,
-        total_in_snapshot=total_in_snapshot,
+        total_in_db=total_in_db,
         total_filtered=total_filtered,
-        enriched_count=enriched,
-        with_phone=with_phone,
-        with_vin=with_vin,
-        last_run=last_run,
+        enriched_count=int(stats.get("enriched") or 0),
+        with_phone=int(stats.get("with_phone") or 0),
+        with_vin=int(stats.get("with_vin") or 0),
+        db_stats=stats,
         q=q,
         sort=sort,
         min_price=min_price_raw,
@@ -264,57 +103,46 @@ def index():
         pages=pages,
         page_size=PAGE_SIZE,
         thumb_url=thumb_url,
-        from_db=from_db,
-        db_stats=stats,
     )
 
 
 @app.get("/listing/<int:listing_id>")
 def listing_detail(listing_id: int):
-    snapshot_id = request.args.get("snapshot", "latest")
-    if use_db(snapshot_id):
-        item = fetch_listing(db_path(), listing_id)
-        payload = {"mode": "db"}
-    else:
-        path = resolve_snapshot(snapshot_id)
-        payload = load_json(path) or {}
-        item = find_listing(payload, listing_id)
+    item = fetch_listing(require_db(), listing_id)
     if item is None:
-        abort(404, "listing not found")
-    return render_template(
-        "detail.html",
-        item=item,
-        snapshot_id=snapshot_id,
-        payload=payload,
+        abort(404, "listing not found in database")
+    return render_template("detail.html", item=item)
+
+
+@app.get("/api/listings")
+def api_listings():
+    path = require_db()
+    q = request.args.get("q", "")
+    sort = request.args.get("sort", "price_asc")
+    details_only = request.args.get("details_only") == "1"
+    min_price_raw = request.args.get("min_price", "").strip()
+    max_price_raw = request.args.get("max_price", "").strip()
+    min_price = int(min_price_raw) if min_price_raw.isdigit() else None
+    max_price = int(max_price_raw) if max_price_raw.isdigit() else None
+    return jsonify(
+        {
+            "source": "sqlite",
+            "stats": db_stats(path),
+            "listings": fetch_listings(
+                path,
+                q=q,
+                min_price=min_price,
+                max_price=max_price,
+                sort=sort,
+                details_only=details_only,
+            ),
+        }
     )
-
-
-@app.get("/api/latest")
-def api_latest():
-    if db_path().is_file():
-        return jsonify(
-            {
-                "source": "sqlite",
-                "stats": db_stats(db_path()),
-                "listings": fetch_listings(db_path()),
-            }
-        )
-    payload = load_json(data_dir() / "latest.json")
-    if payload is None:
-        abort(404)
-    return jsonify(payload)
 
 
 @app.get("/api/listings/<int:listing_id>")
 def api_listing(listing_id: int):
-    if db_path().is_file():
-        item = fetch_listing(db_path(), listing_id)
-        if item is None:
-            abort(404)
-        return jsonify(item)
-    path = resolve_snapshot(request.args.get("snapshot", "latest"))
-    payload = load_json(path) or {}
-    item = find_listing(payload, listing_id)
+    item = fetch_listing(require_db(), listing_id)
     if item is None:
         abort(404)
     return jsonify(item)
@@ -322,12 +150,7 @@ def api_listing(listing_id: int):
 
 @app.get("/api/db/stats")
 def api_db_stats():
-    return jsonify(db_stats(db_path()))
-
-
-@app.get("/api/snapshots")
-def api_snapshots():
-    return jsonify(list_snapshots())
+    return jsonify(db_stats(require_db()))
 
 
 def main() -> None:

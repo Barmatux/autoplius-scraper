@@ -10,41 +10,24 @@
   <header class="top">
     <div class="brand">
       <p class="brand-name">Autoplius Scraper</p>
-      <p class="brand-sub">
-        Все спарсенные объявления
-        {% if from_db %}· <strong>SQLite</strong>{% else %}· JSON snapshot{% endif %}
-      </p>
+      <p class="brand-sub">Все объявления из SQLite</p>
     </div>
     <div class="meta">
-      <div class="pill accent">{{ total_in_snapshot }} в {% if from_db %}БД{% else %}снимке{% endif %}</div>
-      {% if from_db and db_stats and db_stats.runs %}
+      <div class="pill accent">{{ total_in_db }} в БД</div>
+      {% if db_stats and db_stats.runs %}
       <div class="pill">Прогонов: {{ db_stats.runs }}</div>
       {% endif %}
       <div class="pill">Детали: {{ enriched_count }}</div>
       <div class="pill">Телефон: {{ with_phone }}</div>
       <div class="pill">VIN: {{ with_vin }}</div>
-      {% if last_run and last_run.saved_at %}
-      <div class="pill">Прогон: {{ last_run.saved_at }}</div>
-      {% endif %}
-      {% if payload.diff_vs_previous %}
-      <div class="pill">+{{ payload.diff_vs_previous.new }} / −{{ payload.diff_vs_previous.removed }}</div>
+      {% if db_stats and db_stats.last_run and db_stats.last_run.finished_at %}
+      <div class="pill">Последний прогон: {{ db_stats.last_run.finished_at }}</div>
       {% endif %}
     </div>
   </header>
 
   <main>
     <form class="filters" method="get">
-      <label>
-        Снимок
-        <select name="snapshot">
-          <option value="latest" {% if snapshot_id == 'latest' %}selected{% endif %}>latest.json</option>
-          {% for s in snapshots %}
-          <option value="{{ s.id }}" {% if snapshot_id == s.id %}selected{% endif %}>
-            {{ s.mode }} · {{ s.date }} · {{ s.name }}
-          </option>
-          {% endfor %}
-        </select>
-      </label>
       <label>
         Поиск
         <input type="search" name="q" value="{{ q }}" placeholder="BMW, телефон, VIN, город…">
@@ -78,13 +61,12 @@
     <section class="summary">
       <p>
         Показано <strong>{{ listings|length }}</strong>
-        (стр. {{ page }}/{{ pages }}, всего по фильтру {{ total_filtered }} из {{ total_in_snapshot }})
-        {% if payload.duration_sec %} · прогон {{ payload.duration_sec }}с{% endif %}
+        (стр. {{ page }}/{{ pages }}, по фильтру {{ total_filtered }} из {{ total_in_db }} в БД)
       </p>
     </section>
 
     {% if not listings %}
-    <p class="empty">Нет объявлений по фильтру.</p>
+    <p class="empty">Нет объявлений в базе по фильтру.</p>
     {% else %}
     <div class="table-wrap">
       <table>
@@ -114,7 +96,7 @@
               {% endif %}
             </td>
             <td>
-              <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id, snapshot=snapshot_id) }}">
+              <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">
                 {{ item.title or item.autoplius_id }}
               </a>
               <div class="muted">
@@ -148,11 +130,11 @@
     {% if pages > 1 %}
     <nav class="pager">
       {% if page > 1 %}
-      <a href="{{ url_for('index', snapshot=snapshot_id, q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else '0', page=page-1) }}">← Назад</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, page=page-1) }}">← Назад</a>
       {% endif %}
       <span>Страница {{ page }} / {{ pages }}</span>
       {% if page < pages %}
-      <a href="{{ url_for('index', snapshot=snapshot_id, q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else '0', page=page+1) }}">Вперёд →</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, page=page+1) }}">Вперёд →</a>
       {% endif %}
     </nav>
     {% endif %}

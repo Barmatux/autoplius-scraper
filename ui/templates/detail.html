@@ -11,9 +11,9 @@
     <div class="brand">
       <p class="brand-name">{{ item.title or ('#' ~ item.autoplius_id) }}</p>
       <p class="brand-sub">
-        <a href="{{ url_for('index', snapshot=snapshot_id) }}">← к списку</a>
-        · #{{ item.autoplius_id }}
-        {% if item.detail_scraped %}<span class="tag ok">detail</span>{% else %}<span class="tag">preview only</span>{% endif %}
+        <a href="{{ url_for('index') }}">← к списку</a>
+        · #{{ item.autoplius_id }} · SQLite
+        {% if item.detail_scraped %}<span class="tag ok">detail</span>{% else %}<span class="tag">preview</span>{% endif %}
       </p>
     </div>
     <div class="meta">
@@ -55,6 +55,8 @@
         <div><dt>VIN</dt><dd class="mono">{{ item.vin_masked or '—' }}</dd></div>
         <div><dt>Телефон</dt><dd>{% if item.phone %}<a href="tel:{{ item.phone|replace(' ', '') }}">{{ item.phone }}</a>{% else %}—{% endif %}</dd></div>
         <div><dt>Фото</dt><dd>{{ photos|length }}</dd></div>
+        <div><dt>В БД с</dt><dd>{{ item.first_seen_at or '—' }}</dd></div>
+        <div><dt>Обновлено</dt><dd>{{ item.last_seen_at or '—' }}</dd></div>
         <div><dt>URL</dt><dd><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.url }}</a></dd></div>
       </dl>
 
