@@ -10,18 +10,18 @@
   <header class="top">
     <div class="brand">
       <p class="brand-name">Autoplius Scraper</p>
-      <p class="brand-sub">Результаты парсинга · search + detail</p>
+      <p class="brand-sub">Все спарсенные объявления · search + detail</p>
     </div>
     <div class="meta">
-      {% if last_run %}
-      <div class="pill">Последний прогон: {{ last_run.saved_at or '—' }}</div>
-      <div class="pill">{{ last_run.listing_count or 0 }} объяв. · {{ last_run.pages_scraped or 0 }} стр.</div>
-      {% if last_run.details_scraped is defined %}
-      <div class="pill">Детали: {{ last_run.details_scraped or 0 }}{% if last_run.details_failed %} / fail {{ last_run.details_failed }}{% endif %}</div>
-      {% endif %}
+      <div class="pill accent">{{ total_in_snapshot }} в снимке</div>
+      <div class="pill">Детали: {{ enriched_count }}</div>
+      <div class="pill">Телефон: {{ with_phone }}</div>
+      <div class="pill">VIN: {{ with_vin }}</div>
+      {% if last_run and last_run.saved_at %}
+      <div class="pill">Прогон: {{ last_run.saved_at }}</div>
       {% endif %}
       {% if payload.diff_vs_previous %}
-      <div class="pill accent">+{{ payload.diff_vs_previous.new }} / −{{ payload.diff_vs_previous.removed }}</div>
+      <div class="pill">+{{ payload.diff_vs_previous.new }} / −{{ payload.diff_vs_previous.removed }}</div>
       {% endif %}
     </div>
   </header>
@@ -41,7 +41,7 @@
       </label>
       <label>
         Поиск
-        <input type="search" name="q" value="{{ q }}" placeholder="BMW, телефон, VIN…">
+        <input type="search" name="q" value="{{ q }}" placeholder="BMW, телефон, VIN, город…">
       </label>
       <label>
         Цена от
@@ -62,20 +62,23 @@
           <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Название</option>
         </select>
       </label>
+      <label class="check">
+        <span>Только с detail</span>
+        <input type="checkbox" name="details_only" value="1" {% if details_only %}checked{% endif %}>
+      </label>
       <button type="submit">Показать</button>
     </form>
 
     <section class="summary">
       <p>
-        Показано <strong>{{ listings|length }}</strong> из {{ total_in_snapshot }}
-        {% if payload.details_scraped is defined %} · детали {{ payload.details_scraped }}/{{ total_in_snapshot }}{% endif %}
-        {% if payload.finished_at %} · снимок {{ payload.finished_at }}{% endif %}
-        {% if payload.duration_sec %} · {{ payload.duration_sec }}с{% endif %}
+        Показано <strong>{{ listings|length }}</strong>
+        (стр. {{ page }}/{{ pages }}, всего по фильтру {{ total_filtered }} из {{ total_in_snapshot }})
+        {% if payload.duration_sec %} · прогон {{ payload.duration_sec }}с{% endif %}
       </p>
     </section>
 
     {% if not listings %}
-    <p class="empty">Нет объявлений по фильтру (или ещё не было прогонов).</p>
+    <p class="empty">Нет объявлений по фильтру.</p>
     {% else %}
     <div class="table-wrap">
       <table>
@@ -86,16 +89,18 @@
             <th>Цена</th>
             <th>Год</th>
             <th>Пробег</th>
+            <th>КПП / Топливо</th>
             <th>Телефон</th>
+            <th>VIN</th>
             <th>Город</th>
-            <th></th>
+            <th>Фото/парам.</th>
           </tr>
         </thead>
         <tbody>
           {% for item in listings %}
+          {% set thumb = thumb_url(item) %}
           <tr>
             <td class="photo">
-              {% set thumb = item.photo_url or (item.photo_urls[0] if item.photo_urls else None) %}
               {% if thumb %}
               <img src="{{ thumb }}" alt="" loading="lazy" width="72" height="54">
               {% else %}
@@ -109,21 +114,42 @@
               <div class="muted">
                 #{{ item.autoplius_id }}
                 {% if item.body_type %} · {{ item.body_type }}{% endif %}
-                {% if item.fuel %} · {{ item.fuel }}{% endif %}
+                {% if item.engine %} · {{ item.engine }}{% endif %}
                 {% if item.detail_scraped %}<span class="tag ok">detail</span>{% else %}<span class="tag">preview</span>{% endif %}
               </div>
             </td>
             <td class="num">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</td>
             <td>{{ item.year or '—' }}</td>
             <td class="num">{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</td>
+            <td>
+              <div>{{ item.transmission or '—' }}</div>
+              <div class="muted">{{ item.fuel or '—' }}</div>
+            </td>
             <td class="num">{{ item.phone or '—' }}</td>
+            <td class="mono">{{ item.vin_masked or '—' }}</td>
             <td>{{ item.city or '—' }}</td>
-            <td><a class="ext" href="{{ item.url }}" target="_blank" rel="noopener">autoplius</a></td>
+            <td class="num">
+              {{ (item.photo_urls|length) if item.photo_urls else (1 if thumb else 0) }}
+              /
+              {{ (item.parameters|length) if item.parameters else 0 }}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+
+    {% if pages > 1 %}
+    <nav class="pager">
+      {% if page > 1 %}
+      <a href="{{ url_for('index', snapshot=snapshot_id, q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else '0', page=page-1) }}">← Назад</a>
+      {% endif %}
+      <span>Страница {{ page }} / {{ pages }}</span>
+      {% if page < pages %}
+      <a href="{{ url_for('index', snapshot=snapshot_id, q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else '0', page=page+1) }}">Вперёд →</a>
+      {% endif %}
+    </nav>
+    {% endif %}
     {% endif %}
   </main>
 </body>

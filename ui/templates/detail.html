@@ -19,6 +19,7 @@
     <div class="meta">
       <div class="pill accent">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}цена —{% endif %}</div>
       {% if item.phone %}<div class="pill">{{ item.phone }}</div>{% endif %}
+      {% if item.vin_masked %}<div class="pill mono">{{ item.vin_masked }}</div>{% endif %}
       <a class="pill" href="{{ item.url }}" target="_blank" rel="noopener">Открыть на autoplius</a>
     </div>
   </header>
@@ -30,8 +31,8 @@
         <img class="hero" src="{{ photos[0] }}" alt="">
         {% if photos|length > 1 %}
         <div class="thumbs">
-          {% for src in photos[:12] %}
-          <img src="{{ src }}" alt="" loading="lazy">
+          {% for src in photos %}
+          <a href="{{ src }}" target="_blank" rel="noopener"><img src="{{ src }}" alt="" loading="lazy"></a>
           {% endfor %}
         </div>
         {% endif %}
@@ -43,6 +44,7 @@
     <section class="detail-info">
       <h2>Кратко</h2>
       <dl class="kv">
+        <div><dt>Цена</dt><dd>{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</dd></div>
         <div><dt>Год</dt><dd>{{ item.year or '—' }}</dd></div>
         <div><dt>Пробег</dt><dd>{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</dd></div>
         <div><dt>Топливо</dt><dd>{{ item.fuel or '—' }}</dd></div>
@@ -50,8 +52,10 @@
         <div><dt>Кузов</dt><dd>{{ item.body_type or '—' }}</dd></div>
         <div><dt>Двигатель</dt><dd>{{ item.engine or '—' }}</dd></div>
         <div><dt>Город</dt><dd>{{ item.city or '—' }}</dd></div>
-        <div><dt>VIN</dt><dd>{{ item.vin_masked or '—' }}</dd></div>
-        <div><dt>Телефон</dt><dd>{{ item.phone or '—' }}</dd></div>
+        <div><dt>VIN</dt><dd class="mono">{{ item.vin_masked or '—' }}</dd></div>
+        <div><dt>Телефон</dt><dd>{% if item.phone %}<a href="tel:{{ item.phone|replace(' ', '') }}">{{ item.phone }}</a>{% else %}—{% endif %}</dd></div>
+        <div><dt>Фото</dt><dd>{{ photos|length }}</dd></div>
+        <div><dt>URL</dt><dd><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.url }}</a></dd></div>
       </dl>
 
       {% if item.description %}
@@ -60,7 +64,7 @@
       {% endif %}
 
       {% if item.parameters %}
-      <h2>Параметры ({{ item.parameters|length }})</h2>
+      <h2>Все параметры ({{ item.parameters|length }})</h2>
       <dl class="kv">
         {% for key, value in item.parameters.items() %}
         <div><dt>{{ key }}</dt><dd>{{ value }}</dd></div>

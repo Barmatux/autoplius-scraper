@@ -10,6 +10,7 @@ from flask import Flask, abort, jsonify, render_template, request, Response
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
+PAGE_SIZE = 50
 
 app = Flask(__name__)
 app.config["DATA_DIR"] = DEFAULT_DATA_DIR
@@ -33,6 +34,7 @@ def require_auth():
         401,
         {"WWW-Authenticate": 'Basic realm="Autoplius Scraper"'},
     )
+
 
 def data_dir() -> Path:
     return Path(app.config["DATA_DIR"])
@@ -74,7 +76,6 @@ def resolve_snapshot(snapshot_id: str | None) -> Path:
     base = data_dir()
     if not snapshot_id or snapshot_id == "latest":
         return base / "latest.json"
-    # prevent path traversal
     candidate = (base / snapshot_id).resolve()
     if not str(candidate).startswith(str(base.resolve())):
         abort(400, "invalid snapshot path")
@@ -90,10 +91,13 @@ def filter_listings(
     min_price: int | None,
     max_price: int | None,
     sort: str,
+    details_only: bool,
 ) -> list[dict[str, Any]]:
     q_norm = q.strip().lower()
     out: list[dict[str, Any]] = []
     for item in listings:
+        if details_only and not item.get("detail_scraped"):
+            continue
         if q_norm:
             params = item.get("parameters") or {}
             hay = " ".join(
@@ -109,6 +113,8 @@ def filter_listings(
                         "phone",
                         "vin_masked",
                         "description",
+                        "transmission",
+                        "engine",
                     )
                 ]
                 + [f"{k} {v}" for k, v in params.items()]
@@ -149,12 +155,25 @@ def find_listing(payload: dict[str, Any], listing_id: int) -> dict[str, Any] | N
     return None
 
 
+def thumb_url(item: dict[str, Any]) -> str | None:
+    if item.get("photo_url"):
+        return item["photo_url"]
+    photos = item.get("photo_urls") or []
+    return photos[0] if photos else None
+
+
 @app.get("/")
 def index():
     snapshots = list_snapshots()
     snapshot_id = request.args.get("snapshot", "latest")
     q = request.args.get("q", "")
     sort = request.args.get("sort", "price_asc")
+    details_only_raw = request.args.get("details_only")
+    if not request.args:
+        details_only = True
+    else:
+        details_only = details_only_raw == "1"
+    page = max(1, int(request.args.get("page", "1") or "1"))
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
     min_price = int(min_price_raw) if min_price_raw.isdigit() else None
@@ -162,14 +181,25 @@ def index():
 
     path = resolve_snapshot(snapshot_id)
     payload = load_json(path) or {}
-    listings = filter_listings(
-        payload.get("listings") or [],
+    all_listings = payload.get("listings") or []
+    filtered = filter_listings(
+        all_listings,
         q=q,
         min_price=min_price,
         max_price=max_price,
         sort=sort,
+        details_only=details_only,
     )
+    total_filtered = len(filtered)
+    pages = max(1, (total_filtered + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = min(page, pages)
+    start = (page - 1) * PAGE_SIZE
+    listings = filtered[start : start + PAGE_SIZE]
     last_run = load_json(data_dir() / "last_run.json") or {}
+
+    enriched = sum(1 for x in all_listings if x.get("detail_scraped"))
+    with_phone = sum(1 for x in all_listings if x.get("phone"))
+    with_vin = sum(1 for x in all_listings if x.get("vin_masked"))
 
     return render_template(
         "index.html",
@@ -177,12 +207,21 @@ def index():
         snapshot_id=snapshot_id,
         payload=payload,
         listings=listings,
-        total_in_snapshot=len(payload.get("listings") or []),
+        total_in_snapshot=len(all_listings),
+        total_filtered=total_filtered,
+        enriched_count=enriched,
+        with_phone=with_phone,
+        with_vin=with_vin,
         last_run=last_run,
         q=q,
         sort=sort,
         min_price=min_price_raw,
         max_price=max_price_raw,
+        details_only=details_only,
+        page=page,
+        pages=pages,
+        page_size=PAGE_SIZE,
+        thumb_url=thumb_url,
     )
 
 
