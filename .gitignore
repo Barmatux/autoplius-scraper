@@ -6,3 +6,5 @@ __pycache__/
 data/
 logs/
 *.log
+*.db
+*.db-journal

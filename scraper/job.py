@@ -21,6 +21,7 @@ from autoplius.parse_search import parse_search_html
 from autoplius.urls import build_search_url
 
 from scraper.config import Settings
+from scraper.db import save_payload_to_db
 from scraper.storage import diff_stats, load_latest_ids, save_snapshot
 
 logger = logging.getLogger(__name__)
@@ -213,15 +214,21 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
         data_dir=settings.data_dir,
         test_mode=settings.test_mode,
     )
+    run_id = save_payload_to_db(
+        settings.db_path,
+        payload,
+        snapshot_path=str(snapshot_path),
+    )
 
     logger.info(
-        "Done: %s listings, details ok=%s fail=%s | new=%s removed=%s unchanged=%s",
+        "Done: %s listings, details ok=%s fail=%s | new=%s removed=%s unchanged=%s | db_run_id=%s",
         len(listings),
         detail_ok,
         detail_fail,
         diff["new"],
         diff["removed"],
         diff["unchanged"],
+        run_id,
     )
     return ScrapeRunResult(payload=payload, snapshot_path=str(snapshot_path), diff=diff)
 

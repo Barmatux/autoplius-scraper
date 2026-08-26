@@ -51,6 +51,7 @@ class Settings:
     data_dir: Path
     profile_dir: Path
     logs_dir: Path
+    db_path: Path
     auto_captcha: bool
     headless: bool
     timeout_sec: float
@@ -59,6 +60,8 @@ class Settings:
     def from_env(cls, *, root: Path | None = None) -> Settings:
         root = root or Path(__file__).resolve().parents[1]
         load_dotenv(root / ".env")
+        data_dir = Path(os.environ.get("DATA_DIR", root / "data"))
+        db_path = Path(os.environ.get("DB_PATH", data_dir / "autoplius.db"))
         return cls(
             test_mode=_env_bool("TEST_MODE", True),
             pages=_env_int("SCRAPE_PAGES", 10),
@@ -68,9 +71,10 @@ class Settings:
             enrich_limit=_env_int("ENRICH_LIMIT", 0),
             detail_delay_sec=_env_float("DETAIL_DELAY_SEC", 2.0),
             interval_hours=_env_int("SCRAPE_INTERVAL_HOURS", 1),
-            data_dir=Path(os.environ.get("DATA_DIR", root / "data")),
+            data_dir=data_dir,
             profile_dir=Path(os.environ.get("PROFILE_DIR", root / ".browser-profile")),
             logs_dir=Path(os.environ.get("LOGS_DIR", root / "logs")),
+            db_path=db_path,
             auto_captcha=_env_bool("AUTO_CAPTCHA", True),
             headless=_env_bool("HEADLESS", True),
             timeout_sec=_env_float("SCRAPE_TIMEOUT_SEC", 180.0),

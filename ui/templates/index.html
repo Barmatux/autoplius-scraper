@@ -10,10 +10,16 @@
   <header class="top">
     <div class="brand">
       <p class="brand-name">Autoplius Scraper</p>
-      <p class="brand-sub">Все спарсенные объявления · search + detail</p>
+      <p class="brand-sub">
+        Все спарсенные объявления
+        {% if from_db %}· <strong>SQLite</strong>{% else %}· JSON snapshot{% endif %}
+      </p>
     </div>
     <div class="meta">
-      <div class="pill accent">{{ total_in_snapshot }} в снимке</div>
+      <div class="pill accent">{{ total_in_snapshot }} в {% if from_db %}БД{% else %}снимке{% endif %}</div>
+      {% if from_db and db_stats and db_stats.runs %}
+      <div class="pill">Прогонов: {{ db_stats.runs }}</div>
+      {% endif %}
       <div class="pill">Детали: {{ enriched_count }}</div>
       <div class="pill">Телефон: {{ with_phone }}</div>
       <div class="pill">VIN: {{ with_vin }}</div>

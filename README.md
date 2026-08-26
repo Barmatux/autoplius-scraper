@@ -76,6 +76,19 @@ sudo systemctl enable --now autoplius-scraper.timer
 sudo systemctl start autoplius-scraper.service
 ```
 
+## Хранение
+
+- JSON-снимки: `data/latest.json`, `data/test/snapshots/...`
+- SQLite: `data/autoplius.db` (таблицы `listings`, `scrape_runs`, `run_listings`)
+
+Импорт всех существующих JSON в БД:
+
+```powershell
+.\.venv\Scripts\python import_to_db.py
+```
+
+UI по умолчанию читает из SQLite (если файл есть).
+
 ## UI результатов
 
 Простой веб-интерфейс для просмотра снимков:

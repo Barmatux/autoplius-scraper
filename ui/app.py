@@ -8,12 +8,15 @@ from typing import Any
 
 from flask import Flask, abort, jsonify, render_template, request, Response
 
+from scraper.db import db_stats, default_db_path, fetch_listing, fetch_listings
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
 PAGE_SIZE = 50
 
 app = Flask(__name__)
 app.config["DATA_DIR"] = DEFAULT_DATA_DIR
+app.config["DB_PATH"] = Path(os.environ.get("DB_PATH", default_db_path(DEFAULT_DATA_DIR)))
 
 
 def _check_basic_auth() -> bool:
@@ -38,6 +41,10 @@ def require_auth():
 
 def data_dir() -> Path:
     return Path(app.config["DATA_DIR"])
+
+
+def db_path() -> Path:
+    return Path(app.config["DB_PATH"])
 
 
 def load_json(path: Path) -> dict[str, Any] | None:
@@ -162,6 +169,15 @@ def thumb_url(item: dict[str, Any]) -> str | None:
     return photos[0] if photos else None
 
 
+def use_db(snapshot_id: str) -> bool:
+    source = request.args.get("source", "db")
+    if source == "json":
+        return False
+    if snapshot_id not in {"latest", ""}:
+        return False
+    return db_path().is_file()
+
+
 @app.get("/")
 def index():
     snapshots = list_snapshots()
@@ -179,27 +195,53 @@ def index():
     min_price = int(min_price_raw) if min_price_raw.isdigit() else None
     max_price = int(max_price_raw) if max_price_raw.isdigit() else None
 
-    path = resolve_snapshot(snapshot_id)
-    payload = load_json(path) or {}
-    all_listings = payload.get("listings") or []
-    filtered = filter_listings(
-        all_listings,
-        q=q,
-        min_price=min_price,
-        max_price=max_price,
-        sort=sort,
-        details_only=details_only,
-    )
+    last_run = load_json(data_dir() / "last_run.json") or {}
+    stats = db_stats(db_path())
+    from_db = use_db(snapshot_id)
+
+    if from_db:
+        filtered = fetch_listings(
+            db_path(),
+            q=q,
+            min_price=min_price,
+            max_price=max_price,
+            sort=sort,
+            details_only=details_only,
+        )
+        payload = {
+            "mode": "db",
+            "details_scraped": stats.get("enriched"),
+            "listing_count": stats.get("listings"),
+            "diff_vs_previous": None,
+            "duration_sec": None,
+            "finished_at": (stats.get("last_run") or {}).get("finished_at"),
+        }
+        total_in_snapshot = int(stats.get("listings") or 0)
+        enriched = int(stats.get("enriched") or 0)
+        with_phone = int(stats.get("with_phone") or 0)
+        with_vin = int(stats.get("with_vin") or 0)
+    else:
+        path = resolve_snapshot(snapshot_id)
+        payload = load_json(path) or {}
+        all_listings = payload.get("listings") or []
+        filtered = filter_listings(
+            all_listings,
+            q=q,
+            min_price=min_price,
+            max_price=max_price,
+            sort=sort,
+            details_only=details_only,
+        )
+        total_in_snapshot = len(all_listings)
+        enriched = sum(1 for x in all_listings if x.get("detail_scraped"))
+        with_phone = sum(1 for x in all_listings if x.get("phone"))
+        with_vin = sum(1 for x in all_listings if x.get("vin_masked"))
+
     total_filtered = len(filtered)
     pages = max(1, (total_filtered + PAGE_SIZE - 1) // PAGE_SIZE)
     page = min(page, pages)
     start = (page - 1) * PAGE_SIZE
     listings = filtered[start : start + PAGE_SIZE]
-    last_run = load_json(data_dir() / "last_run.json") or {}
-
-    enriched = sum(1 for x in all_listings if x.get("detail_scraped"))
-    with_phone = sum(1 for x in all_listings if x.get("phone"))
-    with_vin = sum(1 for x in all_listings if x.get("vin_masked"))
 
     return render_template(
         "index.html",
@@ -207,7 +249,7 @@ def index():
         snapshot_id=snapshot_id,
         payload=payload,
         listings=listings,
-        total_in_snapshot=len(all_listings),
+        total_in_snapshot=total_in_snapshot,
         total_filtered=total_filtered,
         enriched_count=enriched,
         with_phone=with_phone,
@@ -222,17 +264,23 @@ def index():
         pages=pages,
         page_size=PAGE_SIZE,
         thumb_url=thumb_url,
+        from_db=from_db,
+        db_stats=stats,
     )
 
 
 @app.get("/listing/<int:listing_id>")
 def listing_detail(listing_id: int):
     snapshot_id = request.args.get("snapshot", "latest")
-    path = resolve_snapshot(snapshot_id)
-    payload = load_json(path) or {}
-    item = find_listing(payload, listing_id)
+    if use_db(snapshot_id):
+        item = fetch_listing(db_path(), listing_id)
+        payload = {"mode": "db"}
+    else:
+        path = resolve_snapshot(snapshot_id)
+        payload = load_json(path) or {}
+        item = find_listing(payload, listing_id)
     if item is None:
-        abort(404, "listing not found in snapshot")
+        abort(404, "listing not found")
     return render_template(
         "detail.html",
         item=item,
@@ -243,6 +291,14 @@ def listing_detail(listing_id: int):
 
 @app.get("/api/latest")
 def api_latest():
+    if db_path().is_file():
+        return jsonify(
+            {
+                "source": "sqlite",
+                "stats": db_stats(db_path()),
+                "listings": fetch_listings(db_path()),
+            }
+        )
     payload = load_json(data_dir() / "latest.json")
     if payload is None:
         abort(404)
@@ -251,13 +307,22 @@ def api_latest():
 
 @app.get("/api/listings/<int:listing_id>")
 def api_listing(listing_id: int):
-    snapshot_id = request.args.get("snapshot", "latest")
-    path = resolve_snapshot(snapshot_id)
+    if db_path().is_file():
+        item = fetch_listing(db_path(), listing_id)
+        if item is None:
+            abort(404)
+        return jsonify(item)
+    path = resolve_snapshot(request.args.get("snapshot", "latest"))
     payload = load_json(path) or {}
     item = find_listing(payload, listing_id)
     if item is None:
         abort(404)
     return jsonify(item)
+
+
+@app.get("/api/db/stats")
+def api_db_stats():
+    return jsonify(db_stats(db_path()))
 
 
 @app.get("/api/snapshots")
