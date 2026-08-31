@@ -10,6 +10,7 @@ from flask import Flask, abort, jsonify, render_template, request, Response
 from scraper.config import Settings
 from scraper.db import db_stats, default_db_path, fetch_listing, fetch_listings
 from scraper.s3_storage import get_s3_client
+from autoplius.translate import is_translation_error
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
@@ -80,6 +81,18 @@ def media_object():
     return Response(data, mimetype=content_type)
 
 
+def display_description(item: dict[str, Any]) -> tuple[str | None, str | None]:
+    """Return (primary_text, original_text) for description block."""
+    original = item.get("description")
+    translated = item.get("description_ru")
+    if is_translation_error(translated):
+        translated = None
+    if translated:
+        show_original = original if original and original != translated else None
+        return translated, show_original
+    return original, None
+
+
 @app.get("/")
 def index():
     path = require_db()
@@ -136,7 +149,7 @@ def listing_detail(listing_id: int):
     item = fetch_listing(require_db(), listing_id)
     if item is None:
         abort(404, "listing not found in database")
-    return render_template("detail.html", item=item)
+    return render_template("detail.html", item=item, display_description=display_description)
 
 
 @app.get("/api/listings")

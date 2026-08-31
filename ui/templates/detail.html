@@ -60,15 +60,12 @@
         <div><dt>URL</dt><dd><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.url }}</a></dd></div>
       </dl>
 
-      {% if item.description_ru or item.description %}
+      {% set desc_primary, desc_original = display_description(item) %}
+      {% if desc_primary %}
       <h2>Описание</h2>
-      {% if item.description_ru %}
-      <p class="description">{{ item.description_ru }}</p>
-      {% if item.description and item.description != item.description_ru %}
-      <p class="muted description-original">Оригинал: {{ item.description }}</p>
-      {% endif %}
-      {% else %}
-      <p class="description">{{ item.description }}</p>
+      <p class="description">{{ desc_primary }}</p>
+      {% if desc_original %}
+      <p class="muted description-original">Оригинал: {{ desc_original }}</p>
       {% endif %}
       {% endif %}
 

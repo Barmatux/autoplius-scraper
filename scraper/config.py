@@ -101,5 +101,5 @@ class Settings:
             sync_photos_timeout_sec=_env_int("SYNC_PHOTOS_TIMEOUT_SEC", 25),
             autoplius_base_url=os.environ.get("AUTOPLIUS_BASE_URL", "https://ru.autoplius.lt").strip().rstrip("/"),
             translate_descriptions=_env_bool("TRANSLATE_DESCRIPTIONS", True),
-            translate_delay_sec=_env_float("TRANSLATE_DELAY_SEC", 0.15),
+            translate_delay_sec=_env_float("TRANSLATE_DELAY_SEC", 0.5),
         )
