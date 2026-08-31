@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from autoplius.engine_volume import engine_volume_liters
-from autoplius.passable_age import is_passable_age
+from autoplius.passable_age import is_older_than_years, is_passable_age
 from autoplius.catalog_filters import is_catalog_visible
 
 
@@ -463,6 +463,7 @@ def fetch_listings(
     engine_upto_liters: float | None = None,
     engine_volume_missing: bool = False,
     passable_only: bool = False,
+    older_than_3_only: bool = False,
 ) -> list[dict[str, Any]]:
     if not db_path.is_file():
         return []
@@ -527,6 +528,8 @@ def fetch_listings(
         ]
     if passable_only:
         listings = [item for item in listings if is_passable_age(item)]
+    if older_than_3_only:
+        listings = [item for item in listings if is_older_than_years(item, years=3)]
     listings = [item for item in listings if is_catalog_visible(item)]
     return listings
 

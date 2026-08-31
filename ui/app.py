@@ -207,6 +207,12 @@ def _passable_enabled() -> bool:
     return "1" in request.args.getlist("passable")
 
 
+def _over_3y_enabled() -> bool:
+    if "over_3y" not in request.args:
+        return True
+    return "1" in request.args.getlist("over_3y")
+
+
 def _current_tab() -> str:
     tab = (request.args.get("tab") or TAB_ALL).strip()
     return tab if tab in {TAB_ALL, TAB_NO_VOLUME} else TAB_ALL
@@ -222,6 +228,7 @@ def _fetch_index_listings(
     tab: str,
     upto_19l: bool,
     passable: bool,
+    over_3y: bool,
 ) -> list[dict[str, Any]]:
     common = dict(
         q=q,
@@ -229,6 +236,7 @@ def _fetch_index_listings(
         max_price=max_price,
         sort=sort,
         passable_only=passable,
+        older_than_3_only=over_3y,
     )
     if tab == TAB_NO_VOLUME:
         return fetch_listings(
@@ -283,6 +291,7 @@ def index():
     sort = request.args.get("sort", "price_asc")
     upto_19l = _upto_19l_enabled()
     passable = _passable_enabled()
+    over_3y = _over_3y_enabled()
     tab = _current_tab()
     page = max(1, int(request.args.get("page", "1") or "1"))
     min_price_raw = request.args.get("min_price", "").strip()
@@ -300,6 +309,7 @@ def index():
         tab=tab,
         upto_19l=upto_19l,
         passable=passable,
+        over_3y=over_3y,
     )
     no_volume_count = len(
         _fetch_index_listings(
@@ -311,6 +321,7 @@ def index():
             tab=TAB_NO_VOLUME,
             upto_19l=upto_19l,
             passable=passable,
+            over_3y=over_3y,
         )
     )
 
@@ -336,6 +347,7 @@ def index():
         max_price=max_price_raw,
         upto_19l=upto_19l,
         passable=passable,
+        over_3y=over_3y,
         tab=tab,
         active_tab=tab,
         no_volume_count=no_volume_count,
@@ -388,6 +400,7 @@ def api_listings():
     sort = request.args.get("sort", "price_asc")
     upto_19l = _upto_19l_enabled()
     passable = _passable_enabled()
+    over_3y = _over_3y_enabled()
     tab = _current_tab()
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
@@ -406,6 +419,7 @@ def api_listings():
                 tab=tab,
                 upto_19l=upto_19l,
                 passable=passable,
+                over_3y=over_3y,
             ),
         }
     )

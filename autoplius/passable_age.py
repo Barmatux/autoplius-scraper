@@ -47,3 +47,16 @@ def is_passable_age(item: dict[str, Any], *, today: date | None = None) -> bool:
         return False
     years = months // 12
     return PASSABLE_MIN_YEARS <= years <= PASSABLE_MAX_YEARS
+
+
+def is_older_than_years(
+    item: dict[str, Any],
+    *,
+    years: int = 3,
+    today: date | None = None,
+) -> bool:
+    """True when vehicle age is strictly greater than ``years`` (e.g. older than 3 years)."""
+    months = listing_age_months(item, today=today)
+    if months is None:
+        return False
+    return months > years * 12

@@ -16,10 +16,10 @@
 {% endif %}
 <th class="sortable th-wrap{% if sort in (asc, desc) %} active{% endif %}{% if col_class %} {{ col_class }}{% endif %}">
   <a
-    href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=next_sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', tab=tab, page=1) }}"
+    href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=next_sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=1) }}"
     class="sort-link"
   >
-    <span class="sort-label">{{ label }}</span>
+    <span class="sort-label">{{ label|safe }}</span>
     {% if sort == desc %}<span class="sort-indicator" aria-hidden="true">↓</span>{% elif sort == asc %}<span class="sort-indicator" aria-hidden="true">↑</span>{% endif %}
   </a>
 </th>
@@ -75,6 +75,11 @@
         <input type="hidden" name="passable" value="0">
         <input type="checkbox" name="passable" value="1" {% if passable %}checked{% endif %}>
       </label>
+      <label class="check">
+        <span>Старше 3-х лет</span>
+        <input type="hidden" name="over_3y" value="0">
+        <input type="checkbox" name="over_3y" value="1" {% if over_3y %}checked{% endif %}>
+      </label>
       <button type="submit">Показать</button>
     </form>
 
@@ -111,7 +116,7 @@
             <th class="photo-col"></th>
             {{ sort_th('Авто', 'title_asc', 'title_desc', 'title_asc', 'col-auto') }}
             <th class="col-engine th-wrap">Объём двигателя</th>
-            {{ sort_th('Дата первой регистрации', 'year_asc', 'year_desc', 'year_desc', 'col-year') }}
+            {{ sort_th('Дата первой<br>регистрации', 'year_asc', 'year_desc', 'year_desc', 'col-year') }}
             {{ sort_th('Цена в LT, €', 'price_asc', 'price_desc', 'price_asc', 'col-price-lt') }}
             <th class="col-price-rb th-wrap">Цена в РБ, $</th>
             {{ sort_th('Пробег', 'mileage_asc', 'mileage_desc', 'mileage_asc', 'col-mileage') }}
@@ -166,11 +171,11 @@
     {% if pages > 1 %}
     <nav class="pager">
       {% if page > 1 %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', tab=tab, page=page-1) }}">← Назад</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=page-1) }}">← Назад</a>
       {% endif %}
       <span>Страница {{ page }} / {{ pages }}</span>
       {% if page < pages %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', tab=tab, page=page+1) }}">Вперёд →</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=page+1) }}">Вперёд →</a>
       {% endif %}
     </nav>
     {% endif %}
