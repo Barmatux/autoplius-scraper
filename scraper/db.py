@@ -403,6 +403,7 @@ def fetch_listings(
     sort: str = "price_asc",
     details_only: bool = False,
     engine_upto_liters: float | None = None,
+    engine_volume_missing: bool = False,
 ) -> list[dict[str, Any]]:
     if not db_path.is_file():
         return []
@@ -452,7 +453,11 @@ def fetch_listings(
         rows = conn.execute(sql, params).fetchall()
         listings = [row_to_listing(r) for r in rows]
 
-    if engine_upto_liters is not None:
+    if engine_volume_missing:
+        listings = [
+            item for item in listings if engine_volume_liters(item) is None
+        ]
+    elif engine_upto_liters is not None:
         listings = [
             item
             for item in listings

@@ -75,6 +75,46 @@ main {
   padding: 1.25rem 1.25rem 3rem;
 }
 
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.tab:hover {
+  color: var(--accent);
+  border-color: #b7dccb;
+}
+
+.tab.active {
+  background: var(--accent-soft);
+  border-color: #b7dccb;
+  color: var(--accent);
+}
+
+.tab-count {
+  min-width: 1.4rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(15, 106, 79, 0.12);
+  color: var(--accent);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
 .filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
