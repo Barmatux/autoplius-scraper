@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -11,15 +12,34 @@ from scraper.config import Settings
 from scraper.db import db_stats, default_db_path, fetch_listing, fetch_listings
 from scraper.s3_storage import get_s3_client
 from autoplius.translate import is_translation_error
+from autoplius.engine_volume import engine_volume_from_listing
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
 PAGE_SIZE = 50
 SETTINGS = Settings.from_env()
+TAB_ALL = "all"
+TAB_NO_VOLUME = "no_volume"
 
 app = Flask(__name__)
 app.config["DATA_DIR"] = DEFAULT_DATA_DIR
 app.config["DB_PATH"] = Path(os.environ.get("DB_PATH", default_db_path(DEFAULT_DATA_DIR)))
+
+
+@app.template_filter("format_datetime")
+def format_datetime(value: str | None) -> str:
+    if not value:
+        return "—"
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return dt.strftime("%d.%m.%Y %H:%M")
+    except ValueError:
+        return value[:16].replace("T", " ")
+
+
+@app.template_filter("engine_volume")
+def engine_volume(item: dict[str, Any]) -> str:
+    return engine_volume_from_listing(item) or "—"
 
 
 def _check_basic_auth() -> bool:
@@ -58,6 +78,49 @@ def thumb_url(item: dict[str, Any]) -> str | None:
         return item["photo_url"]
     photos = item.get("photo_urls") or []
     return photos[0] if photos else None
+
+
+def _upto_19l_enabled() -> bool:
+    if "upto_19l" not in request.args:
+        return True
+    return "1" in request.args.getlist("upto_19l")
+
+
+def _current_tab() -> str:
+    tab = (request.args.get("tab") or TAB_ALL).strip()
+    return tab if tab in {TAB_ALL, TAB_NO_VOLUME} else TAB_ALL
+
+
+def _fetch_index_listings(
+    path: Path,
+    *,
+    q: str,
+    min_price: int | None,
+    max_price: int | None,
+    sort: str,
+    details_only: bool,
+    tab: str,
+    upto_19l: bool,
+) -> list[dict[str, Any]]:
+    if tab == TAB_NO_VOLUME:
+        return fetch_listings(
+            path,
+            q=q,
+            min_price=min_price,
+            max_price=max_price,
+            sort=sort,
+            details_only=details_only,
+            engine_volume_missing=True,
+        )
+    return fetch_listings(
+        path,
+        q=q,
+        min_price=min_price,
+        max_price=max_price,
+        sort=sort,
+        details_only=details_only,
+        engine_upto_liters=1.9 if upto_19l else None,
+    )
 
 
 @app.get("/media/object")
@@ -100,6 +163,8 @@ def index():
     sort = request.args.get("sort", "price_asc")
     # Show ALL listings by default; optional filter for enriched only.
     details_only = request.args.get("details_only") == "1"
+    upto_19l = _upto_19l_enabled()
+    tab = _current_tab()
     page = max(1, int(request.args.get("page", "1") or "1"))
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
@@ -107,13 +172,27 @@ def index():
     max_price = int(max_price_raw) if max_price_raw.isdigit() else None
 
     stats = db_stats(path)
-    filtered = fetch_listings(
+    filtered = _fetch_index_listings(
         path,
         q=q,
         min_price=min_price,
         max_price=max_price,
         sort=sort,
         details_only=details_only,
+        tab=tab,
+        upto_19l=upto_19l,
+    )
+    no_volume_count = len(
+        _fetch_index_listings(
+            path,
+            q=q,
+            min_price=min_price,
+            max_price=max_price,
+            sort=sort,
+            details_only=details_only,
+            tab=TAB_NO_VOLUME,
+            upto_19l=upto_19l,
+        )
     )
 
     total_in_db = int(stats.get("listings") or 0)
@@ -137,6 +216,9 @@ def index():
         min_price=min_price_raw,
         max_price=max_price_raw,
         details_only=details_only,
+        upto_19l=upto_19l,
+        tab=tab,
+        no_volume_count=no_volume_count,
         page=page,
         pages=pages,
         page_size=PAGE_SIZE,
@@ -158,6 +240,8 @@ def api_listings():
     q = request.args.get("q", "")
     sort = request.args.get("sort", "price_asc")
     details_only = request.args.get("details_only") == "1"
+    upto_19l = _upto_19l_enabled()
+    tab = _current_tab()
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
     min_price = int(min_price_raw) if min_price_raw.isdigit() else None
@@ -166,13 +250,15 @@ def api_listings():
         {
             "source": "sqlite",
             "stats": db_stats(path),
-            "listings": fetch_listings(
+            "listings": _fetch_index_listings(
                 path,
                 q=q,
                 min_price=min_price,
                 max_price=max_price,
                 sort=sort,
                 details_only=details_only,
+                tab=tab,
+                upto_19l=upto_19l,
             ),
         }
     )

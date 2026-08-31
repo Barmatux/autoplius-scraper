@@ -27,7 +27,19 @@
   </header>
 
   <main>
+    <nav class="tabs">
+      <a
+        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', tab='all', page=1) }}"
+        class="tab{% if tab == 'all' %} active{% endif %}"
+      >Объявления</a>
+      <a
+        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', tab='no_volume', page=1) }}"
+        class="tab{% if tab == 'no_volume' %} active{% endif %}"
+      >Без объема <span class="tab-count">{{ no_volume_count }}</span></a>
+    </nav>
+
     <form class="filters" method="get">
+      <input type="hidden" name="tab" value="{{ tab }}">
       <label>
         Поиск
         <input type="search" name="q" value="{{ q }}" placeholder="BMW, телефон, VIN, город…">
@@ -49,18 +61,31 @@
           <option value="mileage_desc" {% if sort == 'mileage_desc' %}selected{% endif %}>Пробег ↓</option>
           <option value="year_desc" {% if sort == 'year_desc' %}selected{% endif %}>Год ↓</option>
           <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Название</option>
+          <option value="added_desc" {% if sort == 'added_desc' %}selected{% endif %}>Дата добавления ↓</option>
+          <option value="added_asc" {% if sort == 'added_asc' %}selected{% endif %}>Дата добавления ↑</option>
         </select>
       </label>
       <label class="check">
         <span>Только с detail</span>
         <input type="checkbox" name="details_only" value="1" {% if details_only %}checked{% endif %}>
       </label>
+      {% if tab != 'no_volume' %}
+      <label class="check">
+        <span>до 1.9л</span>
+        <input type="hidden" name="upto_19l" value="0">
+        <input type="checkbox" name="upto_19l" value="1" {% if upto_19l %}checked{% endif %}>
+      </label>
+      {% endif %}
       <button type="submit">Показать</button>
     </form>
 
     <section class="summary">
       <p>
+        {% if tab == 'no_volume' %}
+        Показано <strong>{{ listings|length }}</strong> без определённого объёма
+        {% else %}
         Показано <strong>{{ listings|length }}</strong>
+        {% endif %}
         (стр. {{ page }}/{{ pages }}, по фильтру {{ total_filtered }} из {{ total_in_db }} в БД)
       </p>
     </section>
@@ -78,10 +103,20 @@
             <th>Год</th>
             <th>Пробег</th>
             <th>КПП / Топливо</th>
-            <th>Телефон</th>
-            <th>VIN</th>
+            <th>Объем двигателя</th>
             <th>Город</th>
             <th>Фото/парам.</th>
+            {% set added_sort = 'added_asc' if sort == 'added_desc' else 'added_desc' %}
+            <th class="sortable{% if sort in ('added_desc', 'added_asc') %} active{% endif %}">
+              <a
+                href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=added_sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', tab=tab, page=1) }}"
+                class="sort-link"
+                title="Сортировать по дате добавления"
+              >
+                Дата добавления
+                {% if sort == 'added_desc' %}<span class="sort-indicator" aria-hidden="true">↓</span>{% elif sort == 'added_asc' %}<span class="sort-indicator" aria-hidden="true">↑</span>{% endif %}
+              </a>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -113,14 +148,14 @@
               <div>{{ item.transmission or '—' }}</div>
               <div class="muted">{{ item.fuel or '—' }}</div>
             </td>
-            <td class="num">{{ item.phone or '—' }}</td>
-            <td class="mono">{{ item.vin_masked or '—' }}</td>
+            <td class="num">{{ item|engine_volume }}</td>
             <td>{{ item.city or '—' }}</td>
             <td class="num">
               {{ (item.photo_urls|length) if item.photo_urls else (1 if thumb else 0) }}
               /
               {{ (item.parameters|length) if item.parameters else 0 }}
             </td>
+            <td class="num">{{ item.first_seen_at|format_datetime }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -130,11 +165,11 @@
     {% if pages > 1 %}
     <nav class="pager">
       {% if page > 1 %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, page=page-1) }}">← Назад</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', tab=tab, page=page-1) }}">← Назад</a>
       {% endif %}
       <span>Страница {{ page }} / {{ pages }}</span>
       {% if page < pages %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, page=page+1) }}">Вперёд →</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', tab=tab, page=page+1) }}">Вперёд →</a>
       {% endif %}
     </nav>
     {% endif %}
