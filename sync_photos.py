@@ -14,6 +14,8 @@ from scraper.config import Settings
 from scraper.db import fetch_all_listings
 from scraper.photo_sync import sync_listings_photos
 
+logger = logging.getLogger(__name__)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Download listing photos and upload to MinIO/S3")
