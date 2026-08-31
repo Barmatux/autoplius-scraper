@@ -27,14 +27,29 @@
     <section class="detail-gallery">
       {% set photos = item.photo_urls or ([item.photo_url] if item.photo_url else []) %}
       {% if photos %}
-        <img class="hero" src="{{ photos[0] }}" alt="">
-        {% if photos|length > 1 %}
-        <div class="thumbs">
-          {% for src in photos %}
-          <a href="{{ src }}" target="_blank" rel="noopener"><img src="{{ src }}" alt="" loading="lazy"></a>
-          {% endfor %}
+        <div
+          class="gallery"
+          data-gallery
+          data-photos='{{ photos|tojson }}'
+        >
+          <div class="gallery-stage">
+            <button type="button" class="gallery-nav gallery-nav-prev" data-gallery-prev aria-label="Предыдущее фото"{% if photos|length < 2 %} hidden{% endif %}>‹</button>
+            <img class="hero" data-gallery-hero src="{{ photos[0] }}" alt="" role="button" tabindex="0">
+            <button type="button" class="gallery-nav gallery-nav-next" data-gallery-next aria-label="Следующее фото"{% if photos|length < 2 %} hidden{% endif %}>›</button>
+            {% if photos|length > 1 %}
+            <div class="gallery-counter" data-gallery-counter>1 / {{ photos|length }}</div>
+            {% endif %}
+          </div>
+          {% if photos|length > 1 %}
+          <div class="thumbs">
+            {% for src in photos %}
+            <button type="button" class="thumb-btn{% if loop.first %} is-active{% endif %}" data-gallery-thumb="{{ loop.index0 }}">
+              <img src="{{ src }}" alt="" loading="lazy">
+            </button>
+            {% endfor %}
+          </div>
+          {% endif %}
         </div>
-        {% endif %}
       {% else %}
         <div class="photo-empty hero-empty"></div>
       {% endif %}
@@ -82,5 +97,19 @@
       {% endif %}
     </section>
   </main>
+
+  {% if photos %}
+  <div class="lightbox" data-lightbox hidden>
+    <div class="lightbox-backdrop" data-lightbox-backdrop></div>
+    <button type="button" class="lightbox-close" data-lightbox-close aria-label="Закрыть">×</button>
+    <button type="button" class="lightbox-nav lightbox-nav-prev" data-lightbox-prev aria-label="Предыдущее фото"{% if photos|length < 2 %} hidden{% endif %}>‹</button>
+    <img class="lightbox-img" data-lightbox-img src="{{ photos[0] }}" alt="">
+    <button type="button" class="lightbox-nav lightbox-nav-next" data-lightbox-next aria-label="Следующее фото"{% if photos|length < 2 %} hidden{% endif %}>›</button>
+    {% if photos|length > 1 %}
+    <div class="lightbox-counter" data-lightbox-counter>1 / {{ photos|length }}</div>
+    {% endif %}
+  </div>
+  <script src="{{ url_for('static', filename='gallery.js') }}" defer></script>
+  {% endif %}
 </body>
 </html>
