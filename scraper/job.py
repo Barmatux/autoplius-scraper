@@ -23,7 +23,12 @@ from autoplius.translate import translate_to_russian
 from autoplius.urls import build_search_url, configure_base_url
 
 from scraper.config import Settings
-from scraper.db import save_payload_to_db
+from scraper.db import (
+    hours_since_last_full_scrape,
+    load_detail_scraped_ids,
+    load_known_ids,
+    save_payload_to_db,
+)
 from scraper.photo_sync import sync_run_photos
 from scraper.storage import diff_stats, load_latest_ids, save_snapshot
 
@@ -81,10 +86,32 @@ def merge_preview_and_detail(
     return row
 
 
+def resolve_scrape_mode(settings: Settings) -> tuple[bool, str]:
+    """Return (incremental, reason)."""
+    if not settings.incremental_scrape:
+        return False, "INCREMENTAL_SCRAPE=false"
+    hours = hours_since_last_full_scrape(settings.db_path)
+    if hours is None:
+        return False, "no prior full scrape in database"
+    if hours >= settings.full_scrape_interval_hours:
+        return False, f"full refresh due ({hours:.1f}h since last full scrape)"
+    return True, f"incremental ({hours:.1f}h since last full scrape)"
+
+
 def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
     started_at = datetime.now(timezone.utc)
     previous_ids = load_latest_ids(settings.data_dir)
+    known_ids = load_known_ids(settings.db_path)
+    detail_scraped_ids = load_detail_scraped_ids(settings.db_path)
+    incremental, mode_reason = resolve_scrape_mode(settings)
     configure_base_url(settings.autoplius_base_url)
+    newest_first = settings.search_newest_first and incremental
+
+    logger.info(
+        "Scrape mode: %s (%s)",
+        "incremental" if incremental else "full",
+        mode_reason,
+    )
 
     captcha_api_key = None
     if settings.auto_captcha:
@@ -97,6 +124,8 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
     page_stats: list[dict[str, Any]] = []
     detail_ok = 0
     detail_fail = 0
+    pages_scraped = 0
+    consecutive_empty_pages = 0
 
     with sync_playwright() as pw:
         browser_or_context, page = create_browser_context(
@@ -108,7 +137,7 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
         )
         try:
             for page_num in range(1, settings.pages + 1):
-                url = build_search_url(page=page_num)
+                url = build_search_url(page=page_num, newest_first=newest_first)
                 logger.info("Fetching page %s/%s: %s", page_num, settings.pages, url)
 
                 goto_and_wait(
@@ -123,10 +152,13 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
                 previews = parse_search_html(page.content())
                 new_on_page = 0
                 for preview in previews:
+                    is_new = preview.autoplius_id not in known_ids
                     if preview.autoplius_id not in all_previews:
-                        new_on_page += 1
+                        if is_new:
+                            new_on_page += 1
                     all_previews[preview.autoplius_id] = preview
 
+                pages_scraped = page_num
                 page_stats.append(
                     {
                         "page": page_num,
@@ -136,27 +168,62 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
                     }
                 )
                 logger.info(
-                    "Page %s: %s listings (%s new unique, total %s)",
+                    "Page %s: %s listings (%s new vs DB, total %s)",
                     page_num,
                     len(previews),
                     new_on_page,
                     len(all_previews),
                 )
 
-                if page_num < settings.pages:
+                if incremental:
+                    if new_on_page == 0:
+                        consecutive_empty_pages += 1
+                        if (
+                            consecutive_empty_pages
+                            >= settings.incremental_stop_empty_pages
+                        ):
+                            logger.info(
+                                "Stopping incremental scrape after %s page(s) with no new listings",
+                                consecutive_empty_pages,
+                            )
+                            break
+                    else:
+                        consecutive_empty_pages = 0
+
+                if page_num < settings.pages and not (
+                    incremental
+                    and consecutive_empty_pages >= settings.incremental_stop_empty_pages
+                ):
                     time.sleep(settings.page_delay_sec)
 
             listings: list[dict[str, Any]] = []
             preview_list = list(all_previews.values())
+            new_previews = [p for p in preview_list if p.autoplius_id not in known_ids]
+
             if settings.enrich_details:
-                limit = settings.enrich_limit if settings.enrich_limit > 0 else len(preview_list)
-                to_enrich = preview_list[:limit]
-                skip = preview_list[limit:]
+                if settings.enrich_new_only and incremental:
+                    to_enrich = [
+                        p
+                        for p in preview_list
+                        if p.autoplius_id not in detail_scraped_ids
+                    ]
+                else:
+                    limit = (
+                        settings.enrich_limit
+                        if settings.enrich_limit > 0
+                        else len(preview_list)
+                    )
+                    to_enrich = preview_list[:limit]
+
+                enrich_ids = {p.autoplius_id for p in to_enrich}
+                skip = [p for p in preview_list if p.autoplius_id not in enrich_ids]
+
                 logger.info(
-                    "Enriching %s/%s listing detail pages (delay=%ss)",
+                    "Enriching %s/%s listing detail pages (delay=%ss, new_only=%s)",
                     len(to_enrich),
                     len(preview_list),
                     settings.detail_delay_sec,
+                    settings.enrich_new_only and incremental,
                 )
                 for idx, preview in enumerate(to_enrich, start=1):
                     logger.info(
@@ -176,18 +243,29 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
                             interceptor=interceptor,
                         )
                         detail = parse_listing_html(page.content(), preview.url).to_dict()
-                        listings.append(merge_preview_and_detail(preview, detail=detail, settings=settings))
+                        listings.append(
+                            merge_preview_and_detail(
+                                preview, detail=detail, settings=settings
+                            )
+                        )
                         detail_ok += 1
                     except Exception as exc:
                         detail_fail += 1
-                        logger.warning("Detail failed for %s: %s", preview.autoplius_id, exc)
-                        listings.append(
-                            merge_preview_and_detail(preview, error=str(exc)[:300], settings=settings)
+                        logger.warning(
+                            "Detail failed for %s: %s", preview.autoplius_id, exc
                         )
+                        listings.append(
+                            merge_preview_and_detail(
+                                preview, error=str(exc)[:300], settings=settings
+                            )
+                        )
+
                 for preview in skip:
                     listings.append(merge_preview_and_detail(preview, settings=settings))
             else:
-                listings = [merge_preview_and_detail(p, settings=settings) for p in preview_list]
+                listings = [
+                    merge_preview_and_detail(p, settings=settings) for p in preview_list
+                ]
         finally:
             browser_or_context.close()
 
@@ -197,14 +275,18 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
 
     payload: dict[str, Any] = {
         "mode": "test" if settings.test_mode else "prod",
+        "scrape_mode": "incremental" if incremental else "full",
+        "scrape_mode_reason": mode_reason,
         "started_at": started_at.isoformat(),
         "finished_at": finished_at.isoformat(),
         "duration_sec": round((finished_at - started_at).total_seconds(), 2),
-        "pages_scraped": settings.pages,
+        "pages_scraped": pages_scraped,
         "listing_count": len(listings),
+        "new_listings_found": len(new_previews),
         "details_scraped": detail_ok,
         "details_failed": detail_fail,
         "enrich_details": settings.enrich_details,
+        "enrich_new_only": settings.enrich_new_only and incremental,
         "page_stats": page_stats,
         "diff_vs_previous": diff,
         "listings": listings,
@@ -225,8 +307,11 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
     payload["photo_sync"] = photo_sync
 
     logger.info(
-        "Done: %s listings, details ok=%s fail=%s | new=%s removed=%s unchanged=%s | db_run_id=%s | photos uploaded=%s",
+        "Done (%s): %s listings (%s new vs DB), details ok=%s fail=%s | "
+        "new=%s removed=%s unchanged=%s | db_run_id=%s | photos uploaded=%s",
+        payload["scrape_mode"],
         len(listings),
+        len(new_previews),
         detail_ok,
         detail_fail,
         diff["new"],
@@ -239,12 +324,14 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
 
 
 def run_job(settings: Settings) -> ScrapeRunResult:
+    incremental, _ = resolve_scrape_mode(settings)
     logger.info(
-        "Starting scrape (test_mode=%s, pages=%s, enrich=%s, auto_captcha=%s)",
+        "Starting scrape (test_mode=%s, pages=%s, enrich=%s, auto_captcha=%s, incremental=%s)",
         settings.test_mode,
         settings.pages,
         settings.enrich_details,
         settings.auto_captcha,
+        incremental,
     )
     try:
         return scrape_search_pages(settings)

@@ -43,10 +43,14 @@ def build_search_url(
     price_from: int | None = None,
     price_to: int | None = None,
     power_kw_to: int | None = None,
+    newest_first: bool = False,
     extra: dict[str, str | int] | None = None,
     base_url: str | None = None,
 ) -> str:
     params: dict[str, str | int] = {"page_nr": page}
+    if newest_first:
+        params["order_by"] = 3
+        params["order_direction"] = "DESC"
     if make_id is not None:
         params["make_id_list"] = make_id
     if model_id is not None:

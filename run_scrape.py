@@ -33,6 +33,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Override TEST_MODE (default: true)",
     )
     parser.add_argument("--headed", action="store_true", help="Show browser window")
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Force full scrape (all pages, enrich all listings)",
+    )
+    parser.add_argument(
+        "--incremental",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Override INCREMENTAL_SCRAPE",
+    )
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
 
@@ -47,6 +58,10 @@ def main(argv: list[str] | None = None) -> int:
         settings = replace(settings, test_mode=args.test_mode)
     if args.headed:
         settings = replace(settings, headless=False)
+    if args.full:
+        settings = replace(settings, incremental_scrape=False, enrich_new_only=False)
+    if args.incremental is not None:
+        settings = replace(settings, incremental_scrape=args.incremental)
 
     setup_logging(settings.logs_dir, verbose=args.verbose)
 

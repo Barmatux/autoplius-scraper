@@ -65,6 +65,11 @@ class Settings:
     autoplius_base_url: str
     translate_descriptions: bool
     translate_delay_sec: float
+    incremental_scrape: bool
+    incremental_stop_empty_pages: int
+    enrich_new_only: bool
+    search_newest_first: bool
+    full_scrape_interval_hours: int
 
     @property
     def s3_enabled(self) -> bool:
@@ -102,4 +107,9 @@ class Settings:
             autoplius_base_url=os.environ.get("AUTOPLIUS_BASE_URL", "https://ru.autoplius.lt").strip().rstrip("/"),
             translate_descriptions=_env_bool("TRANSLATE_DESCRIPTIONS", True),
             translate_delay_sec=_env_float("TRANSLATE_DELAY_SEC", 0.5),
+            incremental_scrape=_env_bool("INCREMENTAL_SCRAPE", True),
+            incremental_stop_empty_pages=_env_int("INCREMENTAL_STOP_EMPTY_PAGES", 2),
+            enrich_new_only=_env_bool("ENRICH_NEW_ONLY", True),
+            search_newest_first=_env_bool("SEARCH_NEWEST_FIRST", True),
+            full_scrape_interval_hours=_env_int("FULL_SCRAPE_INTERVAL_HOURS", 12),
         )

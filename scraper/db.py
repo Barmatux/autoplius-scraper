@@ -365,6 +365,47 @@ def _count(db_path: Path, table: str) -> int:
         return int(row["c"])
 
 
+def load_known_ids(db_path: Path) -> set[int]:
+    if not db_path.is_file():
+        return set()
+    with connect(db_path) as conn:
+        rows = conn.execute("SELECT autoplius_id FROM listings").fetchall()
+    return {int(row["autoplius_id"]) for row in rows}
+
+
+def load_detail_scraped_ids(db_path: Path) -> set[int]:
+    if not db_path.is_file():
+        return set()
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT autoplius_id FROM listings WHERE detail_scraped = 1"
+        ).fetchall()
+    return {int(row["autoplius_id"]) for row in rows}
+
+
+def hours_since_last_full_scrape(db_path: Path, *, min_listings: int = 50) -> float | None:
+    """Hours since the last run that scraped many pages (full catalog refresh)."""
+    if not db_path.is_file():
+        return None
+    with connect(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT finished_at FROM scrape_runs
+            WHERE pages_scraped >= 10 AND listing_count >= ?
+            ORDER BY id DESC LIMIT 1
+            """,
+            (min_listings,),
+        ).fetchone()
+    if not row or not row["finished_at"]:
+        return None
+    try:
+        finished = datetime.fromisoformat(str(row["finished_at"]).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    delta = datetime.now(timezone.utc) - finished
+    return delta.total_seconds() / 3600.0
+
+
 def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
     return {
         "autoplius_id": row["autoplius_id"],

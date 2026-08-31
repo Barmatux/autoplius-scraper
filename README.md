@@ -1,17 +1,15 @@
 # Autoplius Scraper
 
-Отдельный сервис для почасового сбора объявлений с [autoplius.lt](https://autoplius.lt/skelbimai/naudoti-automobiliai).
+Отдельный сервис для сбора объявлений с [autoplius.lt](https://autoplius.lt/skelbimai/naudoti-automobiliai) (**каждые 30 минут**, инкрементально).
 
 **Тестовый режим (по умолчанию):** сохраняет JSON-снимки локально в `data/`, без отправки в основной backend.
 
 ## Что собирает
 
-- Первые **10 страниц** всех объявлений (`/objavlenija/b-u-avtomobili` на ru.autoplius.lt)
-- Затем **детальные страницы** каждого объявления (`ENRICH_DETAILS=true`)
+- **Инкрементально (каждые 30 мин):** поиск с сортировкой «новые сверху», страницы пока не встретятся 2 подряд без новых ID vs SQLite; detail только для новых объявлений
+- **Полный прогон (раз в 12 ч):** первые **10 страниц** (~200 объявлений), enrich всех
 - Search: id, url, title, price, year, mileage, fuel, transmission, city, photo
 - Detail: phone, VIN (masked), description, все параметры таблицы, галерея фото
-
-~20 объявлений × 10 страниц ≈ **200 карточек/час** (+ ~200 detail-запросов).
 
 ## Быстрый старт
 
@@ -41,7 +39,12 @@ copy .env.example .env
 | Переменная | По умолчанию | Описание |
 |------------|--------------|----------|
 | `TEST_MODE` | `true` | `true` → `data/test/snapshots/`, `false` → `data/prod/snapshots/` |
-| `SCRAPE_PAGES` | `10` | Сколько страниц поиска обходить |
+| `SCRAPE_PAGES` | `10` | Макс. страниц поиска (полный прогон; верхняя граница для incremental) |
+| `INCREMENTAL_SCRAPE` | `true` | Останавливаться, когда новых ID vs БД нет |
+| `INCREMENTAL_STOP_EMPTY_PAGES` | `2` | Сколько «пустых» страниц подряд до stop |
+| `ENRICH_NEW_ONLY` | `true` | Detail только для объявлений без enrich в БД |
+| `SEARCH_NEWEST_FIRST` | `true` | `order_by=3&order_direction=DESC` на Autoplius |
+| `FULL_SCRAPE_INTERVAL_HOURS` | `12` | Как часто делать полный прогон 10 страниц |
 | `ENRICH_DETAILS` | `true` | Заходить в каждое объявление за полной карточкой |
 | `ENRICH_LIMIT` | `0` | Лимит detail-страниц (`0` = все) |
 | `DETAIL_DELAY_SEC` | `2` | Пауза между detail-запросами |
