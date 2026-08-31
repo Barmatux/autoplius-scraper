@@ -78,6 +78,12 @@ def thumb_url(item: dict[str, Any]) -> str | None:
     return photos[0] if photos else None
 
 
+def _upto_19l_enabled() -> bool:
+    if "upto_19l" not in request.args:
+        return True
+    return "1" in request.args.getlist("upto_19l")
+
+
 @app.get("/media/object")
 def media_object():
     key = request.args.get("key", "").strip()
@@ -118,7 +124,7 @@ def index():
     sort = request.args.get("sort", "price_asc")
     # Show ALL listings by default; optional filter for enriched only.
     details_only = request.args.get("details_only") == "1"
-    upto_19l = request.args.get("upto_19l") == "1"
+    upto_19l = _upto_19l_enabled()
     page = max(1, int(request.args.get("page", "1") or "1"))
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
@@ -179,7 +185,7 @@ def api_listings():
     q = request.args.get("q", "")
     sort = request.args.get("sort", "price_asc")
     details_only = request.args.get("details_only") == "1"
-    upto_19l = request.args.get("upto_19l") == "1"
+    upto_19l = _upto_19l_enabled()
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
     min_price = int(min_price_raw) if min_price_raw.isdigit() else None

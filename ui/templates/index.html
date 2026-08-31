@@ -59,6 +59,7 @@
       </label>
       <label class="check">
         <span>до 1.9л</span>
+        <input type="hidden" name="upto_19l" value="0">
         <input type="checkbox" name="upto_19l" value="1" {% if upto_19l %}checked{% endif %}>
       </label>
       <button type="submit">Показать</button>
@@ -90,7 +91,7 @@
             {% set added_sort = 'added_asc' if sort == 'added_desc' else 'added_desc' %}
             <th class="sortable{% if sort in ('added_desc', 'added_asc') %} active{% endif %}">
               <a
-                href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=added_sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else None, page=1) }}"
+                href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=added_sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', page=1) }}"
                 class="sort-link"
                 title="Сортировать по дате добавления"
               >
@@ -146,11 +147,11 @@
     {% if pages > 1 %}
     <nav class="pager">
       {% if page > 1 %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else None, page=page-1) }}">← Назад</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', page=page-1) }}">← Назад</a>
       {% endif %}
       <span>Страница {{ page }} / {{ pages }}</span>
       {% if page < pages %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else None, page=page+1) }}">Вперёд →</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', page=page+1) }}">Вперёд →</a>
       {% endif %}
     </nav>
     {% endif %}
