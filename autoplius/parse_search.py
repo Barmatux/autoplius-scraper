@@ -32,7 +32,16 @@ def parse_search_html(html: str) -> list[SearchListingPreview]:
     results: list[SearchListingPreview] = []
     seen: set[int] = set()
 
-    for item in soup.select("a.announcement-item"):
+    cards = soup.select("a.announcement-item")
+    if not cards:
+        cards = [
+            a
+            for a in soup.select("a[href$='.html']")
+            if extract_listing_id(a.get("href") or "")
+            and "naudoti-automobiliai" not in (a.get("href") or "")
+        ]
+
+    for item in cards:
         href = item.get("href") or ""
         if not href or "naudoti-automobiliai" in href:
             continue

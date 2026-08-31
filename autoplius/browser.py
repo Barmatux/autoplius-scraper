@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 from autoplius.captcha import CaptchaError, TurnstileSolution, load_api_key, solve_turnstile_challenge
+from autoplius.urls import get_base_url
 
 if TYPE_CHECKING:
     from playwright.sync_api import BrowserContext, Page
+
+logger = logging.getLogger(__name__)
 
 HOOK_SCRIPT = (Path(__file__).resolve().parent / "turnstile_hook.js").read_text(encoding="utf-8")
 
@@ -20,13 +25,27 @@ CHALLENGE_MARKERS = (
     "tikriname jūsų naršyklę",
     "please confirm that you are not a robot",
     "prašome patvirtinti kad esate ne robotas",
+    "we are verifying your browser",
+    "enable javascript and cookies",
     "cf-turnstile",
     "challenge-platform",
+    "проверяем ваш браузер",
+    "подтвердите, что вы не робот",
+    "подтвердите что вы не робот",
 )
 
 STEALTH_INIT_SCRIPT = (
     "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
 )
+
+
+def browser_locale(base_url: str | None = None) -> str:
+    host = urlparse(base_url or get_base_url()).netloc.lower()
+    if host.startswith("ru."):
+        return "ru-RU"
+    if host.startswith("en."):
+        return "en-US"
+    return "lt-LT"
 
 
 class TurnstileInterceptor:
@@ -76,7 +95,11 @@ def has_target_content(page: Page, html: str) -> bool:
         return True
     if page.locator(".second-parameters .parameter-row").count() > 0:
         return True
+    if page.locator("a[href*='/skelbimai/'][href$='.html']").count() > 3:
+        return True
     if "announcement-item" in html or "second-parameters" in html:
+        return True
+    if html.count(".html") >= 8 and "/skelbimai/" in html:
         return True
     return False
 
@@ -86,6 +109,9 @@ def dismiss_cookie_banner(page: Page) -> None:
         "button:has-text('Sutinku')",
         "button:has-text('Accept all')",
         "button:has-text('Leisti visus')",
+        "button:has-text('Согласен')",
+        "button:has-text('Принять все')",
+        "button:has-text('Принять')",
         "#onetrust-accept-btn-handler",
     ):
         try:
@@ -142,7 +168,7 @@ def solve_cloudflare_turnstile(
     interceptor.reset()
     params = wait_for_turnstile_params(page, interceptor, timeout_sec=20.0)
     if not params:
-        print("Turnstile params not captured yet, reloading challenge page...", flush=True)
+        logger.warning("Turnstile params not captured, reloading challenge page")
         page.reload(wait_until="domcontentloaded", timeout=60000)
         params = wait_for_turnstile_params(page, interceptor, timeout_sec=25.0)
     if not params:
@@ -151,14 +177,21 @@ def solve_cloudflare_turnstile(
             "Cloudflare may have changed the challenge widget."
         )
 
-    print(
-        f"Solving Cloudflare Turnstile via 2Captcha for {params.get('websiteURL') or page.url}...",
-        flush=True,
-    )
+    logger.info("Solving Cloudflare Turnstile via 2Captcha for %s", params.get("websiteURL") or page.url)
     solution = solve_turnstile_challenge(api_key, params)
     mode = apply_turnstile_token(page, solution.token)
-    print(f"2Captcha token applied via {mode}", flush=True)
-    page.wait_for_timeout(3000)
+    logger.info("2Captcha token applied via %s", mode)
+    page.wait_for_timeout(2500)
+    try:
+        page.wait_for_load_state("domcontentloaded", timeout=20000)
+    except Exception:
+        pass
+    html = page.content()
+    title = page.title() or ""
+    if is_challenge_page(html, title) and not has_target_content(page, html):
+        logger.info("Challenge still visible after token, reloading")
+        page.reload(wait_until="domcontentloaded", timeout=60000)
+        page.wait_for_timeout(1500)
     return solution
 
 
@@ -174,13 +207,14 @@ def wait_for_content(
     """Wait until Cloudflare challenge passes and listing/search markup appears."""
     deadline = time.monotonic() + timeout_sec
     captcha_attempts = 0
-    max_captcha_attempts = 2
+    max_captcha_attempts = 4
 
     while time.monotonic() < deadline:
         title = page.title() or ""
         html = page.content()
 
         if is_challenge_page(html, title):
+            logger.info("Cloudflare challenge on %s (%s)", page.url, title[:80])
             if manual:
                 print(
                     "\nCloudflare challenge detected. "
@@ -204,7 +238,8 @@ def wait_for_content(
                         api_key=captcha_api_key,
                     )
                 except CaptchaError as exc:
-                    print(f"2Captcha solve failed: {exc}", flush=True)
+                    logger.warning("2Captcha solve failed: %s", exc)
+                dismiss_cookie_banner(page)
                 continue
 
             page.wait_for_timeout(2000)
@@ -214,15 +249,36 @@ def wait_for_content(
             raise RuntimeError(f"Page not found: {page.url}")
 
         if has_target_content(page, html):
+            dismiss_cookie_banner(page)
             return
 
         page.wait_for_timeout(1000)
 
+    title = page.title() or ""
+    html = page.content()
+    snippet = re.sub(r"\s+", " ", _visible_text(html))[:400]
+    logger.error(
+        "Timed out on %s title=%r challenge=%s listings=%s snippet=%s",
+        page.url,
+        title,
+        is_challenge_page(html, title),
+        has_target_content(page, html),
+        snippet,
+    )
     tips = (
         "Tip: set CAPTCHA_2CAPTCHA_API_KEY in .env, "
         "or reuse --profile-dir with saved cookies."
     )
     raise TimeoutError(f"Timed out waiting for Autoplius content: {page.url}\n{tips}")
+
+
+def _visible_text(html: str) -> str:
+    try:
+        from bs4 import BeautifulSoup
+
+        return BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
+    except Exception:
+        return html[:400]
 
 
 def create_browser_context(
@@ -240,16 +296,20 @@ def create_browser_context(
         "Chrome/120.0.0.0 Safari/537.36"
     )
 
+    locale = browser_locale()
+    accept_language = "ru-RU,ru;q=0.9,en;q=0.8" if locale.startswith("ru") else "lt-LT,lt;q=0.9,en;q=0.8"
+
     if profile_dir is not None:
         profile_dir.mkdir(parents=True, exist_ok=True)
         context = playwright.chromium.launch_persistent_context(
             user_data_dir=str(profile_dir),
             headless=headless,
             channel="chrome",
-            locale="lt-LT",
+            locale=locale,
             viewport={"width": 1366, "height": 900},
             args=launch_args,
             user_agent=user_agent,
+            extra_http_headers={"Accept-Language": accept_language},
         )
         if interceptor is not None:
             interceptor.install(context)
@@ -263,9 +323,10 @@ def create_browser_context(
         args=launch_args,
     )
     context_kwargs = {
-        "locale": "lt-LT",
+        "locale": locale,
         "viewport": {"width": 1366, "height": 900},
         "user_agent": user_agent,
+        "extra_http_headers": {"Accept-Language": accept_language},
     }
     if storage_state and storage_state.is_file():
         context_kwargs["storage_state"] = str(storage_state)
