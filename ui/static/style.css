@@ -195,12 +195,9 @@ td.photo {
   min-width: 180px;
   max-width: 180px;
   padding: 0;
-  vertical-align: top;
   height: 100%;
-}
-
-td.photo {
-  line-height: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 th {
@@ -247,9 +244,10 @@ tr:hover td.photo {
 
 .photo img,
 .photo-empty {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  min-height: 54px;
   object-fit: cover;
   border-radius: 0;
   background: #e8e2d6;
