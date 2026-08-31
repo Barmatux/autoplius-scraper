@@ -317,6 +317,20 @@ def _upsert_listing(conn: sqlite3.Connection, row: dict[str, Any], *, seen_at: s
     )
 
 
+def upsert_listing_item(
+    db_path: Path,
+    item: dict[str, Any],
+    *,
+    seen_at: str | None = None,
+) -> None:
+    """Upsert one listing row (used for incremental target-scrape checkpoints)."""
+    init_db(db_path)
+    when = seen_at or _utc_now()
+    with connect(db_path) as conn:
+        row = _listing_row(item, run_id=None, seen_at=when)
+        _upsert_listing(conn, row, seen_at=when)
+
+
 def save_payload_to_db(
     db_path: Path,
     payload: dict[str, Any],

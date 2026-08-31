@@ -32,6 +32,7 @@ from scraper.db import (
     load_detail_scraped_ids,
     load_known_ids,
     save_payload_to_db,
+    upsert_listing_item,
 )
 from scraper.photo_sync import sync_run_photos
 from scraper.storage import diff_stats, load_latest_ids, save_snapshot
@@ -311,6 +312,14 @@ def scrape_search_pages(
                         for p in preview_list
                         if p.autoplius_id not in detail_scraped_ids
                     ]
+                elif target_mode or enrich_only:
+                    to_enrich = [
+                        p
+                        for p in preview_list
+                        if p.autoplius_id not in detail_scraped_ids
+                    ]
+                    if settings.enrich_limit > 0:
+                        to_enrich = to_enrich[: settings.enrich_limit]
                 else:
                     limit = (
                         settings.enrich_limit
@@ -318,6 +327,27 @@ def scrape_search_pages(
                         else len(preview_list)
                     )
                     to_enrich = preview_list[:limit]
+
+                if target_mode and preview_list and not enrich_only:
+                    checkpoint_at = datetime.now(timezone.utc).isoformat()
+                    for preview in preview_list:
+                        upsert_listing_item(
+                            settings.db_path,
+                            merge_preview_and_detail(preview, settings=settings),
+                            seen_at=checkpoint_at,
+                        )
+                    logger.info(
+                        "Saved %s target search previews to DB before enrichment",
+                        len(preview_list),
+                    )
+                    detail_scraped_ids = load_detail_scraped_ids(settings.db_path)
+                    to_enrich = [
+                        p
+                        for p in preview_list
+                        if p.autoplius_id not in detail_scraped_ids
+                    ]
+                    if settings.enrich_limit > 0:
+                        to_enrich = to_enrich[: settings.enrich_limit]
 
                 enrich_ids = {p.autoplius_id for p in to_enrich}
                 skip = [p for p in preview_list if p.autoplius_id not in enrich_ids]
@@ -352,6 +382,12 @@ def scrape_search_pages(
                                 preview, detail=detail, settings=settings
                             )
                         )
+                        if target_mode or enrich_only:
+                            upsert_listing_item(
+                                settings.db_path,
+                                listings[-1],
+                                seen_at=datetime.now(timezone.utc).isoformat(),
+                            )
                         detail_ok += 1
                     except Exception as exc:
                         detail_fail += 1
@@ -363,6 +399,12 @@ def scrape_search_pages(
                                 preview, error=str(exc)[:300], settings=settings
                             )
                         )
+                        if target_mode or enrich_only:
+                            upsert_listing_item(
+                                settings.db_path,
+                                listings[-1],
+                                seen_at=datetime.now(timezone.utc).isoformat(),
+                            )
 
                 for preview in skip:
                     listings.append(merge_preview_and_detail(preview, settings=settings))

@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=oneshot
 WorkingDirectory=/opt/autoplius-scraper
 EnvironmentFile=-/opt/autoplius-scraper/.env
-ExecStart=/opt/autoplius-scraper/deploy/run-target-scrape.sh --enrich-only --verbose
+ExecStart=/opt/autoplius-scraper/deploy/run-target-scrape.sh --verbose
 User=autoplius
 Group=autoplius
 

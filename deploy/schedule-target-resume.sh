@@ -24,7 +24,7 @@ set_env() {
   fi
 }
 
-log "=== schedule target enrich-only resume in ${RESUME_IN_HOURS}h ==="
+log "Resume will run full target scrape (search + enrich pending only)"
 
 log "Stopping running target scrape (if any)"
 pkill -f 'python run_target_scrape.py' || true
