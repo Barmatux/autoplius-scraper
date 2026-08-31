@@ -6,7 +6,7 @@
 
 ## Что собирает
 
-- Первые **10 страниц** всех объявлений (`/skelbimai/naudoti-automobiliai`)
+- Первые **10 страниц** всех объявлений (`/objavlenija/b-u-avtomobili` на ru.autoplius.lt)
 - Затем **детальные страницы** каждого объявления (`ENRICH_DETAILS=true`)
 - Search: id, url, title, price, year, mileage, fuel, transmission, city, photo
 - Detail: phone, VIN (masked), description, все параметры таблицы, галерея фото

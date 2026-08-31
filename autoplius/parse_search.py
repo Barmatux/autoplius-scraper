@@ -39,11 +39,12 @@ def parse_search_html(html: str) -> list[SearchListingPreview]:
             for a in soup.select("a[href$='.html']")
             if extract_listing_id(a.get("href") or "")
             and "naudoti-automobiliai" not in (a.get("href") or "")
+            and "b-u-avtomobili" not in (a.get("href") or "")
         ]
 
     for item in cards:
         href = item.get("href") or ""
-        if not href or "naudoti-automobiliai" in href:
+        if not href or "naudoti-automobiliai" in href or href.rstrip("/").endswith("b-u-avtomobili"):
             continue
         listing_id = extract_listing_id(href)
         if listing_id is None or listing_id in seen:

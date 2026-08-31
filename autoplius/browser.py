@@ -97,9 +97,11 @@ def has_target_content(page: Page, html: str) -> bool:
         return True
     if page.locator("a[href*='/skelbimai/'][href$='.html']").count() > 3:
         return True
+    if page.locator("a[href*='/objavlenija/'][href$='.html']").count() > 3:
+        return True
     if "announcement-item" in html or "second-parameters" in html:
         return True
-    if html.count(".html") >= 8 and "/skelbimai/" in html:
+    if html.count(".html") >= 8 and ("/skelbimai/" in html or "/objavlenija/" in html):
         return True
     return False
 
@@ -245,7 +247,9 @@ def wait_for_content(
             page.wait_for_timeout(2000)
             continue
 
-        if page.locator("h1").filter(has_text=re.compile(r"404|not found", re.I)).count() > 0:
+        if page.locator("h1").filter(has_text=re.compile(r"404|not found|не найдена", re.I)).count() > 0:
+            raise RuntimeError(f"Page not found: {page.url}")
+        if "404" in title.lower() or "страница не найдена" in html.lower():
             raise RuntimeError(f"Page not found: {page.url}")
 
         if has_target_content(page, html):

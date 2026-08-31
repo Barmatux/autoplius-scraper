@@ -4,7 +4,20 @@ import os
 from urllib.parse import urlencode, urlparse, urlunparse
 
 DEFAULT_BASE_URL = "https://ru.autoplius.lt"
-SEARCH_PATH = "/skelbimai/naudoti-automobiliai"
+SEARCH_PATHS = {
+    "ru": "/objavlenija/b-u-avtomobili",
+    "en": "/search/used-cars",
+    "lt": "/skelbimai/naudoti-automobiliai",
+}
+
+
+def search_path(base_url: str | None = None) -> str:
+    host = urlparse((base_url or get_base_url()).rstrip("/")).netloc.lower()
+    if host.startswith("ru."):
+        return SEARCH_PATHS["ru"]
+    if host.startswith("en."):
+        return SEARCH_PATHS["en"]
+    return SEARCH_PATHS["lt"]
 
 _configured_base: str | None = None
 
@@ -51,7 +64,7 @@ def build_search_url(
     if extra:
         params.update(extra)
     base = (base_url or get_base_url()).rstrip("/")
-    return f"{base}{SEARCH_PATH}?{urlencode(params)}"
+    return f"{base}{search_path(base)}?{urlencode(params)}"
 
 
 def normalize_listing_url(url: str, *, base_url: str | None = None) -> str:
