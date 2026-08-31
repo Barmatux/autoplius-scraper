@@ -7,10 +7,5 @@ LOCK_FILE="${TARGET_SCRAPE_LOCK_FILE:-/var/lock/autoplius-target-scrape.lock}"
 
 cd "$APP_DIR"
 
-# Discover/refresh make+model IDs, then run the deep target scrape.
-exec flock -n "$LOCK_FILE" bash -lc "
-  set -euo pipefail
-  cd '$APP_DIR'
-  '$PY' tools/discover_catalog_ids.py --output data/catalog_ids.json || true
-  exec '$PY' run_target_scrape.py \"\$@\"
-" _ "$@"
+# Deep scrape of Roman's priority models (12 filtered queries).
+exec flock -n "$LOCK_FILE" "$PY" run_target_scrape.py "$@"
