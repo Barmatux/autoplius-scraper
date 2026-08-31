@@ -201,9 +201,11 @@ def scrape_search_pages(
                         break
 
                     new_on_page = 0
+                    new_for_query = 0
                     for preview in previews:
                         is_new = preview.autoplius_id not in known_ids
                         if preview.autoplius_id not in query_previews:
+                            new_for_query += 1
                             if is_new:
                                 new_on_page += 1
                         query_previews[preview.autoplius_id] = preview
@@ -217,38 +219,41 @@ def scrape_search_pages(
                             "url": url,
                             "count": len(previews),
                             "new_unique": new_on_page,
+                            "new_for_query": new_for_query,
                         }
                     )
                     logger.info(
-                        "Page %s (%s): %s listings (%s new vs DB, query total %s, run total %s)",
+                        "Page %s (%s): %s listings (%s new vs DB, %s new for query, query total %s, run total %s)",
                         page_num,
                         query.label if query else "default",
                         len(previews),
                         new_on_page,
+                        new_for_query,
                         len(query_previews),
                         len(all_previews),
                     )
 
+                    stop_after_no_new = settings.incremental_stop_empty_pages
                     if incremental:
-                        if new_on_page == 0:
-                            consecutive_empty_pages += 1
-                            if (
-                                consecutive_empty_pages
-                                >= settings.incremental_stop_empty_pages
-                            ):
-                                logger.info(
-                                    "Stopping incremental scrape after %s page(s) with no new listings",
-                                    consecutive_empty_pages,
-                                )
-                                break
-                        else:
-                            consecutive_empty_pages = 0
+                        no_new = new_on_page == 0
+                    elif target_mode or paginate_until_empty:
+                        no_new = new_for_query == 0
+                    else:
+                        no_new = False
 
-                    if page_num < settings.pages and not (
-                        incremental
-                        and consecutive_empty_pages
-                        >= settings.incremental_stop_empty_pages
-                    ):
+                    if no_new:
+                        consecutive_empty_pages += 1
+                        if consecutive_empty_pages >= stop_after_no_new:
+                            logger.info(
+                                "Stopping pagination after %s page(s) with no new listings (%s)",
+                                consecutive_empty_pages,
+                                query.label if query else "default",
+                            )
+                            break
+                    else:
+                        consecutive_empty_pages = 0
+
+                    if page_num < settings.pages and consecutive_empty_pages < stop_after_no_new:
                         time.sleep(settings.page_delay_sec)
 
                 if query and query_idx < total_queries:
