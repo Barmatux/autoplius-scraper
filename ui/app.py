@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,17 @@ SETTINGS = Settings.from_env()
 app = Flask(__name__)
 app.config["DATA_DIR"] = DEFAULT_DATA_DIR
 app.config["DB_PATH"] = Path(os.environ.get("DB_PATH", default_db_path(DEFAULT_DATA_DIR)))
+
+
+@app.template_filter("format_datetime")
+def format_datetime(value: str | None) -> str:
+    if not value:
+        return "—"
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return dt.strftime("%d.%m.%Y %H:%M")
+    except ValueError:
+        return value[:16].replace("T", " ")
 
 
 def _check_basic_auth() -> bool:

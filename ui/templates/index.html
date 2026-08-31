@@ -49,6 +49,8 @@
           <option value="mileage_desc" {% if sort == 'mileage_desc' %}selected{% endif %}>Пробег ↓</option>
           <option value="year_desc" {% if sort == 'year_desc' %}selected{% endif %}>Год ↓</option>
           <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Название</option>
+          <option value="added_desc" {% if sort == 'added_desc' %}selected{% endif %}>Дата добавления ↓</option>
+          <option value="added_asc" {% if sort == 'added_asc' %}selected{% endif %}>Дата добавления ↑</option>
         </select>
       </label>
       <label class="check">
@@ -82,6 +84,7 @@
             <th>VIN</th>
             <th>Город</th>
             <th>Фото/парам.</th>
+            <th>Дата добавления</th>
           </tr>
         </thead>
         <tbody>
@@ -121,6 +124,7 @@
               /
               {{ (item.parameters|length) if item.parameters else 0 }}
             </td>
+            <td class="num">{{ item.first_seen_at|format_datetime }}</td>
           </tr>
           {% endfor %}
         </tbody>
