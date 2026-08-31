@@ -383,7 +383,7 @@ def save_payload_to_db(
 
         archived_count = 0
         if (
-            payload.get("scrape_mode") == "full"
+            payload.get("scrape_mode") in {"full", "target"}
             and payload.get("archive_removed", True)
         ):
             archived_count = _archive_listings(

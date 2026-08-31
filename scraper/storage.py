@@ -29,9 +29,11 @@ def save_snapshot(
     *,
     data_dir: Path,
     test_mode: bool,
+    update_latest: bool = True,
 ) -> Path:
     data_dir.mkdir(parents=True, exist_ok=True)
-    snapshots_dir = data_dir / ("test" if test_mode else "prod") / "snapshots"
+    mode_dir = "target" if payload.get("scrape_mode") == "target" else ("test" if test_mode else "prod")
+    snapshots_dir = data_dir / mode_dir / "snapshots"
     snapshots_dir.mkdir(parents=True, exist_ok=True)
 
     ts = _utc_now()
@@ -42,8 +44,9 @@ def save_snapshot(
     snapshot_path = dated_dir / f"{stamp}.json"
     snapshot_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    latest_path = data_dir / "latest.json"
-    latest_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    if update_latest:
+        latest_path = data_dir / "latest.json"
+        latest_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
     meta = {
         "saved_at": ts.isoformat(),
