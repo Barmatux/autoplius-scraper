@@ -131,11 +131,18 @@
         </thead>
         <tbody>
           {% for item in listings %}
-          {% set thumb = thumb_url(item) %}
+          {% set photos = item.photo_urls if item.photo_urls else ([item.photo_url] if item.photo_url else []) %}
           <tr>
             <td class="photo">
-              {% if thumb %}
-              <img src="{{ thumb }}" alt="" loading="lazy">
+              {% if photos %}
+              <div class="list-gallery" data-list-gallery data-photos='{{ photos|tojson }}'>
+                <img data-list-photo src="{{ photos[0] }}" alt="" loading="lazy">
+                {% if photos|length > 1 %}
+                <button type="button" class="list-photo-nav list-photo-prev" data-list-photo-prev aria-label="Предыдущее фото">‹</button>
+                <button type="button" class="list-photo-nav list-photo-next" data-list-photo-next aria-label="Следующее фото">›</button>
+                <div class="list-photo-counter" data-list-photo-counter>1/{{ photos|length }}</div>
+                {% endif %}
+              </div>
               {% else %}
               <div class="photo-empty"></div>
               {% endif %}
@@ -202,5 +209,6 @@
     {% endif %}
   </main>
   <script src="{{ url_for('static', filename='price_rb_tooltip.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='list_photos.js') }}" defer></script>
 </body>
 </html>

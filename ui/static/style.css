@@ -179,7 +179,7 @@ main {
 }
 
 /* Photo is fixed; all other columns share the remaining width equally. */
-.listings-table col.col-photo { width: 128px; }
+.listings-table col.col-photo { width: 141px; }
 .listings-table col.col-auto,
 .listings-table col.col-engine,
 .listings-table col.col-year,
@@ -189,7 +189,7 @@ main {
 .listings-table col.col-gear,
 .listings-table col.col-city,
 .listings-table col.col-date {
-  width: calc((100% - 128px) / 9);
+  width: calc((100% - 141px) / 9);
 }
 
 tbody tr {
@@ -197,7 +197,7 @@ tbody tr {
 }
 
 th, td {
-  padding: 0.95rem 0.75rem;
+  padding: 1.05rem 0.75rem;
   text-align: left;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
@@ -213,9 +213,9 @@ td.col-price-rb {
 
 th.photo-col,
 td.photo {
-  width: 128px;
-  min-width: 128px;
-  max-width: 128px;
+  width: 141px;
+  min-width: 141px;
+  max-width: 141px;
   padding: 0;
   height: 100%;
   position: relative;
@@ -298,6 +298,63 @@ tr:hover td.photo {
   border-radius: 0;
   background: #e8e2d6;
   display: block;
+}
+
+.list-gallery {
+  position: absolute;
+  inset: 0;
+}
+
+.list-photo-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 1.55rem;
+  height: 1.55rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(28, 26, 22, 0.55);
+  color: #fff;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.list-gallery:hover .list-photo-nav,
+.list-gallery:focus-within .list-photo-nav {
+  display: inline-flex;
+}
+
+.list-photo-nav:hover {
+  background: rgba(28, 26, 22, 0.8);
+}
+
+.list-photo-prev {
+  left: 0.3rem;
+}
+
+.list-photo-next {
+  right: 0.3rem;
+}
+
+.list-photo-counter {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.3rem;
+  z-index: 2;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(28, 26, 22, 0.55);
+  color: #fff;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  pointer-events: none;
 }
 
 a {
