@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from autoplius.browser import create_browser_context, goto_and_wait
-from autoplius.urls import configure_base_url, get_base_url
+from autoplius.urls import build_search_url, configure_base_url, get_base_url, search_path
 
 DEFAULT_MAKES = (
     "Peugeot",
@@ -102,14 +102,25 @@ def discover(
             interceptor=None,
         )
         try:
+            search_url = build_search_url(page=1, extra={"category_id": 2})
             goto_and_wait(
                 page,
-                f"{base}/skelbimai/paieska?category_id=2&filter=makes",
+                search_url,
                 timeout_sec=120,
                 auto_captcha=True,
                 captcha_api_key=None,
             )
             all_makes = _parse_make_links(page.content())
+            if not all_makes:
+                # Fallback: open LT makes iframe path on same host.
+                goto_and_wait(
+                    page,
+                    f"{base}{search_path()}/paieska?category_id=2&filter=makes",
+                    timeout_sec=120,
+                    auto_captcha=True,
+                    captcha_api_key=None,
+                )
+                all_makes = _parse_make_links(page.content())
             selected_makes = {
                 name: all_makes[name]
                 for name in makes
@@ -120,17 +131,28 @@ def discover(
 
             models_by_make: dict[str, dict[str, int]] = {}
             for make_name, make_id in selected_makes.items():
+                make_search = build_search_url(
+                    page=1,
+                    make_id=make_id,
+                    extra={"category_id": 2},
+                )
                 goto_and_wait(
                     page,
-                    (
-                        f"{base}/skelbimai/paieska?category_id=2"
-                        f"&filter=models&make_id_list={make_id}"
-                    ),
+                    make_search,
                     timeout_sec=120,
                     auto_captcha=True,
                     captcha_api_key=None,
                 )
                 models = _parse_model_links(page.content())
+                if not models:
+                    goto_and_wait(
+                        page,
+                        f"{base}/skelbimai/paieska?category_id=2&filter=models&make_id_list={make_id}",
+                        timeout_sec=120,
+                        auto_captcha=True,
+                        captcha_api_key=None,
+                    )
+                    models = _parse_model_links(page.content())
                 picked: dict[str, int] = {}
                 for hint in model_hints:
                     for model_name, model_id in models.items():
