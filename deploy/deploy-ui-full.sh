@@ -28,4 +28,4 @@ sleep 1
 curl -s -o /dev/null -w "flask8080=%{http_code}\n" http://127.0.0.1:8080/
 curl -s -o /dev/null -w "nginx80=%{http_code}\n" http://127.0.0.1/
 sudo systemctl is-active autoplius-ui.service nginx
-echo "Open http://62.84.122.165/  (need SG TCP 80) or SSH tunnel to :8080"
+echo "Open http://84.252.139.137/  (need SG TCP 80) or SSH tunnel to :8080"
