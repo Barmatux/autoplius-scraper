@@ -118,6 +118,7 @@ def index():
     sort = request.args.get("sort", "price_asc")
     # Show ALL listings by default; optional filter for enriched only.
     details_only = request.args.get("details_only") == "1"
+    upto_19l = request.args.get("upto_19l") == "1"
     page = max(1, int(request.args.get("page", "1") or "1"))
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
@@ -132,6 +133,7 @@ def index():
         max_price=max_price,
         sort=sort,
         details_only=details_only,
+        engine_upto_liters=1.9 if upto_19l else None,
     )
 
     total_in_db = int(stats.get("listings") or 0)
@@ -155,6 +157,7 @@ def index():
         min_price=min_price_raw,
         max_price=max_price_raw,
         details_only=details_only,
+        upto_19l=upto_19l,
         page=page,
         pages=pages,
         page_size=PAGE_SIZE,
@@ -176,6 +179,7 @@ def api_listings():
     q = request.args.get("q", "")
     sort = request.args.get("sort", "price_asc")
     details_only = request.args.get("details_only") == "1"
+    upto_19l = request.args.get("upto_19l") == "1"
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
     min_price = int(min_price_raw) if min_price_raw.isdigit() else None
@@ -191,6 +195,7 @@ def api_listings():
                 max_price=max_price,
                 sort=sort,
                 details_only=details_only,
+                engine_upto_liters=1.9 if upto_19l else None,
             ),
         }
     )

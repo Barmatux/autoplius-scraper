@@ -17,49 +17,56 @@ def _format_liters(value: float) -> str:
     return f"{value:.1f}".replace(".", ",") + " л"
 
 
-def _parse_volume_from_text(text: str) -> str | None:
+def _parse_volume_liters_from_text(text: str) -> float | None:
     normalized = text.replace("\xa0", " ")
     match = ENGINE_LITERS_RE.search(normalized)
     if match:
         liters = float(match.group(1).replace(",", "."))
         if 0.5 <= liters <= 10.0:
-            return _format_liters(liters)
+            return liters
     match = ENGINE_CM3_RE.search(normalized)
     if match:
         cm3 = int(match.group(1))
         if 500 <= cm3 <= 10000:
-            return _format_liters(cm3 / 1000)
+            return cm3 / 1000
     match = ENGINE_BEFORE_CODE_RE.search(normalized)
     if match:
         liters = float(match.group(1).replace(",", "."))
         if 0.5 <= liters <= 10.0:
-            return _format_liters(liters)
+            return liters
     return None
 
 
-def engine_volume_from_listing(item: dict[str, Any]) -> str | None:
+def engine_volume_liters(item: dict[str, Any]) -> float | None:
     for key in ("description_ru", "description"):
         value = item.get(key)
         if not value:
             continue
-        volume = _parse_volume_from_text(str(value))
-        if volume:
-            return volume
+        liters = _parse_volume_liters_from_text(str(value))
+        if liters is not None:
+            return liters
 
     for key in ("engine", "title"):
         value = item.get(key)
         if not value:
             continue
-        volume = _parse_volume_from_text(str(value))
-        if volume:
-            return volume
+        liters = _parse_volume_liters_from_text(str(value))
+        if liters is not None:
+            return liters
 
     params = item.get("parameters") or {}
     for param_key in ("Variklis", "Двигатель"):
         value = params.get(param_key)
         if not value:
             continue
-        volume = _parse_volume_from_text(str(value))
-        if volume:
-            return volume
+        liters = _parse_volume_liters_from_text(str(value))
+        if liters is not None:
+            return liters
     return None
+
+
+def engine_volume_from_listing(item: dict[str, Any]) -> str | None:
+    liters = engine_volume_liters(item)
+    if liters is None:
+        return None
+    return _format_liters(liters)

@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
+from autoplius.engine_volume import engine_volume_liters
+
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS scrape_runs (
@@ -400,6 +402,7 @@ def fetch_listings(
     max_price: int | None = None,
     sort: str = "price_asc",
     details_only: bool = False,
+    engine_upto_liters: float | None = None,
 ) -> list[dict[str, Any]]:
     if not db_path.is_file():
         return []
@@ -447,7 +450,16 @@ def fetch_listings(
 
     with connect(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
-        return [row_to_listing(r) for r in rows]
+        listings = [row_to_listing(r) for r in rows]
+
+    if engine_upto_liters is not None:
+        listings = [
+            item
+            for item in listings
+            if (liters := engine_volume_liters(item)) is not None
+            and liters <= engine_upto_liters
+        ]
+    return listings
 
 
 def fetch_listing(db_path: Path, listing_id: int) -> dict[str, Any] | None:
