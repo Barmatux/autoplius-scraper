@@ -25,6 +25,7 @@ with sync_playwright() as pw:
         pw,
         headless=True,
         profile_dir=Path("/var/lib/autoplius-scraper/browser-profile"),
+        storage_state=None,
     )
     try:
         goto_and_wait(page, url, timeout_sec=120, auto_captcha=True, captcha_api_key=None)
