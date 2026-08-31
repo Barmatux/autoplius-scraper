@@ -31,7 +31,10 @@
       <p class="brand-sub">Все объявления из SQLite</p>
     </div>
     <div class="meta">
-      <div class="pill accent">{{ total_in_db }} в БД</div>
+      <div class="pill accent">{{ total_in_db }} активных</div>
+      {% if archived_count %}
+      <div class="pill">Архив: {{ archived_count }}</div>
+      {% endif %}
       {% if db_stats and db_stats.runs %}
       <div class="pill">Прогонов: {{ db_stats.runs }}</div>
       {% endif %}

@@ -19,6 +19,7 @@
       <div class="pill accent">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}цена —{% endif %}</div>
       {% if item.phone %}<div class="pill">{{ item.phone }}</div>{% endif %}
       {% if item.vin_masked %}<div class="pill mono">{{ item.vin_masked }}</div>{% endif %}
+      {% if item.status == 'archived' %}<div class="pill">Архив</div>{% endif %}
       <a class="pill" href="{{ item.url }}" target="_blank" rel="noopener">Открыть на autoplius</a>
     </div>
   </header>

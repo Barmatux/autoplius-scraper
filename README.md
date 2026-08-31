@@ -45,6 +45,7 @@ copy .env.example .env
 | `ENRICH_NEW_ONLY` | `true` | Detail только для объявлений без enrich в БД |
 | `SEARCH_NEWEST_FIRST` | `true` | `order_by=3&order_direction=DESC` на Autoplius |
 | `FULL_SCRAPE_INTERVAL_HOURS` | `12` | Как часто делать полный прогон 10 страниц |
+| `ARCHIVE_REMOVED_ON_FULL_SCRAPE` | `true` | При полном прогоне помечать исчезнувшие объявления как `archived` |
 | `ENRICH_DETAILS` | `true` | Заходить в каждое объявление за полной карточкой |
 | `ENRICH_LIMIT` | `0` | Лимит detail-страниц (`0` = все) |
 | `DETAIL_DELAY_SEC` | `2` | Пауза между detail-запросами |
@@ -112,6 +113,13 @@ sudo bash /opt/autoplius-scraper/deploy/deploy-from-git.sh
 
 - JSON-снимки: `data/latest.json`, `data/test/snapshots/...`
 - SQLite: `data/autoplius.db` (таблицы `listings`, `scrape_runs`, `run_listings`)
+
+### Синхронизация объявлений (как av.by)
+
+- **Merge, не replace:** при обновлении поля сливаются; не перезаписываются `first_seen_at`, `description_ru`, `phone`, `vin_masked` (если уже есть).
+- **Detail:** если в БД уже есть enrich, а текущий прогон — только search preview, detail-поля сохраняются.
+- **Архив:** при **полном** прогоне объявления из предыдущего снимка, которых нет в текущем каталоге (~10 страниц), получают `status=archived`. При повторном появлении на Autoplius снова становятся `active`.
+- **Инкрементальный прогон** не архивирует — только добавляет/обновляет видимые объявления.
 
 Импорт всех существующих JSON в БД:
 

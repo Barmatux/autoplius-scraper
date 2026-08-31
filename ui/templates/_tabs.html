@@ -8,6 +8,10 @@
     class="tab{% if active_tab == 'no_volume' %} active{% endif %}"
   >Без объема{% if no_volume_count is defined %} <span class="tab-count">{{ no_volume_count }}</span>{% endif %}</a>
   <a
+    href="{{ url_for('index', tab='archived') }}"
+    class="tab{% if active_tab == 'archived' %} active{% endif %}"
+  >Архив{% if archived_count is defined %} <span class="tab-count">{{ archived_count }}</span>{% endif %}</a>
+  <a
     href="{{ url_for('analytics') }}"
     class="tab{% if active_tab == 'analytics' %} active{% endif %}"
   >Аналитика</a>

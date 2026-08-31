@@ -10,6 +10,11 @@ from typing import Any, Iterator
 from autoplius.engine_volume import engine_volume_liters
 from autoplius.passable_age import is_passable_age
 from autoplius.catalog_filters import is_catalog_visible
+from scraper.listing_sync import (
+    LISTING_STATUS_ACTIVE,
+    LISTING_STATUS_ARCHIVED,
+    merge_listing_row,
+)
 
 
 SCHEMA = """
@@ -53,6 +58,8 @@ CREATE TABLE IF NOT EXISTS listings (
     photo_urls_json TEXT,
     detail_scraped INTEGER DEFAULT 0,
     detail_error TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    archived_at TEXT,
     first_seen_at TEXT,
     last_seen_at TEXT,
     last_run_id INTEGER,
@@ -73,6 +80,7 @@ CREATE TABLE IF NOT EXISTS run_listings (
 CREATE INDEX IF NOT EXISTS idx_listings_price ON listings(price_eur);
 CREATE INDEX IF NOT EXISTS idx_listings_city ON listings(city);
 CREATE INDEX IF NOT EXISTS idx_listings_last_seen ON listings(last_seen_at);
+CREATE INDEX IF NOT EXISTS idx_listings_status ON listings(status);
 CREATE INDEX IF NOT EXISTS idx_runs_finished ON scrape_runs(finished_at);
 """
 
@@ -111,6 +119,12 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
     cols = {row[1] for row in conn.execute("PRAGMA table_info(listings)")}
     if "description_ru" not in cols:
         conn.execute("ALTER TABLE listings ADD COLUMN description_ru TEXT")
+    if "status" not in cols:
+        conn.execute(
+            "ALTER TABLE listings ADD COLUMN status TEXT NOT NULL DEFAULT 'active'"
+        )
+    if "archived_at" not in cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN archived_at TEXT")
 
     run_cols = {row[1] for row in conn.execute("PRAGMA table_info(scrape_runs)")}
     for name, ddl in (
@@ -166,10 +180,108 @@ def _listing_row(item: dict[str, Any], *, run_id: int | None, seen_at: str) -> d
         "photo_urls_json": json.dumps(item.get("photo_urls") or [], ensure_ascii=False),
         "detail_scraped": 1 if item.get("detail_scraped") else 0,
         "detail_error": item.get("detail_error"),
+        "status": item.get("status") or LISTING_STATUS_ACTIVE,
+        "archived_at": item.get("archived_at"),
         "last_run_id": run_id,
         "seen_at": seen_at,
         "updated_at": _utc_now(),
     }
+
+
+def _row_dict(row: sqlite3.Row) -> dict[str, Any]:
+    return {key: row[key] for key in row.keys()}
+
+
+def _archive_listings(
+    conn: sqlite3.Connection,
+    autoplius_ids: list[int],
+    *,
+    archived_at: str,
+) -> int:
+    if not autoplius_ids:
+        return 0
+    placeholders = ",".join("?" for _ in autoplius_ids)
+    cur = conn.execute(
+        f"""
+        UPDATE listings
+        SET status = ?, archived_at = ?, updated_at = ?
+        WHERE autoplius_id IN ({placeholders})
+          AND COALESCE(status, 'active') = 'active'
+        """,
+        [LISTING_STATUS_ARCHIVED, archived_at, _utc_now(), *autoplius_ids],
+    )
+    return int(cur.rowcount)
+
+
+def _upsert_listing(conn: sqlite3.Connection, row: dict[str, Any], *, seen_at: str) -> None:
+    existing = conn.execute(
+        "SELECT * FROM listings WHERE autoplius_id = ?",
+        (row["autoplius_id"],),
+    ).fetchone()
+
+    if existing is not None:
+        _preserve_stored_photos(row, existing)
+        keep_detail = int(existing["detail_scraped"] or 0) and not row["detail_scraped"]
+        merged = merge_listing_row(_row_dict(existing), row, keep_detail=keep_detail)
+        merged["last_seen_at"] = seen_at
+        merged["updated_at"] = _utc_now()
+        conn.execute(
+            """
+            UPDATE listings SET
+                url = :url,
+                title = :title,
+                year = :year,
+                body_type = :body_type,
+                price_eur = :price_eur,
+                fuel = :fuel,
+                transmission = :transmission,
+                engine = :engine,
+                mileage_km = :mileage_km,
+                city = :city,
+                photo_url = :photo_url,
+                has_vin_badge = :has_vin_badge,
+                description = :description,
+                description_ru = :description_ru,
+                phone = :phone,
+                vin_masked = :vin_masked,
+                parameters_json = :parameters_json,
+                photo_urls_json = :photo_urls_json,
+                detail_scraped = :detail_scraped,
+                detail_error = :detail_error,
+                status = :status,
+                archived_at = :archived_at,
+                last_seen_at = :last_seen_at,
+                last_run_id = :last_run_id,
+                updated_at = :updated_at
+            WHERE autoplius_id = :autoplius_id
+            """,
+            merged,
+        )
+        return
+
+    row = {
+        **row,
+        "status": LISTING_STATUS_ACTIVE,
+        "archived_at": None,
+    }
+    conn.execute(
+        """
+        INSERT INTO listings (
+            autoplius_id, url, title, year, body_type, price_eur, fuel,
+            transmission, engine, mileage_km, city, photo_url, has_vin_badge,
+            description, description_ru, phone, vin_masked, parameters_json, photo_urls_json,
+            detail_scraped, detail_error, status, archived_at,
+            first_seen_at, last_seen_at, last_run_id, updated_at
+        ) VALUES (
+            :autoplius_id, :url, :title, :year, :body_type, :price_eur, :fuel,
+            :transmission, :engine, :mileage_km, :city, :photo_url, :has_vin_badge,
+            :description, :description_ru, :phone, :vin_masked, :parameters_json, :photo_urls_json,
+            :detail_scraped, :detail_error, :status, :archived_at,
+            :seen_at, :seen_at, :last_run_id, :updated_at
+        )
+        """,
+        row,
+    )
 
 
 def save_payload_to_db(
@@ -177,8 +289,8 @@ def save_payload_to_db(
     payload: dict[str, Any],
     *,
     snapshot_path: str | None = None,
-) -> int:
-    """Insert scrape run + upsert listings. Returns run_id (existing or new)."""
+) -> tuple[int, int]:
+    """Insert scrape run + upsert listings. Returns (run_id, archived_count)."""
     init_db(db_path)
     snap = snapshot_path or ""
     finished_at = payload.get("finished_at") or _utc_now()
@@ -191,7 +303,7 @@ def save_payload_to_db(
                 (snap,),
             ).fetchone()
             if existing:
-                return int(existing["id"])
+                return int(existing["id"]), 0
 
         cur = conn.execute(
             """
@@ -231,90 +343,7 @@ def save_payload_to_db(
             if item.get("autoplius_id") is None:
                 continue
             row = _listing_row(item, run_id=run_id, seen_at=finished_at)
-            existing = conn.execute(
-                "SELECT autoplius_id, detail_scraped, first_seen_at, photo_url, photo_urls_json FROM listings WHERE autoplius_id = ?",
-                (row["autoplius_id"],),
-            ).fetchone()
-
-            if existing is not None:
-                _preserve_stored_photos(row, existing)
-
-            if existing is None:
-                conn.execute(
-                    """
-                    INSERT INTO listings (
-                        autoplius_id, url, title, year, body_type, price_eur, fuel,
-                        transmission, engine, mileage_km, city, photo_url, has_vin_badge,
-                        description, description_ru, phone, vin_masked, parameters_json, photo_urls_json,
-                        detail_scraped, detail_error, first_seen_at, last_seen_at,
-                        last_run_id, updated_at
-                    ) VALUES (
-                        :autoplius_id, :url, :title, :year, :body_type, :price_eur, :fuel,
-                        :transmission, :engine, :mileage_km, :city, :photo_url, :has_vin_badge,
-                        :description, :description_ru, :phone, :vin_masked, :parameters_json, :photo_urls_json,
-                        :detail_scraped, :detail_error, :seen_at, :seen_at,
-                        :last_run_id, :updated_at
-                    )
-                    """,
-                    row,
-                )
-            else:
-                # Prefer richer detail data when updating.
-                keep_detail = int(existing["detail_scraped"] or 0) and not row["detail_scraped"]
-                if keep_detail:
-                    conn.execute(
-                        """
-                        UPDATE listings SET
-                            url = COALESCE(:url, url),
-                            title = COALESCE(:title, title),
-                            year = COALESCE(:year, year),
-                            body_type = COALESCE(:body_type, body_type),
-                            price_eur = COALESCE(:price_eur, price_eur),
-                            fuel = COALESCE(:fuel, fuel),
-                            transmission = COALESCE(:transmission, transmission),
-                            engine = COALESCE(:engine, engine),
-                            mileage_km = COALESCE(:mileage_km, mileage_km),
-                            city = COALESCE(:city, city),
-                            photo_url = COALESCE(:photo_url, photo_url),
-                            last_seen_at = :seen_at,
-                            last_run_id = :last_run_id,
-                            updated_at = :updated_at
-                        WHERE autoplius_id = :autoplius_id
-                        """,
-                        row,
-                    )
-                else:
-                    conn.execute(
-                        """
-                        UPDATE listings SET
-                            url = :url,
-                            title = :title,
-                            year = :year,
-                            body_type = :body_type,
-                            price_eur = :price_eur,
-                            fuel = :fuel,
-                            transmission = :transmission,
-                            engine = :engine,
-                            mileage_km = :mileage_km,
-                            city = :city,
-                            photo_url = :photo_url,
-                            has_vin_badge = :has_vin_badge,
-                            description = :description,
-                            description_ru = :description_ru,
-                            phone = :phone,
-                            vin_masked = :vin_masked,
-                            parameters_json = :parameters_json,
-                            photo_urls_json = :photo_urls_json,
-                            detail_scraped = :detail_scraped,
-                            detail_error = :detail_error,
-                            last_seen_at = :seen_at,
-                            last_run_id = :last_run_id,
-                            updated_at = :updated_at
-                        WHERE autoplius_id = :autoplius_id
-                        """,
-                        row,
-                    )
-
+            _upsert_listing(conn, row, seen_at=finished_at)
             conn.execute(
                 """
                 INSERT OR IGNORE INTO run_listings (run_id, autoplius_id, price_eur, title, detail_scraped)
@@ -329,7 +358,18 @@ def save_payload_to_db(
                 ),
             )
 
-        return run_id
+        archived_count = 0
+        if (
+            payload.get("scrape_mode") == "full"
+            and payload.get("archive_removed", True)
+        ):
+            archived_count = _archive_listings(
+                conn,
+                payload.get("removed_listing_ids") or [],
+                archived_at=finished_at,
+            )
+
+        return run_id, archived_count
 
 
 def import_snapshots(db_path: Path, data_dir: Path) -> dict[str, int]:
@@ -351,7 +391,7 @@ def import_snapshots(db_path: Path, data_dir: Path) -> dict[str, int]:
             skipped += 1
             continue
         before = _count(db_path, "listings")
-        run_id = save_payload_to_db(db_path, payload, snapshot_path=str(path))
+        run_id, _archived = save_payload_to_db(db_path, payload, snapshot_path=str(path))
         after = _count(db_path, "listings")
         listings_touch += max(0, after - before)
         # count as imported if run exists
@@ -446,6 +486,8 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         "photo_urls": json.loads(row["photo_urls_json"] or "[]"),
         "detail_scraped": bool(row["detail_scraped"]),
         "detail_error": row["detail_error"],
+        "status": row["status"] if "status" in row.keys() else LISTING_STATUS_ACTIVE,
+        "archived_at": row["archived_at"] if "archived_at" in row.keys() else None,
         "first_seen_at": row["first_seen_at"],
         "last_seen_at": row["last_seen_at"],
         "last_run_id": row["last_run_id"],
@@ -463,6 +505,7 @@ def fetch_listings(
     engine_upto_liters: float | None = None,
     engine_volume_missing: bool = False,
     passable_only: bool = False,
+    listing_status: str = "active",
 ) -> list[dict[str, Any]]:
     if not db_path.is_file():
         return []
@@ -471,6 +514,10 @@ def fetch_listings(
     params: list[Any] = []
     if details_only:
         clauses.append("detail_scraped = 1")
+    if listing_status == "active":
+        clauses.append("(status IS NULL OR status = 'active')")
+    elif listing_status == "archived":
+        clauses.append("status = 'archived'")
     if min_price is not None:
         clauses.append("price_eur IS NOT NULL AND price_eur >= ?")
         params.append(min_price)
@@ -581,6 +628,15 @@ def db_stats(db_path: Path) -> dict[str, Any]:
         return {"exists": False}
     with connect(db_path) as conn:
         listings = conn.execute("SELECT COUNT(*) AS c FROM listings").fetchone()["c"]
+        active = conn.execute(
+            """
+            SELECT COUNT(*) AS c FROM listings
+            WHERE status IS NULL OR status = 'active'
+            """
+        ).fetchone()["c"]
+        archived = conn.execute(
+            "SELECT COUNT(*) AS c FROM listings WHERE status = 'archived'"
+        ).fetchone()["c"]
         runs = conn.execute("SELECT COUNT(*) AS c FROM scrape_runs").fetchone()["c"]
         enriched = conn.execute(
             "SELECT COUNT(*) AS c FROM listings WHERE detail_scraped = 1"
@@ -602,6 +658,8 @@ def db_stats(db_path: Path) -> dict[str, Any]:
         "exists": True,
         "path": str(db_path),
         "listings": listings,
+        "active_listings": active,
+        "archived_listings": archived,
         "runs": runs,
         "enriched": enriched,
         "with_phone": phones,

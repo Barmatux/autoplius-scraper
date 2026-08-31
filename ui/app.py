@@ -31,6 +31,7 @@ RUNS_PAGE_SIZE = 30
 SETTINGS = Settings.from_env()
 TAB_ALL = "all"
 TAB_NO_VOLUME = "no_volume"
+TAB_ARCHIVED = "archived"
 
 app = Flask(__name__)
 app.config["DATA_DIR"] = DEFAULT_DATA_DIR
@@ -209,7 +210,7 @@ def _passable_enabled() -> bool:
 
 def _current_tab() -> str:
     tab = (request.args.get("tab") or TAB_ALL).strip()
-    return tab if tab in {TAB_ALL, TAB_NO_VOLUME} else TAB_ALL
+    return tab if tab in {TAB_ALL, TAB_NO_VOLUME, TAB_ARCHIVED} else TAB_ALL
 
 
 def _fetch_index_listings(
@@ -229,6 +230,7 @@ def _fetch_index_listings(
         max_price=max_price,
         sort=sort,
         passable_only=passable,
+        listing_status="archived" if tab == TAB_ARCHIVED else "active",
     )
     if tab == TAB_NO_VOLUME:
         return fetch_listings(
@@ -314,7 +316,8 @@ def index():
         )
     )
 
-    total_in_db = len(fetch_listings(path))
+    total_in_db = int(stats.get("active_listings") or stats.get("listings") or 0)
+    archived_count = int(stats.get("archived_listings") or 0)
     total_filtered = len(filtered)
     pages = max(1, (total_filtered + PAGE_SIZE - 1) // PAGE_SIZE)
     page = min(page, pages)
@@ -325,6 +328,7 @@ def index():
         "index.html",
         listings=listings,
         total_in_db=total_in_db,
+        archived_count=archived_count,
         total_filtered=total_filtered,
         enriched_count=int(stats.get("enriched") or 0),
         with_phone=int(stats.get("with_phone") or 0),
@@ -360,11 +364,13 @@ def analytics():
         fetch_listings(path, engine_volume_missing=True, passable_only=False)
     )
 
+    stats = db_stats(path)
     return render_template(
         "analytics.html",
         runs=runs,
         analytics=scrape_runs_analytics(path),
-        db_stats=db_stats(path),
+        db_stats=stats,
+        archived_count=int(stats.get("archived_listings") or 0),
         total_runs=total_runs,
         page=page,
         pages=pages,

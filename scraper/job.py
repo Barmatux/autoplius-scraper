@@ -272,6 +272,7 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
     finished_at = datetime.now(timezone.utc)
     current_ids = {item["autoplius_id"] for item in listings}
     diff = diff_stats(current_ids, previous_ids)
+    removed_listing_ids = sorted(previous_ids - current_ids)
 
     payload: dict[str, Any] = {
         "mode": "test" if settings.test_mode else "prod",
@@ -289,6 +290,8 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
         "enrich_new_only": settings.enrich_new_only and incremental,
         "page_stats": page_stats,
         "diff_vs_previous": diff,
+        "removed_listing_ids": removed_listing_ids,
+        "archive_removed": settings.archive_removed_on_full_scrape,
         "listings": listings,
     }
 
@@ -297,7 +300,7 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
         data_dir=settings.data_dir,
         test_mode=settings.test_mode,
     )
-    run_id = save_payload_to_db(
+    run_id, archived_count = save_payload_to_db(
         settings.db_path,
         payload,
         snapshot_path=str(snapshot_path),
@@ -308,7 +311,7 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
 
     logger.info(
         "Done (%s): %s listings (%s new vs DB), details ok=%s fail=%s | "
-        "new=%s removed=%s unchanged=%s | db_run_id=%s | photos uploaded=%s",
+        "new=%s removed=%s unchanged=%s archived=%s | db_run_id=%s | photos uploaded=%s",
         payload["scrape_mode"],
         len(listings),
         len(new_previews),
@@ -317,6 +320,7 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
         diff["new"],
         diff["removed"],
         diff["unchanged"],
+        archived_count,
         run_id,
         photo_sync.get("uploaded", 0),
     )

@@ -70,6 +70,7 @@ class Settings:
     enrich_new_only: bool
     search_newest_first: bool
     full_scrape_interval_hours: int
+    archive_removed_on_full_scrape: bool
 
     @property
     def s3_enabled(self) -> bool:
@@ -112,4 +113,5 @@ class Settings:
             enrich_new_only=_env_bool("ENRICH_NEW_ONLY", True),
             search_newest_first=_env_bool("SEARCH_NEWEST_FIRST", True),
             full_scrape_interval_hours=_env_int("FULL_SCRAPE_INTERVAL_HOURS", 12),
+            archive_removed_on_full_scrape=_env_bool("ARCHIVE_REMOVED_ON_FULL_SCRAPE", True),
         )
