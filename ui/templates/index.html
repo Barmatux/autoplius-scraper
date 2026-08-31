@@ -173,16 +173,17 @@
         </thead>
         <tbody>
           {% for item in listings %}
-          {% set photos = item.photo_urls if item.photo_urls else ([item.photo_url] if item.photo_url else []) %}
+          {% set photos = item|listing_photos %}
+          {% set list_photos = photos.thumb if photos.thumb else photos.full %}
           <tr>
             <td class="photo">
-              {% if photos %}
-              <div class="list-gallery" data-list-gallery data-photos='{{ photos|tojson }}'>
-                <img data-list-photo src="{{ photos[0] }}" alt="" loading="lazy">
-                {% if photos|length > 1 %}
+              {% if list_photos %}
+              <div class="list-gallery" data-list-gallery data-photos='{{ list_photos|tojson }}'>
+                <img data-list-photo src="{{ list_photos[0] }}" alt="" loading="lazy">
+                {% if list_photos|length > 1 %}
                 <button type="button" class="list-photo-nav list-photo-prev" data-list-photo-prev aria-label="Предыдущее фото">‹</button>
                 <button type="button" class="list-photo-nav list-photo-next" data-list-photo-next aria-label="Следующее фото">›</button>
-                <div class="list-photo-counter" data-list-photo-counter>1/{{ photos|length }}</div>
+                <div class="list-photo-counter" data-list-photo-counter>1/{{ list_photos|length }}</div>
                 {% endif %}
               </div>
               {% else %}

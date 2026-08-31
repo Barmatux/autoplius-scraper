@@ -27,24 +27,23 @@
 
   <main class="detail-layout">
     <section class="detail-gallery">
-      {% set photos = item.photo_urls or ([item.photo_url] if item.photo_url else []) %}
-      {% if photos %}
+      {% if photos.full %}
         <div
           class="gallery"
           data-gallery
-          data-photos='{{ photos|tojson }}'
+          data-photos='{{ photos.full|tojson }}'
         >
           <div class="gallery-stage">
-            <button type="button" class="gallery-nav gallery-nav-prev" data-gallery-prev aria-label="Предыдущее фото"{% if photos|length < 2 %} hidden{% endif %}>‹</button>
-            <img class="hero" data-gallery-hero src="{{ photos[0] }}" alt="" role="button" tabindex="0">
-            <button type="button" class="gallery-nav gallery-nav-next" data-gallery-next aria-label="Следующее фото"{% if photos|length < 2 %} hidden{% endif %}>›</button>
-            {% if photos|length > 1 %}
-            <div class="gallery-counter" data-gallery-counter>1 / {{ photos|length }}</div>
+            <button type="button" class="gallery-nav gallery-nav-prev" data-gallery-prev aria-label="Предыдущее фото"{% if photos.full|length < 2 %} hidden{% endif %}>‹</button>
+            <img class="hero" data-gallery-hero src="{{ photos.full[0] }}" alt="" role="button" tabindex="0">
+            <button type="button" class="gallery-nav gallery-nav-next" data-gallery-next aria-label="Следующее фото"{% if photos.full|length < 2 %} hidden{% endif %}>›</button>
+            {% if photos.full|length > 1 %}
+            <div class="gallery-counter" data-gallery-counter>1 / {{ photos.full|length }}</div>
             {% endif %}
           </div>
-          {% if photos|length > 1 %}
+          {% if photos.full|length > 1 %}
           <div class="thumbs">
-            {% for src in photos %}
+            {% for src in photos.thumb %}
             <button type="button" class="thumb-btn{% if loop.first %} is-active{% endif %}" data-gallery-thumb="{{ loop.index0 }}">
               <img src="{{ src }}" alt="" loading="lazy">
             </button>
@@ -70,7 +69,7 @@
         <div><dt>Город</dt><dd>{{ item.city or '—' }}</dd></div>
         <div><dt>VIN</dt><dd class="mono">{{ item.vin_masked or '—' }}</dd></div>
         <div><dt>Телефон</dt><dd>{% if item.phone %}<a href="tel:{{ item.phone|replace(' ', '') }}">{{ item.phone }}</a>{% else %}—{% endif %}</dd></div>
-        <div><dt>Фото</dt><dd>{{ photos|length }}</dd></div>
+        <div><dt>Фото</dt><dd>{{ photos.full|length if photos.full else 0 }}</dd></div>
         <div><dt>В БД с</dt><dd>{{ item.first_seen_at or '—' }}</dd></div>
         <div><dt>Обновлено</dt><dd>{{ item.last_seen_at or '—' }}</dd></div>
         <div><dt>URL</dt><dd><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.url }}</a></dd></div>
@@ -100,15 +99,15 @@
     </section>
   </main>
 
-  {% if photos %}
+  {% if photos.full %}
   <div class="lightbox" data-lightbox hidden>
     <div class="lightbox-backdrop" data-lightbox-backdrop></div>
     <button type="button" class="lightbox-close" data-lightbox-close aria-label="Закрыть">×</button>
-    <button type="button" class="lightbox-nav lightbox-nav-prev" data-lightbox-prev aria-label="Предыдущее фото"{% if photos|length < 2 %} hidden{% endif %}>‹</button>
-    <img class="lightbox-img" data-lightbox-img src="{{ photos[0] }}" alt="">
-    <button type="button" class="lightbox-nav lightbox-nav-next" data-lightbox-next aria-label="Следующее фото"{% if photos|length < 2 %} hidden{% endif %}>›</button>
-    {% if photos|length > 1 %}
-    <div class="lightbox-counter" data-lightbox-counter>1 / {{ photos|length }}</div>
+    <button type="button" class="lightbox-nav lightbox-nav-prev" data-lightbox-prev aria-label="Предыдущее фото"{% if photos.full|length < 2 %} hidden{% endif %}>‹</button>
+    <img class="lightbox-img" data-lightbox-img src="{{ photos.full[0] }}" alt="">
+    <button type="button" class="lightbox-nav lightbox-nav-next" data-lightbox-next aria-label="Следующее фото"{% if photos.full|length < 2 %} hidden{% endif %}>›</button>
+    {% if photos.full|length > 1 %}
+    <div class="lightbox-counter" data-lightbox-counter>1 / {{ photos.full|length }}</div>
     {% endif %}
   </div>
   <script src="{{ url_for('static', filename='gallery.js') }}" defer></script>

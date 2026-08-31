@@ -19,6 +19,8 @@ from scraper.s3_storage import (
     storage_key_from_media_url,
 )
 
+from autoplius.photo_urls import best_photo_url, normalize_photo_list
+
 try:
     from autoplius.urls import get_base_url
 except ImportError:
@@ -30,14 +32,15 @@ logger = logging.getLogger(__name__)
 def _collect_source_urls(item: dict[str, Any]) -> list[str]:
     urls: list[str] = []
     seen: set[str] = set()
-    for raw in item.get("photo_urls") or []:
-        if not raw or raw in seen:
+    for raw in normalize_photo_list(item.get("photo_urls") or []):
+        full = best_photo_url(raw) or raw
+        if not full or full in seen:
             continue
-        if is_media_url(raw):
+        if is_media_url(full):
             continue
-        seen.add(raw)
-        urls.append(raw)
-    photo_url = item.get("photo_url")
+        seen.add(full)
+        urls.append(full)
+    photo_url = best_photo_url(item.get("photo_url")) or item.get("photo_url")
     if photo_url and not is_media_url(photo_url) and photo_url not in seen:
         urls.insert(0, photo_url)
     return urls

@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 
 from autoplius.models import ListingDetail
 from autoplius.parse_price import parse_listing_prices, parse_price_amount
+from autoplius.photo_urls import best_photo_url, normalize_photo_list, photo_asset_key
 from autoplius.urls import extract_listing_id, normalize_listing_url
 from typing import Any
 
@@ -77,26 +78,75 @@ def _parse_vin_masked(soup: BeautifulSoup) -> str | None:
     return None
 
 
-def _parse_photos(soup: BeautifulSoup) -> list[str]:
-    urls: list[str] = []
-    seen: set[str] = set()
-    for img in soup.select(
-        ".announcement-gallery img, .gallery img, .announcement-photos img, picture source[srcset]"
-    ):
-        src = img.get("src") or img.get("data-src") or img.get("srcset") or ""
-        src = src.split()[0] if src and " " in src else src
-        if "autoplius-img" not in src or src in seen:
+def _photo_from_attrs(element) -> str | None:
+    for attr in ("data-big", "data-src", "src", "content"):
+        raw = element.get(attr)
+        if not raw or "autoplius-img" not in raw:
             continue
-        seen.add(src)
-        urls.append(src)
+        return best_photo_url(raw.split()[0])
+    if element.name == "source":
+        for attr in ("data-big", "data-srcset", "srcset"):
+            raw = element.get(attr)
+            if not raw or "autoplius-img" not in raw:
+                continue
+            return best_photo_url(raw.split()[0])
+    return None
 
-    if not urls:
-        for meta in soup.find_all("meta", property="og:image"):
-            src = meta.get("content") or ""
-            if "autoplius-img" in src and src not in seen:
-                seen.add(src)
-                urls.append(src)
-    return urls
+
+def _register_photo(
+    bucket: dict[str, tuple[int, str]],
+    url: str | None,
+    *,
+    sort_index: int,
+) -> None:
+    if not url:
+        return
+    key = photo_asset_key(url)
+    existing = bucket.get(key)
+    if existing is None or sort_index < existing[0]:
+        bucket[key] = (sort_index, url)
+
+
+def _parse_photos(soup: BeautifulSoup) -> list[str]:
+    photos: dict[str, tuple[int, str]] = {}
+
+    for slide in soup.select(".announcement-gallery-carousel__slide"):
+        sort_index = len(photos)
+        if slide.get("data-index", "").isdigit():
+            sort_index = int(slide["data-index"])
+        url = None
+        for element in slide.select("[data-big], img, source"):
+            url = _photo_from_attrs(element)
+            if url:
+                break
+        _register_photo(photos, url, sort_index=sort_index)
+
+    for picture in soup.select(
+        ".announcement-gallery-container picture, "
+        ".announcement-gallery picture, "
+        ".announcement-photos picture"
+    ):
+        sort_index = len(photos)
+        url = None
+        for element in picture.select("[data-big], source, img"):
+            url = _photo_from_attrs(element)
+            if url:
+                break
+        _register_photo(photos, url, sort_index=sort_index)
+
+    for meta in soup.find_all("meta", property="og:image"):
+        url = _photo_from_attrs(meta)
+        _register_photo(photos, url, sort_index=len(photos))
+
+    if not photos:
+        for img in soup.select(
+            ".announcement-gallery img, .gallery img, .announcement-photos img"
+        ):
+            url = _photo_from_attrs(img)
+            _register_photo(photos, url, sort_index=len(photos))
+
+    ordered = [url for _, url in sorted(photos.values(), key=lambda item: item[0])]
+    return normalize_photo_list(ordered)
 
 
 def _parse_phone(soup: BeautifulSoup) -> str | None:

@@ -104,7 +104,7 @@ class Settings:
             s3_bucket=os.environ.get("S3_BUCKET", "autoplius-media").strip(),
             s3_region=os.environ.get("S3_REGION", "us-east-1").strip(),
             sync_photos_after_scrape=_env_bool("SYNC_PHOTOS_AFTER_SCRAPE", True),
-            sync_photos_timeout_sec=_env_int("SYNC_PHOTOS_TIMEOUT_SEC", 25),
+            sync_photos_timeout_sec=_env_int("SYNC_PHOTOS_TIMEOUT_SEC", 45),
             autoplius_base_url=os.environ.get("AUTOPLIUS_BASE_URL", "https://ru.autoplius.lt").strip().rstrip("/"),
             translate_descriptions=_env_bool("TRANSLATE_DESCRIPTIONS", True),
             translate_delay_sec=_env_float("TRANSLATE_DELAY_SEC", 0.5),

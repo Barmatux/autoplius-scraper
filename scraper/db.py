@@ -11,6 +11,7 @@ from autoplius.engine_volume import engine_volume_liters
 from autoplius.passable_age import is_older_than_years, is_passable_age
 from autoplius.catalog_filters import is_catalog_visible
 from autoplius.localize import localize_listing
+from autoplius.photo_urls import normalize_photo_list
 from scraper.listing_sync import (
     LISTING_STATUS_ACTIVE,
     LISTING_STATUS_ARCHIVED,
@@ -509,7 +510,7 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         "phone": row["phone"],
         "vin_masked": row["vin_masked"],
         "parameters": json.loads(row["parameters_json"] or "{}"),
-        "photo_urls": json.loads(row["photo_urls_json"] or "[]"),
+        "photo_urls": normalize_photo_list(json.loads(row["photo_urls_json"] or "[]")),
         "detail_scraped": bool(row["detail_scraped"]),
         "detail_error": row["detail_error"],
         "status": row["status"] if "status" in row.keys() else LISTING_STATUS_ACTIVE,
@@ -518,7 +519,12 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         "last_seen_at": row["last_seen_at"],
         "last_run_id": row["last_run_id"],
     }
-    return localize_listing(listing)
+    listing = localize_listing(listing)
+    photos = listing.get("photo_urls") or []
+    listing["photo_urls"] = photos
+    if photos:
+        listing["photo_url"] = photos[0]
+    return listing
 
 
 def fetch_listings(

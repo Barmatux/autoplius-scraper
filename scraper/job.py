@@ -20,6 +20,7 @@ from autoplius.parse_listing import parse_listing_html
 from autoplius.parse_search import parse_search_html
 from autoplius.labels import promote_parameters
 from autoplius.localize import localize_listing
+from autoplius.photo_urls import normalize_photo_list
 from autoplius.search_query import SearchQuery
 from autoplius.translate import translate_to_russian
 from autoplius.urls import build_search_url, configure_base_url
@@ -66,6 +67,7 @@ def merge_preview_and_detail(
         row["vin_masked"] = detail.get("vin_masked")
         row["parameters"] = detail.get("parameters") or {}
         row["photo_urls"] = detail.get("photo_urls") or []
+        row["photo_urls"] = normalize_photo_list(row["photo_urls"])
         if row["photo_urls"] and not row.get("photo_url"):
             row["photo_url"] = row["photo_urls"][0]
         params = row["parameters"]

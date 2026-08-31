@@ -24,6 +24,7 @@ from scraper.s3_storage import get_s3_client
 from autoplius.cities_lt import distance_from_vilnius_label, google_maps_url
 from autoplius.translate import is_translation_error
 from autoplius.engine_volume import engine_volume_from_listing
+from autoplius.photo_urls import listing_photo_sets, normalize_photo_list, thumb_photo_url
 from autoplius.price_display import price_lt_lines
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
@@ -49,6 +50,24 @@ def _parse_iso_datetime(value: str | None) -> datetime | None:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+@app.template_filter("photo_full_list")
+def photo_full_list_filter(urls: list[str] | None) -> list[str]:
+    return normalize_photo_list(urls or [])
+
+
+@app.template_filter("photo_thumb_list")
+def photo_thumb_list_filter(urls: list[str] | None) -> list[str]:
+    return [url for url in (thumb_photo_url(item) for item in normalize_photo_list(urls or [])) if url]
+
+
+@app.template_filter("listing_photos")
+def listing_photos_filter(item: dict[str, Any]) -> dict[str, Any]:
+    urls = item.get("photo_urls") or []
+    if not urls and item.get("photo_url"):
+        urls = [item["photo_url"]]
+    return listing_photo_sets(urls)
 
 
 @app.template_filter("format_datetime")
@@ -495,7 +514,13 @@ def listing_detail(listing_id: int):
     item = fetch_listing(require_db(), listing_id)
     if item is None:
         abort(404, "listing not found in database")
-    return render_template("detail.html", item=item, display_description=display_description)
+    photos = item|listing_photos_filter
+    return render_template(
+        "detail.html",
+        item=item,
+        photos=photos,
+        display_description=display_description,
+    )
 
 
 @app.get("/api/listings")
