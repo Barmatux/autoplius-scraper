@@ -17,6 +17,7 @@ from scraper.db import (
     fetch_listing,
     fetch_listings,
     fetch_scrape_runs,
+    init_db,
     scrape_runs_analytics,
 )
 from scraper.s3_storage import get_s3_client
@@ -186,6 +187,7 @@ def require_db() -> Path:
     path = db_path()
     if not path.is_file():
         abort(503, "SQLite database not found. Run import_to_db.py first.")
+    init_db(path)
     return path
 
 
