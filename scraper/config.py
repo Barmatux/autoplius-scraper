@@ -55,6 +55,15 @@ class Settings:
     auto_captcha: bool
     headless: bool
     timeout_sec: float
+    s3_endpoint_url: str
+    s3_access_key: str
+    s3_secret_key: str
+    s3_bucket: str
+    s3_region: str
+
+    @property
+    def s3_enabled(self) -> bool:
+        return bool(self.s3_endpoint_url and self.s3_access_key and self.s3_secret_key)
 
     @classmethod
     def from_env(cls, *, root: Path | None = None) -> Settings:
@@ -78,4 +87,9 @@ class Settings:
             auto_captcha=_env_bool("AUTO_CAPTCHA", True),
             headless=_env_bool("HEADLESS", True),
             timeout_sec=_env_float("SCRAPE_TIMEOUT_SEC", 180.0),
+            s3_endpoint_url=os.environ.get("S3_ENDPOINT_URL", "").strip(),
+            s3_access_key=os.environ.get("S3_ACCESS_KEY", "").strip(),
+            s3_secret_key=os.environ.get("S3_SECRET_KEY", "").strip(),
+            s3_bucket=os.environ.get("S3_BUCKET", "autoplius-media").strip(),
+            s3_region=os.environ.get("S3_REGION", "us-east-1").strip(),
         )

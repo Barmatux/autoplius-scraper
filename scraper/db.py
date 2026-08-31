@@ -425,6 +425,40 @@ def fetch_listing(db_path: Path, listing_id: int) -> dict[str, Any] | None:
         return row_to_listing(row) if row else None
 
 
+def fetch_all_listings(db_path: Path) -> list[dict[str, Any]]:
+    if not db_path.is_file():
+        return []
+    with connect(db_path) as conn:
+        rows = conn.execute("SELECT * FROM listings ORDER BY autoplius_id ASC").fetchall()
+        return [row_to_listing(r) for r in rows]
+
+
+def update_listing_photos(
+    db_path: Path,
+    listing_id: int,
+    *,
+    photo_url: str | None,
+    photo_urls: list[str],
+) -> None:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE listings SET
+                photo_url = ?,
+                photo_urls_json = ?,
+                updated_at = ?
+            WHERE autoplius_id = ?
+            """,
+            (
+                photo_url,
+                json.dumps(photo_urls, ensure_ascii=False),
+                _utc_now(),
+                listing_id,
+            ),
+        )
+
+
 def db_stats(db_path: Path) -> dict[str, Any]:
     if not db_path.is_file():
         return {"exists": False}

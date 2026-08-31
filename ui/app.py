@@ -4,13 +4,17 @@ import os
 from pathlib import Path
 from typing import Any
 
+from botocore.exceptions import BotoCoreError, ClientError
 from flask import Flask, abort, jsonify, render_template, request, Response
 
+from scraper.config import Settings
 from scraper.db import db_stats, default_db_path, fetch_listing, fetch_listings
+from scraper.s3_storage import get_s3_client
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
 PAGE_SIZE = 50
+SETTINGS = Settings.from_env()
 
 app = Flask(__name__)
 app.config["DATA_DIR"] = DEFAULT_DATA_DIR
@@ -53,6 +57,27 @@ def thumb_url(item: dict[str, Any]) -> str | None:
         return item["photo_url"]
     photos = item.get("photo_urls") or []
     return photos[0] if photos else None
+
+
+@app.get("/media/object")
+def media_object():
+    key = request.args.get("key", "").strip()
+    if not key or ".." in key or key.startswith("/"):
+        abort(400, "Invalid object key")
+    if not SETTINGS.s3_enabled:
+        abort(503, "S3 storage is not configured")
+
+    try:
+        response = get_s3_client(SETTINGS).get_object(Bucket=SETTINGS.s3_bucket, Key=key)
+    except (ClientError, BotoCoreError):
+        abort(404, "Object not found")
+
+    body = response.get("Body")
+    if body is None:
+        abort(404, "Object body missing")
+    content_type = response.get("ContentType") or "application/octet-stream"
+    data = body.read()
+    return Response(data, mimetype=content_type)
 
 
 @app.get("/")
