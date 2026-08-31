@@ -106,7 +106,8 @@
           <tr>
             <th class="photo-col"></th>
             {{ sort_th('Авто', 'title_asc', 'title_desc', 'title_asc') }}
-            {{ sort_th('Цена', 'price_asc', 'price_desc', 'price_asc') }}
+            {{ sort_th('Цена в LT, €', 'price_asc', 'price_desc', 'price_asc') }}
+            <th class="price-rb-col">Цена в РБ, $</th>
             {{ sort_th('Год', 'year_asc', 'year_desc', 'year_desc') }}
             {{ sort_th('Пробег', 'mileage_asc', 'mileage_desc', 'mileage_asc') }}
             <th>КПП / Топливо</th>
@@ -138,6 +139,7 @@
               {% endif %}
             </td>
             <td class="num">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</td>
+            <td class="num">{{ item|price_rb_usd }}</td>
             <td>{{ item.year or '—' }}</td>
             <td class="num">{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</td>
             <td>

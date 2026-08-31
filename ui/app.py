@@ -14,6 +14,7 @@ from scraper.db import db_stats, default_db_path, fetch_listing, fetch_listings
 from scraper.s3_storage import get_s3_client
 from autoplius.translate import is_translation_error
 from autoplius.engine_volume import engine_volume_from_listing
+from autoplius.price_rb import estimate_price_rb_usd
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
@@ -63,6 +64,14 @@ def format_time(value: str | None) -> str:
 @app.template_filter("engine_volume")
 def engine_volume(item: dict[str, Any]) -> str:
     return engine_volume_from_listing(item) or "—"
+
+
+@app.template_filter("price_rb_usd")
+def price_rb_usd(item: dict[str, Any]) -> str:
+    amount = estimate_price_rb_usd(item.get("price_eur"), item=item)
+    if amount is None:
+        return "—"
+    return f"{amount:,}".replace(",", " ") + " $"
 
 
 _LISTING_ID_SUFFIX_RE = re.compile(r"\s*\|\s*A?\d+\s*$")
