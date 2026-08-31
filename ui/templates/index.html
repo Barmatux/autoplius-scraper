@@ -112,7 +112,6 @@
             <th>КПП / Топливо</th>
             <th>Объем двигателя</th>
             <th>Город</th>
-            <th>Фото/парам.</th>
             {{ sort_th('Дата добавления', 'added_asc', 'added_desc', 'added_desc') }}
           </tr>
         </thead>
@@ -147,11 +146,6 @@
             </td>
             <td class="num">{{ item|engine_volume }}</td>
             <td>{{ item.city or '—' }}</td>
-            <td class="num">
-              {{ (item.photo_urls|length) if item.photo_urls else (1 if thumb else 0) }}
-              /
-              {{ (item.parameters|length) if item.parameters else 0 }}
-            </td>
             <td class="num">{{ item.first_seen_at|format_datetime }}</td>
           </tr>
           {% endfor %}
