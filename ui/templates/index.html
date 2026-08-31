@@ -129,13 +129,14 @@
             </td>
             <td>
               <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">
-                {{ item.title or item.autoplius_id }}
+                {{ item.title|listing_title }}
               </a>
+              {% if item.body_type or item.engine %}
               <div class="muted">
-                #{{ item.autoplius_id }}
-                {% if item.body_type %} · {{ item.body_type }}{% endif %}
-                {% if item.engine %} · {{ item.engine }}{% endif %}
+                {% if item.body_type %}{{ item.body_type }}{% endif %}
+                {% if item.engine %}{% if item.body_type %} · {% endif %}{{ item.engine }}{% endif %}
               </div>
+              {% endif %}
             </td>
             <td class="num">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</td>
             <td>{{ item.year or '—' }}</td>

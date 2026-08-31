@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -40,6 +41,17 @@ def format_datetime(value: str | None) -> str:
 @app.template_filter("engine_volume")
 def engine_volume(item: dict[str, Any]) -> str:
     return engine_volume_from_listing(item) or "—"
+
+
+_LISTING_ID_SUFFIX_RE = re.compile(r"\s*\|\s*A?\d+\s*$")
+
+
+@app.template_filter("listing_title")
+def listing_title(value: str | None) -> str:
+    if not value:
+        return "—"
+    cleaned = _LISTING_ID_SUFFIX_RE.sub("", value).strip().rstrip(",").strip()
+    return cleaned or value.strip()
 
 
 def _check_basic_auth() -> bool:
