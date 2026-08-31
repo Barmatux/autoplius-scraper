@@ -656,6 +656,7 @@ def _row_to_scrape_run(row: sqlite3.Row) -> dict[str, Any]:
 def count_scrape_runs(db_path: Path) -> int:
     if not db_path.is_file():
         return 0
+    init_db(db_path)
     with connect(db_path) as conn:
         return int(conn.execute("SELECT COUNT(*) FROM scrape_runs").fetchone()[0])
 
@@ -668,6 +669,7 @@ def fetch_scrape_runs(
 ) -> list[dict[str, Any]]:
     if not db_path.is_file():
         return []
+    init_db(db_path)
     with connect(db_path) as conn:
         rows = conn.execute(
             """
@@ -690,6 +692,7 @@ def scrape_runs_analytics(db_path: Path, *, recent_limit: int = 24) -> dict[str,
     if not db_path.is_file():
         return {"exists": False}
 
+    init_db(db_path)
     with connect(db_path) as conn:
         totals = conn.execute(
             """
