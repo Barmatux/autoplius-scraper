@@ -276,6 +276,18 @@ a:hover {
   white-space: nowrap;
 }
 
+.date-added {
+  white-space: nowrap;
+  width: 1%;
+  line-height: 1.25;
+}
+
+.date-added-time {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .mono {
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
   font-size: 0.82rem;

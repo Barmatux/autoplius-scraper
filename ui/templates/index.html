@@ -146,7 +146,14 @@
             </td>
             <td class="num">{{ item|engine_volume }}</td>
             <td>{{ item.city or '—' }}</td>
-            <td class="num">{{ item.first_seen_at|format_datetime }}</td>
+            <td class="num date-added">
+              {% if item.first_seen_at %}
+              <div>{{ item.first_seen_at|format_date }}</div>
+              <div class="date-added-time">{{ item.first_seen_at|format_time }}</div>
+              {% else %}
+              —
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>

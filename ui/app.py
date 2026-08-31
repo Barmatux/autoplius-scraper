@@ -27,15 +27,37 @@ app.config["DATA_DIR"] = DEFAULT_DATA_DIR
 app.config["DB_PATH"] = Path(os.environ.get("DB_PATH", default_db_path(DEFAULT_DATA_DIR)))
 
 
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 @app.template_filter("format_datetime")
 def format_datetime(value: str | None) -> str:
-    if not value:
-        return "—"
-    try:
-        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return dt.strftime("%d.%m.%Y %H:%M")
-    except ValueError:
-        return value[:16].replace("T", " ")
+    dt = _parse_iso_datetime(value)
+    if dt is None:
+        return "—" if not value else value[:16].replace("T", " ")
+    return dt.strftime("%d.%m.%Y %H:%M")
+
+
+@app.template_filter("format_date")
+def format_date(value: str | None) -> str:
+    dt = _parse_iso_datetime(value)
+    if dt is None:
+        return "—" if not value else value[:10]
+    return dt.strftime("%d.%m.%Y")
+
+
+@app.template_filter("format_time")
+def format_time(value: str | None) -> str:
+    dt = _parse_iso_datetime(value)
+    if dt is None:
+        return ""
+    return dt.strftime("%H:%M")
 
 
 @app.template_filter("engine_volume")
