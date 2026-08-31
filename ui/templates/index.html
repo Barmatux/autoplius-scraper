@@ -6,7 +6,7 @@
   <title>Autoplius Scraper</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-{% macro sort_th(label, asc, desc, default) %}
+{% macro sort_th(label, asc, desc, default, col_class='') %}
 {% if sort == desc %}
   {% set next_sort = asc %}
 {% elif sort == asc %}
@@ -14,7 +14,7 @@
 {% else %}
   {% set next_sort = default %}
 {% endif %}
-<th class="sortable{% if sort in (asc, desc) %} active{% endif %}">
+<th class="sortable{% if sort in (asc, desc) %} active{% endif %}{% if col_class %} {{ col_class }}{% endif %}">
   <a
     href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=next_sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', tab=tab, page=1) }}"
     class="sort-link"
@@ -101,19 +101,31 @@
     <p class="empty">Нет объявлений в базе по фильтру.</p>
     {% else %}
     <div class="table-wrap">
-      <table>
+      <table class="listings-table">
+        <colgroup>
+          <col class="col-photo">
+          <col class="col-auto">
+          <col class="col-price-lt">
+          <col class="col-price-rb">
+          <col class="col-year">
+          <col class="col-mileage">
+          <col class="col-gear">
+          <col class="col-engine">
+          <col class="col-city">
+          <col class="col-date">
+        </colgroup>
         <thead>
           <tr>
             <th class="photo-col"></th>
-            {{ sort_th('Авто', 'title_asc', 'title_desc', 'title_asc') }}
-            {{ sort_th('Цена в LT, €', 'price_asc', 'price_desc', 'price_asc') }}
-            <th class="price-rb-col">Цена в РБ, $</th>
-            {{ sort_th('Год', 'year_asc', 'year_desc', 'year_desc') }}
-            {{ sort_th('Пробег', 'mileage_asc', 'mileage_desc', 'mileage_asc') }}
-            <th>КПП / Топливо</th>
-            <th>Объем двигателя</th>
-            <th>Город</th>
-            {{ sort_th('Дата добавления', 'added_asc', 'added_desc', 'added_desc') }}
+            {{ sort_th('Авто', 'title_asc', 'title_desc', 'title_asc', 'col-auto') }}
+            {{ sort_th('Цена в LT, €', 'price_asc', 'price_desc', 'price_asc', 'col-price-lt th-compact') }}
+            <th class="col-price-rb th-compact">Цена в РБ, $</th>
+            {{ sort_th('Год', 'year_asc', 'year_desc', 'year_desc', 'col-year') }}
+            {{ sort_th('Пробег', 'mileage_asc', 'mileage_desc', 'mileage_asc', 'col-mileage') }}
+            <th class="col-gear">КПП / Топливо</th>
+            <th class="col-engine th-compact">Объём двигателя</th>
+            <th class="col-city">Город</th>
+            {{ sort_th('Дата добавления', 'added_asc', 'added_desc', 'added_desc', 'col-date th-compact') }}
           </tr>
         </thead>
         <tbody>
@@ -127,7 +139,7 @@
               <div class="photo-empty"></div>
               {% endif %}
             </td>
-            <td>
+            <td class="col-auto">
               <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">
                 {{ item.title|listing_title }}
               </a>
@@ -138,17 +150,17 @@
               </div>
               {% endif %}
             </td>
-            <td class="num">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</td>
-            <td class="num">{{ item|price_rb_usd }}</td>
-            <td>{{ item.year or '—' }}</td>
-            <td class="num">{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</td>
-            <td>
+            <td class="num col-price-lt">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</td>
+            <td class="num col-price-rb">{{ item|price_rb_usd }}</td>
+            <td class="col-year">{{ item.year or '—' }}</td>
+            <td class="num col-mileage">{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</td>
+            <td class="col-gear">
               <div>{{ item.transmission or '—' }}</div>
               <div class="muted">{{ item.fuel or '—' }}</div>
             </td>
-            <td class="num">{{ item|engine_volume }}</td>
-            <td>{{ item.city or '—' }}</td>
-            <td class="num date-added">
+            <td class="num col-engine">{{ item|engine_volume }}</td>
+            <td class="col-city">{{ item.city or '—' }}</td>
+            <td class="num date-added col-date">
               {% if item.first_seen_at %}
               <div>{{ item.first_seen_at|format_date }}</div>
               <div class="date-added-time">{{ item.first_seen_at|format_time }}</div>

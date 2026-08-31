@@ -70,7 +70,7 @@ body {
 }
 
 main {
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 1.25rem 1.25rem 3rem;
 }
@@ -164,36 +164,48 @@ main {
 }
 
 .table-wrap {
-  overflow: auto;
+  overflow-x: auto;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: var(--shadow);
 }
 
-table {
+.listings-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 920px;
+  min-width: 1240px;
   table-layout: fixed;
 }
+
+.listings-table col.col-photo { width: 112px; }
+.listings-table col.col-auto { width: 24%; }
+.listings-table col.col-price-lt { width: 96px; }
+.listings-table col.col-price-rb { width: 96px; }
+.listings-table col.col-year { width: 84px; }
+.listings-table col.col-mileage { width: 104px; }
+.listings-table col.col-gear { width: 128px; }
+.listings-table col.col-engine { width: 88px; }
+.listings-table col.col-city { width: 88px; }
+.listings-table col.col-date { width: 92px; }
 
 tbody tr {
   height: 1px;
 }
 
 th, td {
-  padding: 0.7rem 0.8rem;
+  padding: 0.65rem 0.7rem;
   text-align: left;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
+  overflow: hidden;
 }
 
 th.photo-col,
 td.photo {
-  width: 180px;
-  min-width: 180px;
-  max-width: 180px;
+  width: 112px;
+  min-width: 112px;
+  max-width: 112px;
   padding: 0;
   height: 100%;
   position: relative;
@@ -201,13 +213,23 @@ td.photo {
 }
 
 th {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--muted);
   background: #faf7f0;
   position: sticky;
   top: 0;
+  z-index: 1;
+  line-height: 1.25;
+  white-space: normal;
+  hyphens: auto;
+}
+
+th.th-compact {
+  font-size: 0.68rem;
+  padding-left: 0.55rem;
+  padding-right: 0.55rem;
 }
 
 th.sortable .sort-link {
@@ -215,8 +237,10 @@ th.sortable .sort-link {
   font-weight: inherit;
   text-decoration: none;
   display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
+  align-items: flex-start;
+  gap: 0.2rem;
+  max-width: 100%;
+  line-height: 1.25;
 }
 
 th.sortable .sort-link:hover {
@@ -276,9 +300,37 @@ a:hover {
   white-space: nowrap;
 }
 
-.date-added {
+.col-auto {
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.col-auto a {
+  display: inline-block;
+  max-width: 100%;
+  line-height: 1.35;
+}
+
+.col-price-lt,
+.col-price-rb,
+.col-year,
+.col-mileage,
+.col-engine,
+.col-date {
   white-space: nowrap;
-  width: 1%;
+}
+
+.col-price-rb {
+  color: #1a4d8c;
+  font-weight: 600;
+}
+
+.col-gear {
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.date-added {
   line-height: 1.25;
 }
 
@@ -286,11 +338,6 @@ a:hover {
   font-size: 0.78rem;
   color: var(--muted);
   font-weight: 500;
-}
-
-th.price-rb-col {
-  white-space: nowrap;
-  width: 1%;
 }
 
 .mono {
