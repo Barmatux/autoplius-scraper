@@ -100,6 +100,13 @@ def connect(db_path: Path) -> Iterator[sqlite3.Connection]:
 def init_db(db_path: Path) -> None:
     with connect(db_path) as conn:
         conn.executescript(SCHEMA)
+        _ensure_columns(conn)
+
+
+def _ensure_columns(conn: sqlite3.Connection) -> None:
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(listings)")}
+    if "description_ru" not in cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN description_ru TEXT")
 
 
 def _is_minio_photo_url(url: str | None) -> bool:
@@ -138,6 +145,7 @@ def _listing_row(item: dict[str, Any], *, run_id: int | None, seen_at: str) -> d
         "photo_url": item.get("photo_url"),
         "has_vin_badge": 1 if item.get("has_vin_badge") else 0,
         "description": item.get("description"),
+        "description_ru": item.get("description_ru"),
         "phone": item.get("phone"),
         "vin_masked": item.get("vin_masked"),
         "parameters_json": json.dumps(item.get("parameters") or {}, ensure_ascii=False),
@@ -218,13 +226,13 @@ def save_payload_to_db(
                     INSERT INTO listings (
                         autoplius_id, url, title, year, body_type, price_eur, fuel,
                         transmission, engine, mileage_km, city, photo_url, has_vin_badge,
-                        description, phone, vin_masked, parameters_json, photo_urls_json,
+                        description, description_ru, phone, vin_masked, parameters_json, photo_urls_json,
                         detail_scraped, detail_error, first_seen_at, last_seen_at,
                         last_run_id, updated_at
                     ) VALUES (
                         :autoplius_id, :url, :title, :year, :body_type, :price_eur, :fuel,
                         :transmission, :engine, :mileage_km, :city, :photo_url, :has_vin_badge,
-                        :description, :phone, :vin_masked, :parameters_json, :photo_urls_json,
+                        :description, :description_ru, :phone, :vin_masked, :parameters_json, :photo_urls_json,
                         :detail_scraped, :detail_error, :seen_at, :seen_at,
                         :last_run_id, :updated_at
                     )
@@ -273,6 +281,7 @@ def save_payload_to_db(
                             photo_url = :photo_url,
                             has_vin_badge = :has_vin_badge,
                             description = :description,
+                            description_ru = :description_ru,
                             phone = :phone,
                             vin_masked = :vin_masked,
                             parameters_json = :parameters_json,
@@ -370,6 +379,7 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         "photo_url": row["photo_url"],
         "has_vin_badge": bool(row["has_vin_badge"]),
         "description": row["description"],
+        "description_ru": row["description_ru"],
         "phone": row["phone"],
         "vin_masked": row["vin_masked"],
         "parameters": json.loads(row["parameters_json"] or "{}"),
@@ -414,11 +424,12 @@ def fetch_listings(
                 OR lower(COALESCE(phone,'')) LIKE ?
                 OR lower(COALESCE(vin_masked,'')) LIKE ?
                 OR lower(COALESCE(description,'')) LIKE ?
+                OR lower(COALESCE(description_ru,'')) LIKE ?
                 OR lower(COALESCE(parameters_json,'')) LIKE ?
                 OR CAST(autoplius_id AS TEXT) LIKE ?
             )"""
         )
-        params.extend([like] * 8)
+        params.extend([like] * 9)
 
     order_sql = {
         "price_asc": "CASE WHEN price_eur IS NULL THEN 1 ELSE 0 END, price_eur ASC",

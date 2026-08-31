@@ -18,7 +18,9 @@ from autoplius.captcha import CaptchaError, get_balance
 from autoplius.models import SearchListingPreview
 from autoplius.parse_listing import parse_listing_html
 from autoplius.parse_search import parse_search_html
-from autoplius.urls import build_search_url
+from autoplius.labels import promote_parameters
+from autoplius.translate import translate_to_russian
+from autoplius.urls import build_search_url, configure_base_url
 
 from scraper.config import Settings
 from scraper.db import save_payload_to_db
@@ -40,6 +42,7 @@ def merge_preview_and_detail(
     *,
     detail: dict[str, Any] | None = None,
     error: str | None = None,
+    settings: Settings | None = None,
 ) -> dict[str, Any]:
     row = preview.to_dict()
     if detail:
@@ -55,24 +58,20 @@ def merge_preview_and_detail(
         row["photo_urls"] = detail.get("photo_urls") or []
         if row["photo_urls"] and not row.get("photo_url"):
             row["photo_url"] = row["photo_urls"][0]
-        # Promote common parameters into top-level fields when search missed them.
         params = row["parameters"]
-        mapping = {
-            "Pirma registracija": "year",
-            "Kuro tipas": "fuel",
-            "Pavarų dėžė": "transmission",
-            "Kėbulo tipas": "body_type",
-        }
-        for src, dst in mapping.items():
-            if not row.get(dst) and params.get(src):
-                row[dst] = params[src]
-        if not row.get("mileage_km") and params.get("Rida"):
-            digits = "".join(ch for ch in params["Rida"] if ch.isdigit())
-            row["mileage_km"] = int(digits) if digits else row.get("mileage_km")
+        promote_parameters(row, params)
+        original_description = row.get("description")
+        if settings and original_description:
+            row["description_ru"] = translate_to_russian(
+                original_description,
+                enabled=settings.translate_descriptions,
+                min_delay_sec=settings.translate_delay_sec,
+            )
         row["detail_scraped"] = True
         row["detail_error"] = None
     else:
         row.setdefault("description", None)
+        row.setdefault("description_ru", None)
         row.setdefault("phone", None)
         row.setdefault("vin_masked", None)
         row.setdefault("parameters", {})
@@ -85,6 +84,7 @@ def merge_preview_and_detail(
 def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
     started_at = datetime.now(timezone.utc)
     previous_ids = load_latest_ids(settings.data_dir)
+    configure_base_url(settings.autoplius_base_url)
 
     captcha_api_key = None
     if settings.auto_captcha:
@@ -176,18 +176,18 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
                             interceptor=interceptor,
                         )
                         detail = parse_listing_html(page.content(), preview.url).to_dict()
-                        listings.append(merge_preview_and_detail(preview, detail=detail))
+                        listings.append(merge_preview_and_detail(preview, detail=detail, settings=settings))
                         detail_ok += 1
                     except Exception as exc:
                         detail_fail += 1
                         logger.warning("Detail failed for %s: %s", preview.autoplius_id, exc)
                         listings.append(
-                            merge_preview_and_detail(preview, error=str(exc)[:300])
+                            merge_preview_and_detail(preview, error=str(exc)[:300], settings=settings)
                         )
                 for preview in skip:
-                    listings.append(merge_preview_and_detail(preview))
+                    listings.append(merge_preview_and_detail(preview, settings=settings))
             else:
-                listings = [merge_preview_and_detail(p) for p in preview_list]
+                listings = [merge_preview_and_detail(p, settings=settings) for p in preview_list]
         finally:
             browser_or_context.close()
 

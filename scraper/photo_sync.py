@@ -19,6 +19,11 @@ from scraper.s3_storage import (
     storage_key_from_media_url,
 )
 
+try:
+    from autoplius.urls import get_base_url
+except ImportError:
+    get_base_url = lambda: "https://ru.autoplius.lt"  # noqa: E731
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,7 +66,7 @@ def _download_image(url: str, timeout: int) -> tuple[bytes, str]:
         headers={
             "User-Agent": "Mozilla/5.0 (compatible; AutopliusScraper/1.0)",
             "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-            "Referer": "https://autoplius.lt/",
+            "Referer": f"{get_base_url()}/",
         },
     )
     with urlopen(request, timeout=timeout) as response:

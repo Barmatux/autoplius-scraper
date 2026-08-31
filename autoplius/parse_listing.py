@@ -5,7 +5,7 @@ import re
 from bs4 import BeautifulSoup
 
 from autoplius.models import ListingDetail
-from autoplius.urls import extract_listing_id
+from autoplius.urls import extract_listing_id, normalize_listing_url
 
 PRICE_RE = re.compile(r"([\d\s]+)\s*(?:€|<span[^>]*>€</span>)")
 PHONE_RE = re.compile(r"\+370[\d\s]{7,}")
@@ -65,7 +65,7 @@ def _parse_vin_masked(soup: BeautifulSoup) -> str | None:
         if not value_el:
             continue
         text = value_el.get_text(" ", strip=True)
-        text = re.sub(r"\s*(Rodyti|Show)\s*", "", text, flags=re.I).strip()
+        text = re.sub(r"\s*(Rodyti|Show|Показать)\s*", "", text, flags=re.I).strip()
         return text or None
     return None
 
@@ -104,6 +104,30 @@ def _parse_phone(soup: BeautifulSoup) -> str | None:
     return re.sub(r"\s+", " ", match.group(0).strip()) if match else None
 
 
+def _parse_description(soup: BeautifulSoup) -> str | None:
+    selectors = (
+        ".announcement-description",
+        ".announcement-description .value",
+        ".description-content",
+        "#description",
+        "[itemprop='description']",
+    )
+    for selector in selectors:
+        node = soup.select_one(selector)
+        if not node:
+            continue
+        text = node.get_text(" ", strip=True)
+        if text and len(text) > 10:
+            return text
+
+    meta_desc = soup.find("meta", attrs={"name": "description"})
+    if meta_desc and meta_desc.get("content"):
+        text = meta_desc.get("content", "").strip()
+        if text:
+            return text
+    return None
+
+
 def parse_listing_html(html: str, url: str) -> ListingDetail:
     soup = BeautifulSoup(html, "html.parser")
     listing_id = extract_listing_id(url)
@@ -118,12 +142,11 @@ def parse_listing_html(html: str, url: str) -> ListingDetail:
     else:
         title = ""
 
-    meta_desc = soup.find("meta", attrs={"name": "description"})
-    description = meta_desc.get("content", "").strip() if meta_desc else None
+    description = _parse_description(soup)
 
     return ListingDetail(
         autoplius_id=listing_id,
-        url=url.split("#", 1)[0],
+        url=normalize_listing_url(url.split("#", 1)[0]),
         title=title,
         price_eur=_parse_price(soup),
         description=description or None,

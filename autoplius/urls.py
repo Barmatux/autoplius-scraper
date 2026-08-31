@@ -1,9 +1,23 @@
 from __future__ import annotations
 
-from urllib.parse import urlencode
+import os
+from urllib.parse import urlencode, urlparse, urlunparse
 
-BASE = "https://autoplius.lt"
+DEFAULT_BASE_URL = "https://ru.autoplius.lt"
 SEARCH_PATH = "/skelbimai/naudoti-automobiliai"
+
+_configured_base: str | None = None
+
+
+def configure_base_url(base_url: str) -> None:
+    global _configured_base
+    _configured_base = base_url.rstrip("/")
+
+
+def get_base_url() -> str:
+    if _configured_base:
+        return _configured_base
+    return os.environ.get("AUTOPLIUS_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
 
 
 def build_search_url(
@@ -17,6 +31,7 @@ def build_search_url(
     price_to: int | None = None,
     power_kw_to: int | None = None,
     extra: dict[str, str | int] | None = None,
+    base_url: str | None = None,
 ) -> str:
     params: dict[str, str | int] = {"page_nr": page}
     if make_id is not None:
@@ -35,7 +50,22 @@ def build_search_url(
         params["engine_power_to"] = power_kw_to
     if extra:
         params.update(extra)
-    return f"{BASE}{SEARCH_PATH}?{urlencode(params)}"
+    base = (base_url or get_base_url()).rstrip("/")
+    return f"{base}{SEARCH_PATH}?{urlencode(params)}"
+
+
+def normalize_listing_url(url: str, *, base_url: str | None = None) -> str:
+    base = (base_url or get_base_url()).rstrip("/")
+    clean = url.split("#", 1)[0].strip()
+    if not clean:
+        return base
+    if clean.startswith("/"):
+        return f"{base}{clean}"
+    parsed = urlparse(clean)
+    if not parsed.scheme:
+        return f"{base}/{clean.lstrip('/')}"
+    base_host = urlparse(base).netloc
+    return urlunparse((parsed.scheme, base_host, parsed.path, "", parsed.query, ""))
 
 
 def extract_listing_id(url: str) -> int | None:

@@ -5,7 +5,7 @@ import re
 from bs4 import BeautifulSoup
 
 from autoplius.models import SearchListingPreview
-from autoplius.urls import extract_listing_id
+from autoplius.urls import extract_listing_id, normalize_listing_url
 
 PRICE_RE = re.compile(r"([\d\s]+)\s*€")
 MILEAGE_RE = re.compile(r"([\d\s]+)\s*km", re.I)
@@ -60,9 +60,34 @@ def parse_search_html(html: str) -> list[SearchListingPreview]:
             low = chunk.lower()
             if "km" in low:
                 mileage_km = _parse_mileage(chunk)
-            elif low in {"automatinė", "mechaninė"} or "automatin" in low or "mechanin" in low:
+            elif any(
+                x in low
+                for x in (
+                    "automatin",
+                    "mechanin",
+                    "автомат",
+                    "механ",
+                    "robot",
+                    "вариатор",
+                )
+            ):
                 transmission = chunk
-            elif any(x in low for x in ("dyzel", "benzin", "elektr", "dujos", "hibrid", "vandenil")):
+            elif any(
+                x in low
+                for x in (
+                    "dyzel",
+                    "benzin",
+                    "elektr",
+                    "dujos",
+                    "hibrid",
+                    "vandenil",
+                    "дизел",
+                    "бенз",
+                    "элект",
+                    "газ",
+                    "гибрид",
+                )
+            ):
                 fuel = chunk
             elif " l" in low or " kwh" in low:
                 engine = chunk
@@ -83,7 +108,7 @@ def parse_search_html(html: str) -> list[SearchListingPreview]:
         results.append(
             SearchListingPreview(
                 autoplius_id=listing_id,
-                url=href.split("#", 1)[0],
+                url=normalize_listing_url(href.split("#", 1)[0]),
                 title=title,
                 year=year,
                 body_type=body_type,

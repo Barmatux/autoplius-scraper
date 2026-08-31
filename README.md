@@ -52,6 +52,9 @@ copy .env.example .env
 | `HEADLESS` | `true` | Headless Chrome |
 | `SYNC_PHOTOS_AFTER_SCRAPE` | `true` | Upload photos to MinIO after each run (current run only) |
 | `SYNC_PHOTOS_TIMEOUT_SEC` | `25` | HTTP timeout for photo download |
+| `AUTOPLIUS_BASE_URL` | `https://ru.autoplius.lt` | Russian Autoplius source |
+| `TRANSLATE_DESCRIPTIONS` | `true` | Translate seller descriptions to Russian |
+| `TRANSLATE_DELAY_SEC` | `0.15` | Pause between translation API calls |
 
 ## Выходные файлы
 
