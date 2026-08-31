@@ -9,6 +9,7 @@ from typing import Any, Iterator
 
 from autoplius.engine_volume import engine_volume_liters
 from autoplius.passable_age import is_passable_age
+from autoplius.catalog_filters import is_catalog_visible
 
 
 SCHEMA = """
@@ -470,6 +471,7 @@ def fetch_listings(
         ]
     if passable_only:
         listings = [item for item in listings if is_passable_age(item)]
+    listings = [item for item in listings if is_catalog_visible(item)]
     return listings
 
 

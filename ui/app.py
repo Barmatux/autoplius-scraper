@@ -199,7 +199,7 @@ def index():
         )
     )
 
-    total_in_db = int(stats.get("listings") or 0)
+    total_in_db = len(fetch_listings(path))
     total_filtered = len(filtered)
     pages = max(1, (total_filtered + PAGE_SIZE - 1) // PAGE_SIZE)
     page = min(page, pages)
