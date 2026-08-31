@@ -104,7 +104,7 @@
       <table>
         <thead>
           <tr>
-            <th></th>
+            <th class="photo-col"></th>
             {{ sort_th('Авто', 'title_asc', 'title_desc', 'title_asc') }}
             {{ sort_th('Цена', 'price_asc', 'price_desc', 'price_asc') }}
             {{ sort_th('Год', 'year_asc', 'year_desc', 'year_desc') }}
@@ -122,7 +122,7 @@
           <tr>
             <td class="photo">
               {% if thumb %}
-              <img src="{{ thumb }}" alt="" loading="lazy" width="72" height="54">
+              <img src="{{ thumb }}" alt="" loading="lazy">
               {% else %}
               <div class="photo-empty"></div>
               {% endif %}

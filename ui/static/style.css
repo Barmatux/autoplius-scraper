@@ -174,7 +174,12 @@ main {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 820px;
+  min-width: 920px;
+  table-layout: fixed;
+}
+
+tbody tr {
+  height: 1px;
 }
 
 th, td {
@@ -182,6 +187,20 @@ th, td {
   text-align: left;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
+}
+
+th.photo-col,
+td.photo {
+  width: 180px;
+  min-width: 180px;
+  max-width: 180px;
+  padding: 0;
+  vertical-align: top;
+  height: 100%;
+}
+
+td.photo {
+  line-height: 0;
 }
 
 th {
@@ -222,12 +241,17 @@ tr:hover td {
   background: #fbf8f1;
 }
 
+tr:hover td.photo {
+  background: transparent;
+}
+
 .photo img,
 .photo-empty {
-  width: 72px;
-  height: 54px;
+  width: 100%;
+  height: 100%;
+  min-height: 54px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 0;
   background: #e8e2d6;
   display: block;
 }
