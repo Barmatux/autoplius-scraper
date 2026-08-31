@@ -441,7 +441,9 @@ def fetch_listings(
         "mileage_asc": "CASE WHEN mileage_km IS NULL THEN 1 ELSE 0 END, mileage_km ASC",
         "mileage_desc": "CASE WHEN mileage_km IS NULL THEN 1 ELSE 0 END, mileage_km DESC",
         "year_desc": "CASE WHEN year IS NULL THEN 1 ELSE 0 END, year DESC",
+        "year_asc": "CASE WHEN year IS NULL THEN 1 ELSE 0 END, year ASC",
         "title_asc": "CASE WHEN title IS NULL THEN 1 ELSE 0 END, title ASC",
+        "title_desc": "CASE WHEN title IS NULL THEN 1 ELSE 0 END, title DESC",
         "added_desc": "CASE WHEN first_seen_at IS NULL THEN 1 ELSE 0 END, first_seen_at DESC",
         "added_asc": "CASE WHEN first_seen_at IS NULL THEN 1 ELSE 0 END, first_seen_at ASC",
     }.get(sort, "CASE WHEN price_eur IS NULL THEN 1 ELSE 0 END, price_eur ASC")

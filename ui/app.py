@@ -98,7 +98,6 @@ def _fetch_index_listings(
     min_price: int | None,
     max_price: int | None,
     sort: str,
-    details_only: bool,
     tab: str,
     upto_19l: bool,
 ) -> list[dict[str, Any]]:
@@ -109,7 +108,6 @@ def _fetch_index_listings(
             min_price=min_price,
             max_price=max_price,
             sort=sort,
-            details_only=details_only,
             engine_volume_missing=True,
         )
     return fetch_listings(
@@ -118,7 +116,6 @@ def _fetch_index_listings(
         min_price=min_price,
         max_price=max_price,
         sort=sort,
-        details_only=details_only,
         engine_upto_liters=1.9 if upto_19l else None,
     )
 
@@ -161,8 +158,6 @@ def index():
     path = require_db()
     q = request.args.get("q", "")
     sort = request.args.get("sort", "price_asc")
-    # Show ALL listings by default; optional filter for enriched only.
-    details_only = request.args.get("details_only") == "1"
     upto_19l = _upto_19l_enabled()
     tab = _current_tab()
     page = max(1, int(request.args.get("page", "1") or "1"))
@@ -178,7 +173,6 @@ def index():
         min_price=min_price,
         max_price=max_price,
         sort=sort,
-        details_only=details_only,
         tab=tab,
         upto_19l=upto_19l,
     )
@@ -189,7 +183,6 @@ def index():
             min_price=min_price,
             max_price=max_price,
             sort=sort,
-            details_only=details_only,
             tab=TAB_NO_VOLUME,
             upto_19l=upto_19l,
         )
@@ -215,7 +208,6 @@ def index():
         sort=sort,
         min_price=min_price_raw,
         max_price=max_price_raw,
-        details_only=details_only,
         upto_19l=upto_19l,
         tab=tab,
         no_volume_count=no_volume_count,
@@ -239,7 +231,6 @@ def api_listings():
     path = require_db()
     q = request.args.get("q", "")
     sort = request.args.get("sort", "price_asc")
-    details_only = request.args.get("details_only") == "1"
     upto_19l = _upto_19l_enabled()
     tab = _current_tab()
     min_price_raw = request.args.get("min_price", "").strip()
@@ -256,7 +247,6 @@ def api_listings():
                 min_price=min_price,
                 max_price=max_price,
                 sort=sort,
-                details_only=details_only,
                 tab=tab,
                 upto_19l=upto_19l,
             ),

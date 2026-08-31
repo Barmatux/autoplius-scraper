@@ -6,6 +6,24 @@
   <title>Autoplius Scraper</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+{% macro sort_th(label, asc, desc, default) %}
+{% if sort == desc %}
+  {% set next_sort = asc %}
+{% elif sort == asc %}
+  {% set next_sort = desc %}
+{% else %}
+  {% set next_sort = default %}
+{% endif %}
+<th class="sortable{% if sort in (asc, desc) %} active{% endif %}">
+  <a
+    href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=next_sort, upto_19l='1' if upto_19l else '0', tab=tab, page=1) }}"
+    class="sort-link"
+  >
+    {{ label }}
+    {% if sort == desc %}<span class="sort-indicator" aria-hidden="true">↓</span>{% elif sort == asc %}<span class="sort-indicator" aria-hidden="true">↑</span>{% endif %}
+  </a>
+</th>
+{% endmacro %}
 <body>
   <header class="top">
     <div class="brand">
@@ -29,17 +47,18 @@
   <main>
     <nav class="tabs">
       <a
-        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', tab='all', page=1) }}"
+        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', tab='all', page=1) }}"
         class="tab{% if tab == 'all' %} active{% endif %}"
       >Объявления</a>
       <a
-        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', tab='no_volume', page=1) }}"
+        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', tab='no_volume', page=1) }}"
         class="tab{% if tab == 'no_volume' %} active{% endif %}"
       >Без объема <span class="tab-count">{{ no_volume_count }}</span></a>
     </nav>
 
     <form class="filters" method="get">
       <input type="hidden" name="tab" value="{{ tab }}">
+      <input type="hidden" name="sort" value="{{ sort }}">
       <label>
         Поиск
         <input type="search" name="q" value="{{ q }}" placeholder="BMW, телефон, VIN, город…">
@@ -51,23 +70,6 @@
       <label>
         Цена до
         <input type="number" name="max_price" value="{{ max_price }}" min="0" step="100">
-      </label>
-      <label>
-        Сортировка
-        <select name="sort">
-          <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Цена ↑</option>
-          <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Цена ↓</option>
-          <option value="mileage_asc" {% if sort == 'mileage_asc' %}selected{% endif %}>Пробег ↑</option>
-          <option value="mileage_desc" {% if sort == 'mileage_desc' %}selected{% endif %}>Пробег ↓</option>
-          <option value="year_desc" {% if sort == 'year_desc' %}selected{% endif %}>Год ↓</option>
-          <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Название</option>
-          <option value="added_desc" {% if sort == 'added_desc' %}selected{% endif %}>Дата добавления ↓</option>
-          <option value="added_asc" {% if sort == 'added_asc' %}selected{% endif %}>Дата добавления ↑</option>
-        </select>
-      </label>
-      <label class="check">
-        <span>Только с detail</span>
-        <input type="checkbox" name="details_only" value="1" {% if details_only %}checked{% endif %}>
       </label>
       {% if tab != 'no_volume' %}
       <label class="check">
@@ -98,25 +100,15 @@
         <thead>
           <tr>
             <th></th>
-            <th>Авто</th>
-            <th>Цена</th>
-            <th>Год</th>
-            <th>Пробег</th>
+            {{ sort_th('Авто', 'title_asc', 'title_desc', 'title_asc') }}
+            {{ sort_th('Цена', 'price_asc', 'price_desc', 'price_asc') }}
+            {{ sort_th('Год', 'year_asc', 'year_desc', 'year_desc') }}
+            {{ sort_th('Пробег', 'mileage_asc', 'mileage_desc', 'mileage_asc') }}
             <th>КПП / Топливо</th>
             <th>Объем двигателя</th>
             <th>Город</th>
             <th>Фото/парам.</th>
-            {% set added_sort = 'added_asc' if sort == 'added_desc' else 'added_desc' %}
-            <th class="sortable{% if sort in ('added_desc', 'added_asc') %} active{% endif %}">
-              <a
-                href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=added_sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', tab=tab, page=1) }}"
-                class="sort-link"
-                title="Сортировать по дате добавления"
-              >
-                Дата добавления
-                {% if sort == 'added_desc' %}<span class="sort-indicator" aria-hidden="true">↓</span>{% elif sort == 'added_asc' %}<span class="sort-indicator" aria-hidden="true">↑</span>{% endif %}
-              </a>
-            </th>
+            {{ sort_th('Дата добавления', 'added_asc', 'added_desc', 'added_desc') }}
           </tr>
         </thead>
         <tbody>
@@ -138,7 +130,6 @@
                 #{{ item.autoplius_id }}
                 {% if item.body_type %} · {{ item.body_type }}{% endif %}
                 {% if item.engine %} · {{ item.engine }}{% endif %}
-                {% if item.detail_scraped %}<span class="tag ok">detail</span>{% else %}<span class="tag">preview</span>{% endif %}
               </div>
             </td>
             <td class="num">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</td>
@@ -165,11 +156,11 @@
     {% if pages > 1 %}
     <nav class="pager">
       {% if page > 1 %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', tab=tab, page=page-1) }}">← Назад</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', tab=tab, page=page-1) }}">← Назад</a>
       {% endif %}
       <span>Страница {{ page }} / {{ pages }}</span>
       {% if page < pages %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, details_only='1' if details_only else None, upto_19l='1' if upto_19l else '0', tab=tab, page=page+1) }}">Вперёд →</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', tab=tab, page=page+1) }}">Вперёд →</a>
       {% endif %}
     </nav>
     {% endif %}
