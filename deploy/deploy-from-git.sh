@@ -30,8 +30,13 @@ sudo -u autoplius git pull --ff-only "$REMOTE" "$BRANCH"
 echo "=== pip install ==="
 sudo -u autoplius "$PIP" install -q -r requirements.txt
 
+echo "=== normalize deploy scripts (LF) ==="
+for f in "$APP"/deploy/*.sh; do
+  sed -i 's/\r$//' "$f"
+  sudo chmod +x "$f"
+done
+
 echo "=== systemd units ==="
-sudo chmod +x "$APP/deploy/run-scrape.sh"
 sudo cp "$APP/deploy/autoplius-scraper.service" "$APP/deploy/autoplius-scraper.timer" /etc/systemd/system/
 sudo cp "$APP/deploy/autoplius-ui.service" /etc/systemd/system/
 sudo systemctl daemon-reload
