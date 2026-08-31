@@ -22,6 +22,7 @@ from autoplius.urls import build_search_url
 
 from scraper.config import Settings
 from scraper.db import save_payload_to_db
+from scraper.photo_sync import sync_run_photos
 from scraper.storage import diff_stats, load_latest_ids, save_snapshot
 
 logger = logging.getLogger(__name__)
@@ -220,8 +221,11 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
         snapshot_path=str(snapshot_path),
     )
 
+    photo_sync = sync_run_photos(settings, listings)
+    payload["photo_sync"] = photo_sync
+
     logger.info(
-        "Done: %s listings, details ok=%s fail=%s | new=%s removed=%s unchanged=%s | db_run_id=%s",
+        "Done: %s listings, details ok=%s fail=%s | new=%s removed=%s unchanged=%s | db_run_id=%s | photos uploaded=%s",
         len(listings),
         detail_ok,
         detail_fail,
@@ -229,6 +233,7 @@ def scrape_search_pages(settings: Settings) -> ScrapeRunResult:
         diff["removed"],
         diff["unchanged"],
         run_id,
+        photo_sync.get("uploaded", 0),
     )
     return ScrapeRunResult(payload=payload, snapshot_path=str(snapshot_path), diff=diff)
 

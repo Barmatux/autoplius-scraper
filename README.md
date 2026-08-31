@@ -50,6 +50,8 @@ copy .env.example .env
 | `AUTO_CAPTCHA` | `true` | 2Captcha для Cloudflare Turnstile |
 | `CAPTCHA_2CAPTCHA_API_KEY` | — | Ключ 2Captcha |
 | `HEADLESS` | `true` | Headless Chrome |
+| `SYNC_PHOTOS_AFTER_SCRAPE` | `true` | Upload photos to MinIO after each run (current run only) |
+| `SYNC_PHOTOS_TIMEOUT_SEC` | `25` | HTTP timeout for photo download |
 
 ## Выходные файлы
 
