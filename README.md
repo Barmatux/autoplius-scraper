@@ -84,6 +84,30 @@ sudo systemctl enable --now autoplius-scraper.timer
 sudo systemctl start autoplius-scraper.service
 ```
 
+### Обновление на VM (только через git)
+
+**Источник правды — `origin/main`.** Не копируйте файлы через `scp`, кроме аварийных случаев.
+
+**Локально (перед деплоем):**
+
+```bash
+git fetch origin main
+git pull --no-rebase origin main   # или rebase, если так принято в ветке
+# ... правки, commit ...
+git push origin HEAD
+```
+
+**На VM:**
+
+```bash
+ssh romanshleg@84.252.139.137
+sudo bash /opt/autoplius-scraper/deploy/deploy-from-git.sh
+```
+
+Скрипт делает `git fetch` + `git pull --ff-only origin main`, `pip install`, обновляет systemd unit-файлы и перезапускает UI. Scraper-таймер подхватит новый код на следующем запуске.
+
+Если `pull --ff-only` не проходит (локальные правки на VM) — разберите drift вручную; не делайте `reset --hard` без необходимости.
+
 ## Хранение
 
 - JSON-снимки: `data/latest.json`, `data/test/snapshots/...`
