@@ -80,7 +80,6 @@ CREATE TABLE IF NOT EXISTS run_listings (
 CREATE INDEX IF NOT EXISTS idx_listings_price ON listings(price_eur);
 CREATE INDEX IF NOT EXISTS idx_listings_city ON listings(city);
 CREATE INDEX IF NOT EXISTS idx_listings_last_seen ON listings(last_seen_at);
-CREATE INDEX IF NOT EXISTS idx_listings_status ON listings(status);
 CREATE INDEX IF NOT EXISTS idx_runs_finished ON scrape_runs(finished_at);
 """
 
@@ -125,6 +124,12 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
         )
     if "archived_at" not in cols:
         conn.execute("ALTER TABLE listings ADD COLUMN archived_at TEXT")
+
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(listings)")}
+    if "status" in cols:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_listings_status ON listings(status)"
+        )
 
     run_cols = {row[1] for row in conn.execute("PRAGMA table_info(scrape_runs)")}
     for name, ddl in (
