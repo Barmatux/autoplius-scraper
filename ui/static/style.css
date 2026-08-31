@@ -174,38 +174,41 @@ main {
 .listings-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1240px;
+  min-width: 1180px;
   table-layout: fixed;
 }
 
-.listings-table col.col-photo { width: 112px; }
-.listings-table col.col-auto { width: 24%; }
-.listings-table col.col-price-lt { width: 96px; }
-.listings-table col.col-price-rb { width: 96px; }
-.listings-table col.col-year { width: 84px; }
-.listings-table col.col-mileage { width: 104px; }
-.listings-table col.col-gear { width: 128px; }
-.listings-table col.col-engine { width: 88px; }
-.listings-table col.col-city { width: 88px; }
-.listings-table col.col-date { width: 92px; }
+.listings-table col.col-photo { width: 104px; }
+.listings-table col.col-auto { width: 150px; }
+.listings-table col.col-engine { width: 78px; }
+.listings-table col.col-year { width: 92px; }
+.listings-table col.col-price-lt { width: 90px; }
+.listings-table col.col-price-rb { width: 90px; }
+.listings-table col.col-mileage { width: 96px; }
+.listings-table col.col-gear { width: auto; }
+.listings-table col.col-city { width: 76px; }
+.listings-table col.col-date { width: 84px; }
 
 tbody tr {
   height: 1px;
 }
 
 th, td {
-  padding: 0.65rem 0.7rem;
+  padding: 0.6rem 0.55rem;
   text-align: left;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
+}
+
+td {
   overflow: hidden;
 }
 
 th.photo-col,
 td.photo {
-  width: 112px;
-  min-width: 112px;
-  max-width: 112px;
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
   padding: 0;
   height: 100%;
   position: relative;
@@ -213,34 +216,51 @@ td.photo {
 }
 
 th {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   color: var(--muted);
   background: #faf7f0;
   position: sticky;
   top: 0;
   z-index: 1;
-  line-height: 1.25;
+  line-height: 1.2;
   white-space: normal;
-  hyphens: auto;
+  vertical-align: bottom;
+  overflow: visible;
 }
 
-th.th-compact {
-  font-size: 0.68rem;
-  padding-left: 0.55rem;
-  padding-right: 0.55rem;
+th.th-wrap .sort-label,
+th.th-wrap {
+  white-space: normal;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 th.sortable .sort-link {
   color: inherit;
   font-weight: inherit;
   text-decoration: none;
-  display: inline-flex;
+  display: flex;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 0.2rem;
-  max-width: 100%;
-  line-height: 1.25;
+  width: 100%;
+  line-height: 1.2;
+}
+
+.sort-label {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.sort-indicator {
+  font-size: 0.82rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
 }
 
 th.sortable .sort-link:hover {
@@ -251,11 +271,6 @@ th.sortable .sort-link:hover {
 th.sortable.active .sort-link {
   color: var(--accent);
   font-weight: 700;
-}
-
-.sort-indicator {
-  font-size: 0.85rem;
-  line-height: 1;
 }
 
 tr:hover td {

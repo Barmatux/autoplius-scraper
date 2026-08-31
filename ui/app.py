@@ -123,6 +123,27 @@ def _strip_body_type_from_title(title: str, body_type: str | None) -> str:
     return re.sub(r"\s{2,}", " ", title).strip().rstrip(",").strip()
 
 
+def _strip_year_from_title(title: str, year: str | None) -> str:
+    if not title or title == "—":
+        return title
+    if year:
+        title = re.sub(rf",?\s*{re.escape(str(year).strip())}\s*m\.?\s*$", "", title, flags=re.I)
+    title = re.sub(r",?\s*\d{4}(?:-\d{2})?\s*m\.?\s*$", "", title, flags=re.I)
+    return title.strip().rstrip(",").strip()
+
+
+def _strip_engine_from_title(title: str, engine: str | None) -> str:
+    if not title or title == "—":
+        return title
+    if engine:
+        engine_text = engine.strip()
+        if engine_text:
+            title = re.sub(rf",\s*{re.escape(engine_text)}\b", "", title, flags=re.I)
+            title = re.sub(rf"\b{re.escape(engine_text)}\b", "", title, flags=re.I)
+    title = re.sub(r",\s*\d+(?:[.,]\d+)?\s*l\.?\b", "", title, flags=re.I)
+    return re.sub(r"\s{2,}", " ", title).strip().rstrip(",").strip()
+
+
 @app.template_filter("listing_title")
 def listing_title(value: str | None) -> str:
     return _clean_listing_title(value)
@@ -131,7 +152,9 @@ def listing_title(value: str | None) -> str:
 @app.template_filter("listing_headline")
 def listing_headline(item: dict[str, Any]) -> str:
     title = _clean_listing_title(item.get("title"))
-    return _strip_body_type_from_title(title, (item.get("body_type") or "").strip())
+    title = _strip_body_type_from_title(title, (item.get("body_type") or "").strip())
+    title = _strip_year_from_title(title, item.get("year"))
+    return _strip_engine_from_title(title, item.get("engine"))
 
 
 def _check_basic_auth() -> bool:
