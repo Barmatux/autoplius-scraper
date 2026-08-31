@@ -1,22 +1,67 @@
 from __future__ import annotations
 
-import json
 import os
+import re
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from bs4 import BeautifulSoup
+
+MYFIN_EURUSD_URL = "https://myfin.by/currency/eurusd"
 _CACHE: dict[str, Any] = {"fetched_at": None, "eur_usd": None}
-_CACHE_TTL = timedelta(hours=1)
-_NBRB_EUR_URL = "https://api.nbrb.by/exrates/rates/EUR?parammode=2"
-_NBRB_USD_URL = "https://api.nbrb.by/exrates/rates/USD?parammode=2"
+_CACHE_TTL = timedelta(minutes=30)
+_FALLBACK_RATE = 1.158
+_USER_AGENT = "Mozilla/5.0 (compatible; autoplius-scraper/1.0)"
 
 
-def _fetch_nbrb_rate(url: str) -> tuple[float, int]:
-    with urllib.request.urlopen(url, timeout=10) as response:
-        payload = json.load(response)
-    return float(payload["Cur_OfficialRate"]), int(payload.get("Cur_Scale") or 1)
+def _fetch_myfin_html() -> str:
+    request = urllib.request.Request(
+        MYFIN_EURUSD_URL,
+        headers={"User-Agent": _USER_AGENT},
+    )
+    with urllib.request.urlopen(request, timeout=15) as response:
+        return response.read().decode("utf-8", errors="replace")
+
+
+def _parse_best_buy_rate(html: str) -> float:
+    soup = BeautifulSoup(html, "html.parser")
+    block = soup.select_one(".course-brief-info--best-courses")
+    if block is None:
+        raise ValueError("myfin best courses block not found")
+
+    row = block.select_one(".course-brief-info__body .course-brief-info__r")
+    if row is None:
+        raise ValueError("myfin EUR/USD rate row not found")
+
+    values = [
+        span.get_text(strip=True).replace(",", ".")
+        for span in row.select(".course-brief-info__b .accent")
+    ]
+    if len(values) < 2:
+        raise ValueError("myfin buy rate not found")
+
+    rate = float(values[1])
+    if rate <= 0 or rate > 10:
+        raise ValueError("myfin buy rate out of range")
+    return rate
+
+
+def _fetch_myfin_best_buy_rate() -> float:
+    html = _fetch_myfin_html()
+    rate = _parse_best_buy_rate(html)
+    # Fallback regex if markup shifts slightly.
+    if rate <= 0:
+        match = re.search(
+            r"course-brief-info--best-courses.*?course-brief-info__b.*?accent\">([\d.]+)</span>"
+            r".*?course-brief-info__b.*?accent\">([\d.]+)</span>",
+            html,
+            re.S,
+        )
+        if match:
+            rate = float(match.group(2))
+    return rate
 
 
 def eur_usd_rate() -> float:
@@ -31,14 +76,11 @@ def eur_usd_rate() -> float:
         return cached_rate
 
     try:
-        eur_rate, eur_scale = _fetch_nbrb_rate(_NBRB_EUR_URL)
-        usd_rate, usd_scale = _fetch_nbrb_rate(_NBRB_USD_URL)
-        if eur_rate <= 0 or usd_rate <= 0:
-            raise ValueError("invalid NBRB rate")
-        # BYN per 1 EUR / BYN per 1 USD
-        rate = (eur_rate / eur_scale) / (usd_rate / usd_scale)
-    except (urllib.error.URLError, TimeoutError, ValueError, KeyError, TypeError):
-        rate = 1.08
+        rate = _fetch_myfin_best_buy_rate()
+    except (urllib.error.URLError, TimeoutError, ValueError, TypeError):
+        if cached_rate:
+            return cached_rate
+        rate = _FALLBACK_RATE
 
     _CACHE["fetched_at"] = now
     _CACHE["eur_usd"] = rate
