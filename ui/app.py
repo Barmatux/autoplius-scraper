@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,7 @@ from scraper.db import db_stats, default_db_path, fetch_listing, fetch_listings
 from scraper.s3_storage import get_s3_client
 from autoplius.translate import is_translation_error
 from autoplius.engine_volume import engine_volume_from_listing
+from autoplius.price_rb import estimate_price_rb_usd
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
@@ -26,20 +28,87 @@ app.config["DATA_DIR"] = DEFAULT_DATA_DIR
 app.config["DB_PATH"] = Path(os.environ.get("DB_PATH", default_db_path(DEFAULT_DATA_DIR)))
 
 
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 @app.template_filter("format_datetime")
 def format_datetime(value: str | None) -> str:
-    if not value:
-        return "—"
-    try:
-        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return dt.strftime("%d.%m.%Y %H:%M")
-    except ValueError:
-        return value[:16].replace("T", " ")
+    dt = _parse_iso_datetime(value)
+    if dt is None:
+        return "—" if not value else value[:16].replace("T", " ")
+    return dt.strftime("%d.%m.%Y %H:%M")
+
+
+@app.template_filter("format_date")
+def format_date(value: str | None) -> str:
+    dt = _parse_iso_datetime(value)
+    if dt is None:
+        return "—" if not value else value[:10]
+    return dt.strftime("%d.%m.%Y")
+
+
+@app.template_filter("format_time")
+def format_time(value: str | None) -> str:
+    dt = _parse_iso_datetime(value)
+    if dt is None:
+        return ""
+    return dt.strftime("%H:%M")
 
 
 @app.template_filter("engine_volume")
 def engine_volume(item: dict[str, Any]) -> str:
     return engine_volume_from_listing(item) or "—"
+
+
+@app.template_filter("price_rb_usd")
+def price_rb_usd(item: dict[str, Any]) -> str:
+    amount = estimate_price_rb_usd(item.get("price_eur"), item=item)
+    if amount is None:
+        return "—"
+    return f"{amount:,}".replace(",", " ") + " $"
+
+
+_LISTING_ID_SUFFIX_RE = re.compile(r"\s*\|\s*A?\d+\s*$")
+
+
+def _clean_listing_title(value: str | None) -> str:
+    if not value:
+        return "—"
+    cleaned = _LISTING_ID_SUFFIX_RE.sub("", value).strip().rstrip(",").strip()
+    return cleaned or value.strip()
+
+
+def _strip_body_type_from_title(title: str, body_type: str | None) -> str:
+    if not title or title == "—":
+        return title
+    if body_type:
+        title = re.sub(rf",\s*{re.escape(body_type)}\b", "", title, flags=re.I)
+        title = re.sub(rf"\b{re.escape(body_type)}\s+", "", title, flags=re.I)
+    # Drop LT/other body label before the year suffix, e.g. ", Universalas 2020-10 m."
+    title = re.sub(
+        r",\s*\S+\s+(?=\d{4}(?:-\d{2})?\s*m\.?\s*$)",
+        ", ",
+        title,
+        flags=re.I,
+    )
+    return re.sub(r"\s{2,}", " ", title).strip().rstrip(",").strip()
+
+
+@app.template_filter("listing_title")
+def listing_title(value: str | None) -> str:
+    return _clean_listing_title(value)
+
+
+@app.template_filter("listing_headline")
+def listing_headline(item: dict[str, Any]) -> str:
+    title = _clean_listing_title(item.get("title"))
+    return _strip_body_type_from_title(title, (item.get("body_type") or "").strip())
 
 
 def _check_basic_auth() -> bool:
@@ -86,6 +155,12 @@ def _upto_19l_enabled() -> bool:
     return "1" in request.args.getlist("upto_19l")
 
 
+def _passable_enabled() -> bool:
+    if "passable" not in request.args:
+        return False
+    return "1" in request.args.getlist("passable")
+
+
 def _current_tab() -> str:
     tab = (request.args.get("tab") or TAB_ALL).strip()
     return tab if tab in {TAB_ALL, TAB_NO_VOLUME} else TAB_ALL
@@ -98,27 +173,26 @@ def _fetch_index_listings(
     min_price: int | None,
     max_price: int | None,
     sort: str,
-    details_only: bool,
     tab: str,
     upto_19l: bool,
+    passable: bool,
 ) -> list[dict[str, Any]]:
-    if tab == TAB_NO_VOLUME:
-        return fetch_listings(
-            path,
-            q=q,
-            min_price=min_price,
-            max_price=max_price,
-            sort=sort,
-            details_only=details_only,
-            engine_volume_missing=True,
-        )
-    return fetch_listings(
-        path,
+    common = dict(
         q=q,
         min_price=min_price,
         max_price=max_price,
         sort=sort,
-        details_only=details_only,
+        passable_only=passable,
+    )
+    if tab == TAB_NO_VOLUME:
+        return fetch_listings(
+            path,
+            **common,
+            engine_volume_missing=True,
+        )
+    return fetch_listings(
+        path,
+        **common,
         engine_upto_liters=1.9 if upto_19l else None,
     )
 
@@ -161,9 +235,8 @@ def index():
     path = require_db()
     q = request.args.get("q", "")
     sort = request.args.get("sort", "price_asc")
-    # Show ALL listings by default; optional filter for enriched only.
-    details_only = request.args.get("details_only") == "1"
     upto_19l = _upto_19l_enabled()
+    passable = _passable_enabled()
     tab = _current_tab()
     page = max(1, int(request.args.get("page", "1") or "1"))
     min_price_raw = request.args.get("min_price", "").strip()
@@ -178,9 +251,9 @@ def index():
         min_price=min_price,
         max_price=max_price,
         sort=sort,
-        details_only=details_only,
         tab=tab,
         upto_19l=upto_19l,
+        passable=passable,
     )
     no_volume_count = len(
         _fetch_index_listings(
@@ -189,13 +262,13 @@ def index():
             min_price=min_price,
             max_price=max_price,
             sort=sort,
-            details_only=details_only,
             tab=TAB_NO_VOLUME,
             upto_19l=upto_19l,
+            passable=passable,
         )
     )
 
-    total_in_db = int(stats.get("listings") or 0)
+    total_in_db = len(fetch_listings(path))
     total_filtered = len(filtered)
     pages = max(1, (total_filtered + PAGE_SIZE - 1) // PAGE_SIZE)
     page = min(page, pages)
@@ -215,8 +288,8 @@ def index():
         sort=sort,
         min_price=min_price_raw,
         max_price=max_price_raw,
-        details_only=details_only,
         upto_19l=upto_19l,
+        passable=passable,
         tab=tab,
         no_volume_count=no_volume_count,
         page=page,
@@ -239,8 +312,8 @@ def api_listings():
     path = require_db()
     q = request.args.get("q", "")
     sort = request.args.get("sort", "price_asc")
-    details_only = request.args.get("details_only") == "1"
     upto_19l = _upto_19l_enabled()
+    passable = _passable_enabled()
     tab = _current_tab()
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
@@ -256,9 +329,9 @@ def api_listings():
                 min_price=min_price,
                 max_price=max_price,
                 sort=sort,
-                details_only=details_only,
                 tab=tab,
                 upto_19l=upto_19l,
+                passable=passable,
             ),
         }
     )

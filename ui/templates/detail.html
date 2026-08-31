@@ -13,7 +13,6 @@
       <p class="brand-sub">
         <a href="{{ url_for('index') }}">← к списку</a>
         · #{{ item.autoplius_id }} · SQLite
-        {% if item.detail_scraped %}<span class="tag ok">detail</span>{% else %}<span class="tag">preview</span>{% endif %}
       </p>
     </div>
     <div class="meta">
