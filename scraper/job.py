@@ -174,14 +174,10 @@ def scrape_search_pages(
                 query_previews: dict[int, SearchListingPreview] = {}
 
                 for page_num in range(1, settings.pages + 1):
-                    search_kwargs: dict[str, object] = {}
                     if query is not None:
-                        search_kwargs = query.build_kwargs()
-                    url = build_search_url(
-                        page=page_num,
-                        newest_first=newest_first,
-                        **search_kwargs,
-                    )
+                        url = query.build_url(page=page_num, base_url=settings.autoplius_base_url)
+                    else:
+                        url = build_search_url(page=page_num, newest_first=newest_first)
                     logger.info("Fetching page %s/%s: %s", page_num, settings.pages, url)
 
                     goto_and_wait(
