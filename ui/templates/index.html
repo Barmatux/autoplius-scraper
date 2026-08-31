@@ -141,7 +141,7 @@
             </td>
             <td class="col-auto">
               <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">
-                {{ item.title|listing_title }}
+                {{ item|listing_headline }}
               </a>
               {% if item.body_type or item.engine %}
               <div class="muted">

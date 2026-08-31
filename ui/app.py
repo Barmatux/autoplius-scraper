@@ -77,12 +77,38 @@ def price_rb_usd(item: dict[str, Any]) -> str:
 _LISTING_ID_SUFFIX_RE = re.compile(r"\s*\|\s*A?\d+\s*$")
 
 
-@app.template_filter("listing_title")
-def listing_title(value: str | None) -> str:
+def _clean_listing_title(value: str | None) -> str:
     if not value:
         return "—"
     cleaned = _LISTING_ID_SUFFIX_RE.sub("", value).strip().rstrip(",").strip()
     return cleaned or value.strip()
+
+
+def _strip_body_type_from_title(title: str, body_type: str | None) -> str:
+    if not title or title == "—":
+        return title
+    if body_type:
+        title = re.sub(rf",\s*{re.escape(body_type)}\b", "", title, flags=re.I)
+        title = re.sub(rf"\b{re.escape(body_type)}\s+", "", title, flags=re.I)
+    # Drop LT/other body label before the year suffix, e.g. ", Universalas 2020-10 m."
+    title = re.sub(
+        r",\s*\S+\s+(?=\d{4}(?:-\d{2})?\s*m\.?\s*$)",
+        ", ",
+        title,
+        flags=re.I,
+    )
+    return re.sub(r"\s{2,}", " ", title).strip().rstrip(",").strip()
+
+
+@app.template_filter("listing_title")
+def listing_title(value: str | None) -> str:
+    return _clean_listing_title(value)
+
+
+@app.template_filter("listing_headline")
+def listing_headline(item: dict[str, Any]) -> str:
+    title = _clean_listing_title(item.get("title"))
+    return _strip_body_type_from_title(title, (item.get("body_type") or "").strip())
 
 
 def _check_basic_auth() -> bool:
