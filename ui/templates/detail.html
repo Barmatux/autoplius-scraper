@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+  {% from "_price_lt.html" import render_price_lt %}
   <header class="top">
     <div class="brand">
       <p class="brand-name">{{ item.title or ('#' ~ item.autoplius_id) }}</p>
@@ -16,7 +17,7 @@
       </p>
     </div>
     <div class="meta">
-      <div class="pill accent">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}цена —{% endif %}</div>
+      <div class="pill accent">{{ render_price_lt(item) }}</div>
       {% if item.phone %}<div class="pill">{{ item.phone }}</div>{% endif %}
       {% if item.vin_masked %}<div class="pill mono">{{ item.vin_masked }}</div>{% endif %}
       {% if item.status == 'archived' %}<div class="pill">Архив</div>{% endif %}
@@ -59,7 +60,7 @@
     <section class="detail-info">
       <h2>Кратко</h2>
       <dl class="kv">
-        <div><dt>Цена</dt><dd>{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</dd></div>
+        <div><dt>Цена в LT</dt><dd>{{ render_price_lt(item) }}</dd></div>
         <div><dt>Год</dt><dd>{{ item.year or '—' }}</dd></div>
         <div><dt>Пробег</dt><dd>{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</dd></div>
         <div><dt>Топливо</dt><dd>{{ item.fuel or '—' }}</dd></div>

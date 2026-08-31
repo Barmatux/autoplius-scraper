@@ -25,6 +25,7 @@
 </th>
 {% endmacro %}
 <body>
+  {% from "_price_lt.html" import render_price_lt %}
   <header class="top">
     <div class="brand">
       <p class="brand-name">Autoplius Scraper</p>
@@ -149,7 +150,7 @@
             </td>
             <td class="num col-engine">{{ item|engine_volume }}</td>
             <td class="col-year">{{ item.year or '—' }}</td>
-            <td class="num col-price-lt">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</td>
+            <td class="num col-price-lt">{{ render_price_lt(item) }}</td>
             <td class="num col-price-rb">
               {% set rb = item|price_rb %}
               {% if rb %}

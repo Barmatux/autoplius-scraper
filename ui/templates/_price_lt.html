@@ -1,0 +1,12 @@
+{% macro render_price_lt(item) %}
+{% for label, amount in item|price_lt_lines %}
+  {% if label %}
+  <div class="price-vat-line"><span class="muted">{{ label }}:</span> {{ amount }}</div>
+  {% else %}
+  <div>{{ amount }}</div>
+  {% endif %}
+{% endfor %}
+{% if item.price_vat_note %}
+<div class="price-vat-note muted">{{ item.price_vat_note }}</div>
+{% endif %}
+{% endmacro %}

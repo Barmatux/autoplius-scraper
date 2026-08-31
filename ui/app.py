@@ -23,6 +23,7 @@ from scraper.db import (
 from scraper.s3_storage import get_s3_client
 from autoplius.translate import is_translation_error
 from autoplius.engine_volume import engine_volume_from_listing
+from autoplius.price_display import price_lt_lines
 from autoplius.price_rb import estimate_price_rb
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -94,6 +95,11 @@ def engine_volume(item: dict[str, Any]) -> str:
 @app.template_filter("price_rb")
 def price_rb(item: dict[str, Any]):
     return estimate_price_rb(item)
+
+
+@app.template_filter("price_lt_lines")
+def price_lt_lines_filter(item: dict[str, Any]) -> list[tuple[str, str]]:
+    return price_lt_lines(item)
 
 
 @app.template_filter("price_rb_usd")

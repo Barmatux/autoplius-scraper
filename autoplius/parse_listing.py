@@ -5,27 +5,34 @@ import re
 from bs4 import BeautifulSoup
 
 from autoplius.models import ListingDetail
+from autoplius.parse_price import parse_listing_prices, parse_price_amount
 from autoplius.urls import extract_listing_id, normalize_listing_url
+from typing import Any
 
 PRICE_RE = re.compile(r"([\d\s]+)\s*(?:€|<span[^>]*>€</span>)")
 PHONE_RE = re.compile(r"\+370[\d\s]{7,}")
 
 
-def _parse_price(soup: BeautifulSoup) -> int | None:
+def _parse_prices(soup: BeautifulSoup) -> dict[str, Any]:
     price_el = soup.select_one(".announcement-price .price, .parameter-row-price .price")
-    if price_el:
-        parsed = PRICE_RE.search(price_el.get_text(" ", strip=True).replace("\xa0", " "))
-        if parsed:
-            digits = re.sub(r"\D", "", parsed.group(1))
-            if digits:
-                return int(digits)
+    main_text = price_el.get_text(" ", strip=True) if price_el else None
+    if not parse_price_amount(main_text):
+        for script in soup.find_all("script"):
+            text = script.string or ""
+            match = re.search(r'var\s+price\s*=\s*"(\d+)"', text)
+            if match:
+                main_text = f"{match.group(1)} €"
+                break
 
-    for script in soup.find_all("script"):
-        text = script.string or ""
-        match = re.search(r'var\s+price\s*=\s*"(\d+)"', text)
-        if match:
-            return int(match.group(1))
-    return None
+    subtitle_el = soup.select_one(
+        ".price-container .list-price-subtitle, "
+        ".announcement-price .list-price-subtitle, "
+        ".parameter-row-price .list-price-subtitle"
+    )
+    return parse_listing_prices(
+        main_text=main_text,
+        subtitle_text=subtitle_el.get_text(" ", strip=True) if subtitle_el else None,
+    )
 
 
 def _parse_parameters(soup: BeautifulSoup) -> dict[str, str]:
@@ -143,12 +150,16 @@ def parse_listing_html(html: str, url: str) -> ListingDetail:
         title = ""
 
     description = _parse_description(soup)
+    prices = _parse_prices(soup)
 
     return ListingDetail(
         autoplius_id=listing_id,
         url=normalize_listing_url(url.split("#", 1)[0]),
         title=title,
-        price_eur=_parse_price(soup),
+        price_eur=prices["price_eur"],
+        price_net_eur=prices["price_net_eur"],
+        price_gross_eur=prices["price_gross_eur"],
+        price_vat_note=prices["price_vat_note"],
         description=description or None,
         phone=_parse_phone(soup),
         vin_masked=_parse_vin_masked(soup),

@@ -8,7 +8,7 @@
 
 - **Инкрементально (каждые 30 мин):** поиск с сортировкой «новые сверху», страницы пока не встретятся 2 подряд без новых ID vs SQLite; detail только для новых объявлений
 - **Полный прогон (раз в 12 ч):** первые **10 страниц** (~200 объявлений), enrich всех
-- Search: id, url, title, price, year, mileage, fuel, transmission, city, photo
+- Search: id, url, title, price (main + optional net/gross VAT), year, mileage, fuel, transmission, city, photo
 - Detail: phone, VIN (masked), description, все параметры таблицы, галерея фото
 
 ## Быстрый старт
@@ -120,6 +120,7 @@ sudo bash /opt/autoplius-scraper/deploy/deploy-from-git.sh
 - **Detail:** если в БД уже есть enrich, а текущий прогон — только search preview, detail-поля сохраняются.
 - **Архив:** при **полном** прогоне объявления из предыдущего снимка, которых нет в текущем каталоге (~10 страниц), получают `status=archived`. При повторном появлении на Autoplius снова становятся `active`.
 - **Инкрементальный прогон** не архивирует — только добавляет/обновляет видимые объявления.
+- **Цены с/без НДС:** парсятся основная цена и подпись `.list-price-subtitle` (`be PVM`, `su PVM`); в БД `price_eur`, `price_net_eur`, `price_gross_eur`, `price_vat_note`.
 
 Импорт всех существующих JSON в БД:
 

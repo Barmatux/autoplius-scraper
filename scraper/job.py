@@ -56,6 +56,9 @@ def merge_preview_and_detail(
             row["title"] = detail["title"]
         if detail.get("price_eur") is not None:
             row["price_eur"] = detail["price_eur"]
+        for key in ("price_net_eur", "price_gross_eur", "price_vat_note"):
+            if detail.get(key) is not None:
+                row[key] = detail[key]
         row["description"] = detail.get("description")
         row["phone"] = detail.get("phone")
         row["vin_masked"] = detail.get("vin_masked")

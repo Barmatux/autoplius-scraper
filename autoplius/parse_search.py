@@ -5,6 +5,7 @@ import re
 from bs4 import BeautifulSoup
 
 from autoplius.models import SearchListingPreview
+from autoplius.parse_price import parse_listing_prices, parse_price_amount
 from autoplius.urls import extract_listing_id, normalize_listing_url
 
 PRICE_RE = re.compile(r"([\d\s]+)\s*€")
@@ -59,7 +60,11 @@ def parse_search_html(html: str) -> list[SearchListingPreview]:
         body_type = param_spans[1].get_text(strip=True) if len(param_spans) > 1 else None
 
         price_el = item.select_one(".announcement-pricing-info strong")
-        price_eur = _parse_price(price_el.get_text(" ", strip=True)) if price_el else None
+        subtitle_el = item.select_one(".announcement-pricing-info .list-price-subtitle")
+        prices = parse_listing_prices(
+            main_text=price_el.get_text(" ", strip=True) if price_el else None,
+            subtitle_text=subtitle_el.get_text(" ", strip=True) if subtitle_el else None,
+        )
 
         secondary = item.select(".announcement-parameters-block span, .announcement-secondary-parameters span")
         secondary_texts = [s.get_text(" ", strip=True) for s in secondary]
@@ -122,7 +127,10 @@ def parse_search_html(html: str) -> list[SearchListingPreview]:
                 title=title,
                 year=year,
                 body_type=body_type,
-                price_eur=price_eur,
+                price_eur=prices["price_eur"],
+                price_net_eur=prices["price_net_eur"],
+                price_gross_eur=prices["price_gross_eur"],
+                price_vat_note=prices["price_vat_note"],
                 fuel=fuel,
                 transmission=transmission,
                 engine=engine,

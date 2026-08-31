@@ -44,6 +44,9 @@ CREATE TABLE IF NOT EXISTS listings (
     year TEXT,
     body_type TEXT,
     price_eur INTEGER,
+    price_net_eur INTEGER,
+    price_gross_eur INTEGER,
+    price_vat_note TEXT,
     fuel TEXT,
     transmission TEXT,
     engine TEXT,
@@ -124,6 +127,12 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
         )
     if "archived_at" not in cols:
         conn.execute("ALTER TABLE listings ADD COLUMN archived_at TEXT")
+    if "price_net_eur" not in cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN price_net_eur INTEGER")
+    if "price_gross_eur" not in cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN price_gross_eur INTEGER")
+    if "price_vat_note" not in cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN price_vat_note TEXT")
 
     cols = {row[1] for row in conn.execute("PRAGMA table_info(listings)")}
     if "status" in cols:
@@ -170,6 +179,9 @@ def _listing_row(item: dict[str, Any], *, run_id: int | None, seen_at: str) -> d
         "year": item.get("year"),
         "body_type": item.get("body_type"),
         "price_eur": item.get("price_eur"),
+        "price_net_eur": item.get("price_net_eur"),
+        "price_gross_eur": item.get("price_gross_eur"),
+        "price_vat_note": item.get("price_vat_note"),
         "fuel": item.get("fuel"),
         "transmission": item.get("transmission"),
         "engine": item.get("engine"),
@@ -238,6 +250,9 @@ def _upsert_listing(conn: sqlite3.Connection, row: dict[str, Any], *, seen_at: s
                 year = :year,
                 body_type = :body_type,
                 price_eur = :price_eur,
+                price_net_eur = :price_net_eur,
+                price_gross_eur = :price_gross_eur,
+                price_vat_note = :price_vat_note,
                 fuel = :fuel,
                 transmission = :transmission,
                 engine = :engine,
@@ -272,13 +287,15 @@ def _upsert_listing(conn: sqlite3.Connection, row: dict[str, Any], *, seen_at: s
     conn.execute(
         """
         INSERT INTO listings (
-            autoplius_id, url, title, year, body_type, price_eur, fuel,
+            autoplius_id, url, title, year, body_type, price_eur, price_net_eur,
+            price_gross_eur, price_vat_note, fuel,
             transmission, engine, mileage_km, city, photo_url, has_vin_badge,
             description, description_ru, phone, vin_masked, parameters_json, photo_urls_json,
             detail_scraped, detail_error, status, archived_at,
             first_seen_at, last_seen_at, last_run_id, updated_at
         ) VALUES (
-            :autoplius_id, :url, :title, :year, :body_type, :price_eur, :fuel,
+            :autoplius_id, :url, :title, :year, :body_type, :price_eur, :price_net_eur,
+            :price_gross_eur, :price_vat_note, :fuel,
             :transmission, :engine, :mileage_km, :city, :photo_url, :has_vin_badge,
             :description, :description_ru, :phone, :vin_masked, :parameters_json, :photo_urls_json,
             :detail_scraped, :detail_error, :status, :archived_at,
@@ -476,6 +493,9 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         "year": row["year"],
         "body_type": row["body_type"],
         "price_eur": row["price_eur"],
+        "price_net_eur": row["price_net_eur"] if "price_net_eur" in row.keys() else None,
+        "price_gross_eur": row["price_gross_eur"] if "price_gross_eur" in row.keys() else None,
+        "price_vat_note": row["price_vat_note"] if "price_vat_note" in row.keys() else None,
         "fuel": row["fuel"],
         "transmission": row["transmission"],
         "engine": row["engine"],

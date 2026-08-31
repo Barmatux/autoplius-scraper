@@ -12,6 +12,9 @@ class SearchListingPreview:
     year: str | None = None
     body_type: str | None = None
     price_eur: int | None = None
+    price_net_eur: int | None = None
+    price_gross_eur: int | None = None
+    price_vat_note: str | None = None
     fuel: str | None = None
     transmission: str | None = None
     engine: str | None = None
@@ -30,6 +33,9 @@ class ListingDetail:
     url: str
     title: str
     price_eur: int | None = None
+    price_net_eur: int | None = None
+    price_gross_eur: int | None = None
+    price_vat_note: str | None = None
     description: str | None = None
     phone: str | None = None
     vin_masked: str | None = None

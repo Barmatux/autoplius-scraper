@@ -27,6 +27,9 @@ DETAIL_FIELDS = frozenset(
         "detail_scraped",
         "detail_error",
         "has_vin_badge",
+        "price_net_eur",
+        "price_gross_eur",
+        "price_vat_note",
     }
 )
 
@@ -36,6 +39,9 @@ MERGE_FIELDS = (
     "year",
     "body_type",
     "price_eur",
+    "price_net_eur",
+    "price_gross_eur",
+    "price_vat_note",
     "fuel",
     "transmission",
     "engine",
@@ -87,6 +93,10 @@ def merge_listing_row(
         old_value = existing.get(field)
         if field in {"description_ru", "phone", "vin_masked"} and _has_value(old_value):
             if not _has_value(new_value):
+                merged[field] = old_value
+
+        if field in {"price_net_eur", "price_gross_eur", "price_vat_note"}:
+            if new_value is None and old_value is not None:
                 merged[field] = old_value
 
     if keep_detail:

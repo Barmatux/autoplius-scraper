@@ -338,6 +338,21 @@ a:hover {
   white-space: nowrap;
 }
 
+.price-vat-line {
+  line-height: 1.35;
+}
+
+.price-vat-line + .price-vat-line {
+  margin-top: 0.15rem;
+}
+
+.price-vat-note {
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  white-space: normal;
+}
+
 .col-price-rb {
   color: #1a4d8c;
   font-weight: 600;
