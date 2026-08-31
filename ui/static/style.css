@@ -154,6 +154,30 @@ th {
   top: 0;
 }
 
+th.sortable .sort-link {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+th.sortable .sort-link:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+th.sortable.active .sort-link {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.sort-indicator {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
 tr:hover td {
   background: #fbf8f1;
 }

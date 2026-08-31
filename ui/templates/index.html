@@ -84,7 +84,17 @@
             <th>VIN</th>
             <th>Город</th>
             <th>Фото/парам.</th>
-            <th>Дата добавления</th>
+            {% set added_sort = 'added_asc' if sort == 'added_desc' else 'added_desc' %}
+            <th class="sortable{% if sort in ('added_desc', 'added_asc') %} active{% endif %}">
+              <a
+                href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=added_sort, details_only='1' if details_only else None, page=1) }}"
+                class="sort-link"
+                title="Сортировать по дате добавления"
+              >
+                Дата добавления
+                {% if sort == 'added_desc' %}<span class="sort-indicator" aria-hidden="true">↓</span>{% elif sort == 'added_asc' %}<span class="sort-indicator" aria-hidden="true">↑</span>{% endif %}
+              </a>
+            </th>
           </tr>
         </thead>
         <tbody>
