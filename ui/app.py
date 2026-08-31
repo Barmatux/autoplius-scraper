@@ -514,7 +514,7 @@ def listing_detail(listing_id: int):
     item = fetch_listing(require_db(), listing_id)
     if item is None:
         abort(404, "listing not found in database")
-    photos = item|listing_photos_filter
+    photos = listing_photos_filter(item)
     return render_template(
         "detail.html",
         item=item,
