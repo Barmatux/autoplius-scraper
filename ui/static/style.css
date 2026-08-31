@@ -174,27 +174,30 @@ main {
 .listings-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1180px;
+  min-width: 1080px;
   table-layout: fixed;
 }
 
-.listings-table col.col-photo { width: 104px; }
-.listings-table col.col-auto { width: 150px; }
-.listings-table col.col-engine { width: 78px; }
-.listings-table col.col-year { width: 92px; }
-.listings-table col.col-price-lt { width: 90px; }
-.listings-table col.col-price-rb { width: 90px; }
-.listings-table col.col-mileage { width: 96px; }
-.listings-table col.col-gear { width: auto; }
-.listings-table col.col-city { width: 76px; }
-.listings-table col.col-date { width: 84px; }
+/* Photo is fixed; all other columns share the remaining width equally. */
+.listings-table col.col-photo { width: 100px; }
+.listings-table col.col-auto,
+.listings-table col.col-engine,
+.listings-table col.col-year,
+.listings-table col.col-price-lt,
+.listings-table col.col-price-rb,
+.listings-table col.col-mileage,
+.listings-table col.col-gear,
+.listings-table col.col-city,
+.listings-table col.col-date {
+  width: calc((100% - 100px) / 9);
+}
 
 tbody tr {
   height: 1px;
 }
 
 th, td {
-  padding: 0.6rem 0.55rem;
+  padding: 0.65rem 0.75rem;
   text-align: left;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
@@ -206,9 +209,9 @@ td {
 
 th.photo-col,
 td.photo {
-  width: 104px;
-  min-width: 104px;
-  max-width: 104px;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
   padding: 0;
   height: 100%;
   position: relative;
