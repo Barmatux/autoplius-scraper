@@ -165,6 +165,15 @@ def _preserve_stored_photos(row: dict[str, Any], existing: sqlite3.Row) -> None:
     """Keep MinIO URLs when scrape refreshed only external autoplius links."""
     if not _should_keep_stored_photos(existing["photo_url"], row.get("photo_url")):
         return
+    if row.get("detail_scraped"):
+        try:
+            new_urls = json.loads(row.get("photo_urls_json") or "[]")
+            old_urls = json.loads(existing["photo_urls_json"] or "[]")
+        except json.JSONDecodeError:
+            new_urls, old_urls = [], []
+        new_external = [url for url in new_urls if _is_external_photo_url(url)]
+        if len(new_external) > len(old_urls):
+            return
     row["photo_url"] = existing["photo_url"]
     row["photo_urls_json"] = existing["photo_urls_json"]
 
@@ -652,6 +661,52 @@ def update_listing_photos(
             """,
             (
                 photo_url,
+                json.dumps(photo_urls, ensure_ascii=False),
+                _utc_now(),
+                listing_id,
+            ),
+        )
+
+
+def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]) -> None:
+    """Apply a fresh detail scrape (external photo URLs, not MinIO)."""
+    photo_urls = normalize_photo_list(detail.get("photo_urls") or [])
+    init_db(db_path)
+    with connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE listings SET
+                url = COALESCE(?, url),
+                title = COALESCE(?, title),
+                price_eur = COALESCE(?, price_eur),
+                price_net_eur = COALESCE(?, price_net_eur),
+                price_gross_eur = COALESCE(?, price_gross_eur),
+                price_vat_note = COALESCE(?, price_vat_note),
+                description = COALESCE(?, description),
+                phone = COALESCE(?, phone),
+                vin_masked = COALESCE(?, vin_masked),
+                parameters_json = COALESCE(?, parameters_json),
+                photo_url = ?,
+                photo_urls_json = ?,
+                detail_scraped = 1,
+                detail_error = NULL,
+                updated_at = ?
+            WHERE autoplius_id = ?
+            """,
+            (
+                detail.get("url"),
+                detail.get("title"),
+                detail.get("price_eur"),
+                detail.get("price_net_eur"),
+                detail.get("price_gross_eur"),
+                detail.get("price_vat_note"),
+                detail.get("description"),
+                detail.get("phone"),
+                detail.get("vin_masked"),
+                json.dumps(detail.get("parameters") or {}, ensure_ascii=False)
+                if detail.get("parameters")
+                else None,
+                photo_urls[0] if photo_urls else None,
                 json.dumps(photo_urls, ensure_ascii=False),
                 _utc_now(),
                 listing_id,

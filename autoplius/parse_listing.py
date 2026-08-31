@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 
 from bs4 import BeautifulSoup
@@ -12,6 +13,10 @@ from typing import Any
 
 PRICE_RE = re.compile(r"([\d\s]+)\s*(?:€|<span[^>]*>€</span>)")
 PHONE_RE = re.compile(r"\+370[\d\s]{7,}")
+_MEDIA_GALLERY_ITEMS_RE = re.compile(
+    r"var\s+mediaGalleryItems\s*=\s*(\[.*?\])\s*;",
+    re.DOTALL,
+)
 
 
 def _parse_prices(soup: BeautifulSoup) -> dict[str, Any]:
@@ -107,8 +112,47 @@ def _register_photo(
         bucket[key] = (sort_index, url)
 
 
+def _parse_media_gallery_items(soup: BeautifulSoup) -> list[str]:
+    """Full photo list from Autoplius lightbox JSON (often more than carousel slides)."""
+    for script in soup.find_all("script"):
+        text = script.string or script.get_text() or ""
+        if "mediaGalleryItems" not in text:
+            continue
+        match = _MEDIA_GALLERY_ITEMS_RE.search(text)
+        if not match:
+            continue
+        try:
+            items = json.loads(match.group(1))
+        except json.JSONDecodeError:
+            continue
+        urls: list[str] = []
+        for item in items:
+            if not isinstance(item, dict) or item.get("type") != "photo":
+                continue
+            raw = item.get("url") or item.get("thumbnail")
+            if raw:
+                urls.append(best_photo_url(raw) or raw)
+        if urls:
+            return normalize_photo_list(urls)
+    return []
+
+
 def _parse_photos(soup: BeautifulSoup) -> list[str]:
     photos: dict[str, tuple[int, str]] = {}
+
+    for idx, url in enumerate(_parse_media_gallery_items(soup)):
+        _register_photo(photos, url, sort_index=idx)
+
+    for thumb in soup.select(".media-gallery-thumbnails [data-index]"):
+        sort_index = len(photos)
+        if thumb.get("data-index", "").isdigit():
+            sort_index = int(thumb["data-index"])
+        url = None
+        for element in thumb.select("[data-big], img, source"):
+            url = _photo_from_attrs(element)
+            if url:
+                break
+        _register_photo(photos, url, sort_index=sort_index)
 
     for slide in soup.select(".announcement-gallery-carousel__slide"):
         sort_index = len(photos)

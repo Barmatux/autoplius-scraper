@@ -18,6 +18,14 @@ def test_parse_all_photos_from_fixture():
     assert all("ann_2_" in url for url in detail.photo_urls if "autoplius-img" in url)
 
 
+def test_parse_media_gallery_items_from_fixture():
+    if not FIXTURE.is_file():
+        return
+    html = FIXTURE.read_text(encoding="utf-8")
+    detail = parse_listing_html(html, "https://autoplius.lt/skelbimai/bmw-520-31308999.html")
+    assert len(detail.photo_urls) == 7
+
+
 def test_best_photo_url_upgrades_medium_to_full():
     medium = "https://autoplius-img.dgn.lt/ann_3_406812343/bmw-520-0.jpg"
     full = best_photo_url(medium)
