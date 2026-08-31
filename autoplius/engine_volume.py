@@ -38,30 +38,51 @@ def _parse_volume_liters_from_text(text: str) -> float | None:
 
 
 def engine_volume_liters(item: dict[str, Any]) -> float | None:
-    for key in ("description_ru", "description"):
-        value = item.get(key)
-        if not value:
-            continue
-        liters = _parse_volume_liters_from_text(str(value))
-        if liters is not None:
-            return liters
+    cm3 = engine_volume_cm3(item)
+    if cm3 is None:
+        return None
+    return cm3 / 1000
 
-    for key in ("engine", "title"):
+
+def engine_volume_cm3(item: dict[str, Any]) -> int | None:
+    """Exact engine displacement in cm³ when parseable."""
+    for key in ("description_ru", "description", "engine", "title"):
         value = item.get(key)
         if not value:
             continue
-        liters = _parse_volume_liters_from_text(str(value))
-        if liters is not None:
-            return liters
+        cm3 = _parse_volume_cm3_from_text(str(value))
+        if cm3 is not None:
+            return cm3
 
     params = item.get("parameters") or {}
-    for param_key in ("Variklis", "Двигатель"):
+    for param_key in ("Variklis", "Двигатель", "Darbinis tūris", "Рабочий объем"):
         value = params.get(param_key)
         if not value:
             continue
-        liters = _parse_volume_liters_from_text(str(value))
-        if liters is not None:
-            return liters
+        cm3 = _parse_volume_cm3_from_text(str(value))
+        if cm3 is not None:
+            return cm3
+    return None
+
+
+def _parse_volume_cm3_from_text(text: str) -> int | None:
+    normalized = text.replace("\xa0", " ")
+    match = ENGINE_CM3_RE.search(normalized)
+    if match:
+        cm3 = int(match.group(1))
+        if 500 <= cm3 <= 10000:
+            return cm3
+
+    liters = None
+    match = ENGINE_LITERS_RE.search(normalized)
+    if match:
+        liters = float(match.group(1).replace(",", "."))
+    else:
+        match = ENGINE_BEFORE_CODE_RE.search(normalized)
+        if match:
+            liters = float(match.group(1).replace(",", "."))
+    if liters is not None and 0.5 <= liters <= 10.0:
+        return int(round(liters * 1000))
     return None
 
 

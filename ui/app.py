@@ -22,7 +22,7 @@ from scraper.db import (
 from scraper.s3_storage import get_s3_client
 from autoplius.translate import is_translation_error
 from autoplius.engine_volume import engine_volume_from_listing
-from autoplius.price_rb import estimate_price_rb_usd
+from autoplius.price_rb import estimate_price_rb
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
@@ -90,12 +90,17 @@ def engine_volume(item: dict[str, Any]) -> str:
     return engine_volume_from_listing(item) or "—"
 
 
+@app.template_filter("price_rb")
+def price_rb(item: dict[str, Any]):
+    return estimate_price_rb(item)
+
+
 @app.template_filter("price_rb_usd")
 def price_rb_usd(item: dict[str, Any]) -> str:
-    amount = estimate_price_rb_usd(item.get("price_eur"), item=item)
-    if amount is None:
+    breakdown = estimate_price_rb(item)
+    if breakdown is None:
         return "—"
-    return f"{amount:,}".replace(",", " ") + " $"
+    return breakdown.total_formatted
 
 
 _LISTING_ID_SUFFIX_RE = re.compile(r"\s*\|\s*A?\d+\s*$")

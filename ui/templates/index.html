@@ -150,7 +150,21 @@
             <td class="num col-engine">{{ item|engine_volume }}</td>
             <td class="col-year">{{ item.year or '—' }}</td>
             <td class="num col-price-lt">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</td>
-            <td class="num col-price-rb">{{ item|price_rb_usd }}</td>
+            <td class="num col-price-rb">
+              {% set rb = item|price_rb %}
+              {% if rb %}
+              <div class="price-rb" tabindex="0">
+                <span class="price-rb-value">{{ rb.total_formatted }}</span>
+                <div class="price-rb-tooltip" role="tooltip">
+                  {% for line in rb.tooltip_lines() %}
+                  <p>{{ line }}</p>
+                  {% endfor %}
+                </div>
+              </div>
+              {% else %}
+              —
+              {% endif %}
+            </td>
             <td class="num col-mileage">{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</td>
             <td class="col-gear">
               <div>{{ item.transmission or '—' }}</div>

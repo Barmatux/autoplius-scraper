@@ -341,6 +341,51 @@ a:hover {
 .col-price-rb {
   color: #1a4d8c;
   font-weight: 600;
+  position: relative;
+}
+
+.price-rb {
+  position: relative;
+  display: inline-block;
+  cursor: help;
+}
+
+.price-rb-tooltip {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 20;
+  min-width: 280px;
+  max-width: 360px;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.price-rb-tooltip p {
+  margin: 0 0 0.35rem;
+}
+
+.price-rb-tooltip p:last-child {
+  margin-bottom: 0;
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--line);
+  font-weight: 700;
+  color: #1a4d8c;
+}
+
+.price-rb:hover .price-rb-tooltip,
+.price-rb:focus-within .price-rb-tooltip {
+  display: block;
 }
 
 .col-gear {
