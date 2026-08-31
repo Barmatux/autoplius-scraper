@@ -105,9 +105,9 @@
         <colgroup>
           <col class="col-photo">
           <col class="col-auto">
+          <col class="col-year">
           <col class="col-price-lt">
           <col class="col-price-rb">
-          <col class="col-year">
           <col class="col-mileage">
           <col class="col-gear">
           <col class="col-engine">
@@ -118,9 +118,9 @@
           <tr>
             <th class="photo-col"></th>
             {{ sort_th('Авто', 'title_asc', 'title_desc', 'title_asc', 'col-auto') }}
+            {{ sort_th('Дата выпуска', 'year_asc', 'year_desc', 'year_desc', 'col-year th-compact') }}
             {{ sort_th('Цена в LT, €', 'price_asc', 'price_desc', 'price_asc', 'col-price-lt th-compact') }}
             <th class="col-price-rb th-compact">Цена в РБ, $</th>
-            {{ sort_th('Год', 'year_asc', 'year_desc', 'year_desc', 'col-year') }}
             {{ sort_th('Пробег', 'mileage_asc', 'mileage_desc', 'mileage_asc', 'col-mileage') }}
             <th class="col-gear">КПП / Топливо</th>
             <th class="col-engine th-compact">Объём двигателя</th>
@@ -150,9 +150,9 @@
               </div>
               {% endif %}
             </td>
+            <td class="col-year">{{ item.year or '—' }}</td>
             <td class="num col-price-lt">{% if item.price_eur is not none %}{{ '{:,}'.format(item.price_eur).replace(',', ' ') }} €{% else %}—{% endif %}</td>
             <td class="num col-price-rb">{{ item|price_rb_usd }}</td>
-            <td class="col-year">{{ item.year or '—' }}</td>
             <td class="num col-mileage">{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</td>
             <td class="col-gear">
               <div>{{ item.transmission or '—' }}</div>
