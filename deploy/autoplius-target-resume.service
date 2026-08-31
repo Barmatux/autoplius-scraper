@@ -1,0 +1,21 @@
+[Unit]
+Description=Autoplius target scrape enrich-only resume
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/autoplius-scraper
+EnvironmentFile=-/opt/autoplius-scraper/.env
+ExecStart=/opt/autoplius-scraper/deploy/run-target-scrape.sh --enrich-only --verbose
+User=autoplius
+Group=autoplius
+
+Environment=PROFILE_DIR=/var/lib/autoplius-scraper/browser-profile
+Environment=DATA_DIR=/var/lib/autoplius-scraper/data
+Environment=LOGS_DIR=/var/log/autoplius-scraper
+Environment=SCRAPE_LOCK_FILE=/var/lib/autoplius-scraper/scraper.lock
+Environment=TARGET_SCRAPE_LOCK_FILE=/var/lib/autoplius-scraper/target-scrape.lock
+
+[Install]
+WantedBy=multi-user.target

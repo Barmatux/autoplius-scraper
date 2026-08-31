@@ -1,0 +1,9 @@
+[Unit]
+Description=Schedule Autoplius target enrich-only resume (one-shot, set by schedule-target-resume.sh)
+
+[Timer]
+OnCalendar=2026-08-31 23:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

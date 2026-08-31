@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -45,6 +46,11 @@ def main(argv: list[str] | None = None) -> int:
         default=0,
         help="Limit detail pages (0 = all found listings)",
     )
+    parser.add_argument(
+        "--enrich-only",
+        action="store_true",
+        help="Skip search; enrich listings without detail_scraped in DB",
+    )
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
 
@@ -62,6 +68,12 @@ def main(argv: list[str] | None = None) -> int:
     from scraper.logging_setup import setup_logging
 
     settings = Settings.from_env(root=root)
+    target_detail_delay = float(os.environ.get("TARGET_DETAIL_DELAY_SEC", "0") or "0")
+    target_page_delay = float(os.environ.get("TARGET_PAGE_DELAY_SEC", "0") or "0")
+    detail_delay_sec = (
+        target_detail_delay if target_detail_delay > 0 else settings.detail_delay_sec
+    )
+    page_delay_sec = target_page_delay if target_page_delay > 0 else settings.page_delay_sec
     settings = replace(
         settings,
         test_mode=False,
@@ -73,17 +85,26 @@ def main(argv: list[str] | None = None) -> int:
         archive_removed_on_full_scrape=False,
         search_newest_first=False,
         headless=not args.headed,
+        detail_delay_sec=detail_delay_sec,
+        page_delay_sec=page_delay_sec,
     )
 
     setup_logging(settings.logs_dir, verbose=args.verbose)
 
     from scraper.job import scrape_search_pages
 
-    print(f"Starting target scrape: {len(queries)} queries", file=sys.stderr)
-    for query in queries:
-        print(f"  - {query.label}", file=sys.stderr)
+    if args.enrich_only:
+        print("Starting target enrich-only resume (pending detail listings)", file=sys.stderr)
+    else:
+        print(f"Starting target scrape: {len(queries)} queries", file=sys.stderr)
+        for query in queries:
+            print(f"  - {query.label}", file=sys.stderr)
 
-    result = scrape_search_pages(settings, queries=queries)
+    result = scrape_search_pages(
+        settings,
+        queries=queries if not args.enrich_only else None,
+        enrich_only=args.enrich_only,
+    )
     payload = result.payload
     print(
         f"OK: {payload['listing_count']} listings, "

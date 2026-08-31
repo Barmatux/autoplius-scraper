@@ -39,6 +39,9 @@ done
 echo "=== systemd units ==="
 sudo cp "$APP/deploy/autoplius-scraper.service" "$APP/deploy/autoplius-scraper.timer" /etc/systemd/system/
 sudo cp "$APP/deploy/autoplius-ui.service" /etc/systemd/system/
+if [[ -f "$APP/deploy/autoplius-target-resume.service" ]]; then
+  sudo cp "$APP/deploy/autoplius-target-resume.service" "$APP/deploy/autoplius-target-resume.timer" /etc/systemd/system/
+fi
 sudo systemctl daemon-reload
 sudo systemctl enable autoplius-scraper.timer autoplius-ui.service
 

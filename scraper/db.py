@@ -473,6 +473,23 @@ def load_detail_scraped_ids(db_path: Path) -> set[int]:
     return {int(row["autoplius_id"]) for row in rows}
 
 
+def fetch_listings_pending_detail(db_path: Path) -> list[dict[str, Any]]:
+    """Active listings that still need a successful detail scrape."""
+    if not db_path.is_file():
+        return []
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM listings
+            WHERE COALESCE(detail_scraped, 0) = 0
+              AND (status IS NULL OR status = ?)
+            ORDER BY autoplius_id ASC
+            """,
+            (LISTING_STATUS_ACTIVE,),
+        ).fetchall()
+    return [row_to_listing(row) for row in rows]
+
+
 def hours_since_last_full_scrape(db_path: Path, *, min_listings: int = 50) -> float | None:
     """Hours since the last run that scraped many pages (full catalog refresh)."""
     if not db_path.is_file():

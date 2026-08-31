@@ -8,4 +8,6 @@ LOCK_FILE="${TARGET_SCRAPE_LOCK_FILE:-/var/lock/autoplius-target-scrape.lock}"
 cd "$APP_DIR"
 
 # Deep scrape of Roman's priority models (12 filtered queries).
-exec flock -n "$LOCK_FILE" "$PY" run_target_scrape.py "$@"
+LOG_FILE="${TARGET_SCRAPE_LOG:-/var/log/autoplius-scraper/target-scrape.log}"
+mkdir -p "$(dirname "$LOG_FILE")"
+exec flock -n "$LOCK_FILE" "$PY" run_target_scrape.py "$@" >>"$LOG_FILE" 2>&1

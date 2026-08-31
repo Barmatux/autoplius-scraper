@@ -27,6 +27,7 @@ from autoplius.urls import build_search_url, configure_base_url
 
 from scraper.config import Settings
 from scraper.db import (
+    fetch_listings_pending_detail,
     hours_since_last_full_scrape,
     load_detail_scraped_ids,
     load_known_ids,
@@ -43,6 +44,27 @@ class ScrapeRunResult:
     payload: dict[str, Any]
     snapshot_path: str
     diff: dict[str, int]
+
+
+def listing_to_preview(item: dict[str, Any]) -> SearchListingPreview:
+    return SearchListingPreview(
+        autoplius_id=int(item["autoplius_id"]),
+        url=item.get("url") or "",
+        title=item.get("title") or "",
+        year=item.get("year"),
+        body_type=item.get("body_type"),
+        price_eur=item.get("price_eur"),
+        price_net_eur=item.get("price_net_eur"),
+        price_gross_eur=item.get("price_gross_eur"),
+        price_vat_note=item.get("price_vat_note"),
+        fuel=item.get("fuel"),
+        transmission=item.get("transmission"),
+        engine=item.get("engine"),
+        mileage_km=item.get("mileage_km"),
+        city=item.get("city"),
+        photo_url=item.get("photo_url"),
+        has_vin_badge=bool(item.get("has_vin_badge")),
+    )
 
 
 def merge_preview_and_detail(
@@ -112,18 +134,25 @@ def scrape_search_pages(
     paginate_until_empty: bool = False,
     update_latest_snapshot: bool = True,
     archive_removed: bool | None = None,
+    enrich_only: bool = False,
 ) -> ScrapeRunResult:
     started_at = datetime.now(timezone.utc)
     previous_ids = load_latest_ids(settings.data_dir) if update_latest_snapshot else set()
     known_ids = load_known_ids(settings.db_path)
     detail_scraped_ids = load_detail_scraped_ids(settings.db_path)
-    target_mode = bool(queries)
-    if target_mode:
+    target_mode = bool(queries) or enrich_only
+    if target_mode and not enrich_only:
         incremental = False
         mode_reason = f"target batch ({len(queries)} queries)"
         paginate_until_empty = True
         if archive_removed is None:
             archive_removed = False
+        update_latest_snapshot = False
+    elif enrich_only:
+        incremental = False
+        mode_reason = "target enrich-only resume"
+        paginate_until_empty = False
+        archive_removed = False
         update_latest_snapshot = False
     else:
         incremental, mode_reason = resolve_scrape_mode(settings)
@@ -164,7 +193,19 @@ def scrape_search_pages(
             interceptor=interceptor,
         )
         try:
+            if enrich_only:
+                pending = fetch_listings_pending_detail(settings.db_path)
+                for item in pending:
+                    preview = listing_to_preview(item)
+                    all_previews[preview.autoplius_id] = preview
+                logger.info(
+                    "Enrich-only resume: %s listings pending detail scrape",
+                    len(all_previews),
+                )
+
             for query_idx, query in enumerate(query_plan, start=1):
+                if enrich_only:
+                    break
                 if query:
                     logger.info(
                         "Target query %s/%s: %s",
@@ -339,7 +380,11 @@ def scrape_search_pages(
 
     payload: dict[str, Any] = {
         "mode": "target" if target_mode else ("test" if settings.test_mode else "prod"),
-        "scrape_mode": "target" if target_mode else ("incremental" if incremental else "full"),
+        "scrape_mode": (
+            "target_resume"
+            if enrich_only
+            else ("target" if target_mode else ("incremental" if incremental else "full"))
+        ),
         "scrape_mode_reason": mode_reason,
         "target_queries": [q.label for q in queries] if queries else None,
         "started_at": started_at.isoformat(),
