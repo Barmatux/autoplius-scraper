@@ -19,8 +19,7 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 set -a
-# shellcheck disable=SC1090
-source "$ENV_FILE"
+eval "$(sudo grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$ENV_FILE" | sed 's/^/export /')"
 set +a
 
 MINIO_ROOT_USER="${MINIO_ROOT_USER:-minioadmin}"
