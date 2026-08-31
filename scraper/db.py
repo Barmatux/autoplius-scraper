@@ -10,6 +10,7 @@ from typing import Any, Iterator
 from autoplius.engine_volume import engine_volume_liters
 from autoplius.passable_age import is_older_than_years, is_passable_age
 from autoplius.catalog_filters import is_catalog_visible
+from autoplius.localize import localize_listing
 from scraper.listing_sync import (
     LISTING_STATUS_ACTIVE,
     LISTING_STATUS_ARCHIVED,
@@ -486,7 +487,7 @@ def hours_since_last_full_scrape(db_path: Path, *, min_listings: int = 50) -> fl
 
 
 def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
-    return {
+    listing = {
         "autoplius_id": row["autoplius_id"],
         "url": row["url"],
         "title": row["title"],
@@ -517,6 +518,7 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         "last_seen_at": row["last_seen_at"],
         "last_run_id": row["last_run_id"],
     }
+    return localize_listing(listing)
 
 
 def fetch_listings(

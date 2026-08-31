@@ -19,6 +19,7 @@ from autoplius.models import SearchListingPreview
 from autoplius.parse_listing import parse_listing_html
 from autoplius.parse_search import parse_search_html
 from autoplius.labels import promote_parameters
+from autoplius.localize import localize_listing
 from autoplius.translate import translate_to_russian
 from autoplius.urls import build_search_url, configure_base_url
 
@@ -86,7 +87,7 @@ def merge_preview_and_detail(
         row.setdefault("photo_urls", [row["photo_url"]] if row.get("photo_url") else [])
         row["detail_scraped"] = False
         row["detail_error"] = error
-    return row
+    return localize_listing(row)
 
 
 def resolve_scrape_mode(settings: Settings) -> tuple[bool, str]:

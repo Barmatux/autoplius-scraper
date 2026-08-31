@@ -73,16 +73,22 @@ def build_search_url(
 
 def normalize_listing_url(url: str, *, base_url: str | None = None) -> str:
     base = (base_url or get_base_url()).rstrip("/")
+    base_parsed = urlparse(base)
     clean = url.split("#", 1)[0].strip()
     if not clean:
         return base
     if clean.startswith("/"):
-        return f"{base}{clean}"
-    parsed = urlparse(clean)
-    if not parsed.scheme:
-        return f"{base}/{clean.lstrip('/')}"
-    base_host = urlparse(base).netloc
-    return urlunparse((parsed.scheme, base_host, parsed.path, "", parsed.query, ""))
+        parsed = urlparse(f"https://{base_parsed.netloc}{clean}")
+    elif "://" not in clean:
+        parsed = urlparse(f"https://{base_parsed.netloc}/{clean.lstrip('/')}")
+    else:
+        parsed = urlparse(clean)
+
+    path = parsed.path.replace("/skelbimai/", "/objavlenija/")
+    host = base_parsed.netloc or parsed.netloc
+    if base_parsed.netloc.startswith("ru."):
+        host = base_parsed.netloc
+    return urlunparse((parsed.scheme or "https", host, path, "", parsed.query, ""))
 
 
 def extract_listing_id(url: str) -> int | None:
