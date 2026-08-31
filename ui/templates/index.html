@@ -141,8 +141,10 @@
               {% endif %}
             </td>
             <td class="col-auto">
-              <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">
-                {{ item|listing_headline }}
+              {% set make, model = item|listing_make_model %}
+              <a class="listing-name" href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">
+                <span class="listing-make">{{ make }}</span>
+                {% if model %}<span class="listing-model">{{ model }}</span>{% endif %}
               </a>
               {% if item.body_type %}
               <div class="muted">{{ item.body_type }}</div>

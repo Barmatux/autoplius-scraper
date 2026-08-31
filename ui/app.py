@@ -112,6 +112,18 @@ def price_rb_usd(item: dict[str, Any]) -> str:
 
 _LISTING_ID_SUFFIX_RE = re.compile(r"\s*\|\s*A?\d+\s*$")
 
+_MULTI_WORD_MAKES = (
+    "Alfa Romeo",
+    "Aston Martin",
+    "Land Rover",
+    "Range Rover",
+    "Rolls-Royce",
+    "Rolls Royce",
+    "Great Wall",
+    "Mercedes-Benz",
+    "Mercedes Benz",
+)
+
 
 def _clean_listing_title(value: str | None) -> str:
     if not value:
@@ -168,6 +180,29 @@ def listing_headline(item: dict[str, Any]) -> str:
     title = _strip_body_type_from_title(title, (item.get("body_type") or "").strip())
     title = _strip_year_from_title(title, item.get("year"))
     return _strip_engine_from_title(title, item.get("engine"))
+
+
+def _split_make_model(headline: str) -> tuple[str, str]:
+    text = headline.strip().rstrip(".,").strip()
+    if not text or text == "—":
+        return "—", ""
+    lower = text.casefold()
+    for make in sorted(_MULTI_WORD_MAKES, key=len, reverse=True):
+        prefix = make.casefold()
+        if lower == prefix:
+            return make, ""
+        if lower.startswith(prefix + " "):
+            model = text[len(make) :].strip(" .,")
+            return make, model
+    parts = text.split(None, 1)
+    if len(parts) == 1:
+        return parts[0], ""
+    return parts[0], parts[1].strip(" .,")
+
+
+@app.template_filter("listing_make_model")
+def listing_make_model(item: dict[str, Any]) -> tuple[str, str]:
+    return _split_make_model(listing_headline(item))
 
 
 def _check_basic_auth() -> bool:
