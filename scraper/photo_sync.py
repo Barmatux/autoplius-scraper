@@ -111,15 +111,18 @@ def sync_listing_photos(
 
     media_urls: list[str] = []
     uploaded = 0
+    errors: list[str] = []
 
     for index, source_url in enumerate(source_urls):
         try:
             payload, content_type_header = _download_image(source_url, timeout=timeout)
         except Exception as exc:
-            return "error_download", uploaded, f"{source_url}: {exc}"
+            errors.append(f"{source_url}: {exc}")
+            continue
 
         if not payload:
-            return "error_empty", uploaded, source_url
+            errors.append(f"{source_url}: empty")
+            continue
 
         ext, content_type = _guess_ext_and_content_type(source_url, content_type_header)
         storage_key = _build_storage_key(listing_id, source_url, index, ext)
@@ -141,13 +144,21 @@ def sync_listing_photos(
                 content_type=content_type,
             )
         except Exception as exc:
-            return "error_upload", uploaded, f"{storage_key}: {exc}"
+            errors.append(f"{storage_key}: {exc}")
+            continue
 
         media_urls.append(build_media_url(storage_key))
         uploaded += 1
 
     if dry_run:
-        return "would_sync", uploaded, ""
+        if media_urls:
+            return "would_sync", uploaded, "; ".join(errors[:2])
+        return "error_download", uploaded, errors[0] if errors else "no photos"
+
+    if not media_urls:
+        if errors:
+            return "error_download", uploaded, errors[0]
+        return "skip_no_photos", 0, ""
 
     update_listing_photos(
         settings.db_path,
@@ -155,6 +166,8 @@ def sync_listing_photos(
         photo_url=media_urls[0] if media_urls else None,
         photo_urls=media_urls,
     )
+    if errors:
+        return "synced_partial", uploaded, errors[0]
     return "synced", uploaded, ""
 
 

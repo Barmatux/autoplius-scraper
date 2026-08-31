@@ -102,6 +102,26 @@ def init_db(db_path: Path) -> None:
         conn.executescript(SCHEMA)
 
 
+def _is_minio_photo_url(url: str | None) -> bool:
+    return bool(url and url.startswith("/media/object"))
+
+
+def _is_external_photo_url(url: str | None) -> bool:
+    return bool(url and url.startswith("http"))
+
+
+def _preserve_stored_photos(row: dict[str, Any], existing: sqlite3.Row) -> None:
+    """Keep MinIO URLs when scrape refreshed only external autoplius links."""
+    if not _should_keep_stored_photos(existing["photo_url"], row.get("photo_url")):
+        return
+    row["photo_url"] = existing["photo_url"]
+    row["photo_urls_json"] = existing["photo_urls_json"]
+
+
+def _should_keep_stored_photos(existing_url: str | None, new_url: str | None) -> bool:
+    return _is_minio_photo_url(existing_url) and _is_external_photo_url(new_url)
+
+
 def _listing_row(item: dict[str, Any], *, run_id: int | None, seen_at: str) -> dict[str, Any]:
     return {
         "autoplius_id": int(item["autoplius_id"]),
@@ -185,9 +205,12 @@ def save_payload_to_db(
                 continue
             row = _listing_row(item, run_id=run_id, seen_at=finished_at)
             existing = conn.execute(
-                "SELECT autoplius_id, detail_scraped, first_seen_at FROM listings WHERE autoplius_id = ?",
+                "SELECT autoplius_id, detail_scraped, first_seen_at, photo_url, photo_urls_json FROM listings WHERE autoplius_id = ?",
                 (row["autoplius_id"],),
             ).fetchone()
+
+            if existing is not None:
+                _preserve_stored_photos(row, existing)
 
             if existing is None:
                 conn.execute(
