@@ -80,7 +80,6 @@
             <th>Год</th>
             <th>Пробег</th>
             <th>КПП / Топливо</th>
-            <th>Телефон</th>
             <th>Объем двигателя</th>
             <th>Город</th>
             <th>Фото/парам.</th>
@@ -126,7 +125,6 @@
               <div>{{ item.transmission or '—' }}</div>
               <div class="muted">{{ item.fuel or '—' }}</div>
             </td>
-            <td class="num">{{ item.phone or '—' }}</td>
             <td class="num">{{ item|engine_volume }}</td>
             <td>{{ item.city or '—' }}</td>
             <td class="num">
