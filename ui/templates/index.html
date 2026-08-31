@@ -156,7 +156,7 @@
               {% if rb %}
               <div class="price-rb" tabindex="0">
                 <span class="price-rb-value">{{ rb.total_formatted }}</span>
-                <div class="price-rb-tooltip" role="tooltip">
+                <div class="price-rb-tooltip" role="tooltip" hidden>
                   {% for line in rb.tooltip_lines() %}
                   <p>{{ line }}</p>
                   {% endfor %}
@@ -199,5 +199,6 @@
     {% endif %}
     {% endif %}
   </main>
+  <script src="{{ url_for('static', filename='price_rb_tooltip.js') }}" defer></script>
 </body>
 </html>

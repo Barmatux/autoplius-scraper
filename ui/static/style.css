@@ -207,6 +207,10 @@ td {
   overflow: hidden;
 }
 
+td.col-price-rb {
+  overflow: visible;
+}
+
 th.photo-col,
 td.photo {
   width: 100px;
@@ -366,23 +370,26 @@ a:hover {
 }
 
 .price-rb-tooltip {
-  display: none;
-  position: absolute;
-  left: 0;
-  top: calc(100% + 0.35rem);
-  z-index: 20;
+  display: block;
+  position: fixed;
+  z-index: 1000;
   min-width: 280px;
   max-width: 360px;
   padding: 0.75rem 0.85rem;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fffdf8;
-  box-shadow: var(--shadow);
+  box-shadow: 0 12px 32px rgba(40, 30, 10, 0.16);
   color: var(--ink);
   font-weight: 500;
   font-size: 0.78rem;
   line-height: 1.35;
   white-space: normal;
+  pointer-events: none;
+}
+
+.price-rb-tooltip[hidden] {
+  display: none;
 }
 
 .price-rb-tooltip p {
@@ -396,11 +403,6 @@ a:hover {
   border-top: 1px solid var(--line);
   font-weight: 700;
   color: #1a4d8c;
-}
-
-.price-rb:hover .price-rb-tooltip,
-.price-rb:focus-within .price-rb-tooltip {
-  display: block;
 }
 
 .col-gear {
