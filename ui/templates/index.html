@@ -81,7 +81,7 @@
             <th>Пробег</th>
             <th>КПП / Топливо</th>
             <th>Телефон</th>
-            <th>VIN</th>
+            <th>Объем двигателя</th>
             <th>Город</th>
             <th>Фото/парам.</th>
             {% set added_sort = 'added_asc' if sort == 'added_desc' else 'added_desc' %}
@@ -127,7 +127,7 @@
               <div class="muted">{{ item.fuel or '—' }}</div>
             </td>
             <td class="num">{{ item.phone or '—' }}</td>
-            <td class="mono">{{ item.vin_masked or '—' }}</td>
+            <td class="num">{{ item|engine_volume }}</td>
             <td>{{ item.city or '—' }}</td>
             <td class="num">
               {{ (item.photo_urls|length) if item.photo_urls else (1 if thumb else 0) }}

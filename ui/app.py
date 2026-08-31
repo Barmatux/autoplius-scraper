@@ -12,6 +12,7 @@ from scraper.config import Settings
 from scraper.db import db_stats, default_db_path, fetch_listing, fetch_listings
 from scraper.s3_storage import get_s3_client
 from autoplius.translate import is_translation_error
+from autoplius.engine_volume import engine_volume_from_listing
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
@@ -32,6 +33,11 @@ def format_datetime(value: str | None) -> str:
         return dt.strftime("%d.%m.%Y %H:%M")
     except ValueError:
         return value[:16].replace("T", " ")
+
+
+@app.template_filter("engine_volume")
+def engine_volume(item: dict[str, Any]) -> str:
+    return engine_volume_from_listing(item) or "—"
 
 
 def _check_basic_auth() -> bool:
