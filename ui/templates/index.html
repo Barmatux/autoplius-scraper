@@ -16,7 +16,7 @@
 {% endif %}
 <th class="sortable{% if sort in (asc, desc) %} active{% endif %}">
   <a
-    href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=next_sort, upto_19l='1' if upto_19l else '0', tab=tab, page=1) }}"
+    href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=next_sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', tab=tab, page=1) }}"
     class="sort-link"
   >
     {{ label }}
@@ -47,11 +47,11 @@
   <main>
     <nav class="tabs">
       <a
-        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', tab='all', page=1) }}"
+        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', tab='all', page=1) }}"
         class="tab{% if tab == 'all' %} active{% endif %}"
       >Объявления</a>
       <a
-        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', tab='no_volume', page=1) }}"
+        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', tab='no_volume', page=1) }}"
         class="tab{% if tab == 'no_volume' %} active{% endif %}"
       >Без объема <span class="tab-count">{{ no_volume_count }}</span></a>
     </nav>
@@ -78,6 +78,11 @@
         <input type="checkbox" name="upto_19l" value="1" {% if upto_19l %}checked{% endif %}>
       </label>
       {% endif %}
+      <label class="check">
+        <span>проходные</span>
+        <input type="hidden" name="passable" value="0">
+        <input type="checkbox" name="passable" value="1" {% if passable %}checked{% endif %}>
+      </label>
       <button type="submit">Показать</button>
     </form>
 
@@ -156,11 +161,11 @@
     {% if pages > 1 %}
     <nav class="pager">
       {% if page > 1 %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', tab=tab, page=page-1) }}">← Назад</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', tab=tab, page=page-1) }}">← Назад</a>
       {% endif %}
       <span>Страница {{ page }} / {{ pages }}</span>
       {% if page < pages %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', tab=tab, page=page+1) }}">Вперёд →</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', tab=tab, page=page+1) }}">Вперёд →</a>
       {% endif %}
     </nav>
     {% endif %}

@@ -86,6 +86,12 @@ def _upto_19l_enabled() -> bool:
     return "1" in request.args.getlist("upto_19l")
 
 
+def _passable_enabled() -> bool:
+    if "passable" not in request.args:
+        return False
+    return "1" in request.args.getlist("passable")
+
+
 def _current_tab() -> str:
     tab = (request.args.get("tab") or TAB_ALL).strip()
     return tab if tab in {TAB_ALL, TAB_NO_VOLUME} else TAB_ALL
@@ -100,22 +106,24 @@ def _fetch_index_listings(
     sort: str,
     tab: str,
     upto_19l: bool,
+    passable: bool,
 ) -> list[dict[str, Any]]:
-    if tab == TAB_NO_VOLUME:
-        return fetch_listings(
-            path,
-            q=q,
-            min_price=min_price,
-            max_price=max_price,
-            sort=sort,
-            engine_volume_missing=True,
-        )
-    return fetch_listings(
-        path,
+    common = dict(
         q=q,
         min_price=min_price,
         max_price=max_price,
         sort=sort,
+        passable_only=passable,
+    )
+    if tab == TAB_NO_VOLUME:
+        return fetch_listings(
+            path,
+            **common,
+            engine_volume_missing=True,
+        )
+    return fetch_listings(
+        path,
+        **common,
         engine_upto_liters=1.9 if upto_19l else None,
     )
 
@@ -159,6 +167,7 @@ def index():
     q = request.args.get("q", "")
     sort = request.args.get("sort", "price_asc")
     upto_19l = _upto_19l_enabled()
+    passable = _passable_enabled()
     tab = _current_tab()
     page = max(1, int(request.args.get("page", "1") or "1"))
     min_price_raw = request.args.get("min_price", "").strip()
@@ -175,6 +184,7 @@ def index():
         sort=sort,
         tab=tab,
         upto_19l=upto_19l,
+        passable=passable,
     )
     no_volume_count = len(
         _fetch_index_listings(
@@ -185,6 +195,7 @@ def index():
             sort=sort,
             tab=TAB_NO_VOLUME,
             upto_19l=upto_19l,
+            passable=passable,
         )
     )
 
@@ -209,6 +220,7 @@ def index():
         min_price=min_price_raw,
         max_price=max_price_raw,
         upto_19l=upto_19l,
+        passable=passable,
         tab=tab,
         no_volume_count=no_volume_count,
         page=page,
@@ -232,6 +244,7 @@ def api_listings():
     q = request.args.get("q", "")
     sort = request.args.get("sort", "price_asc")
     upto_19l = _upto_19l_enabled()
+    passable = _passable_enabled()
     tab = _current_tab()
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
@@ -249,6 +262,7 @@ def api_listings():
                 sort=sort,
                 tab=tab,
                 upto_19l=upto_19l,
+                passable=passable,
             ),
         }
     )

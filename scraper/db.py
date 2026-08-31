@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from autoplius.engine_volume import engine_volume_liters
+from autoplius.passable_age import is_passable_age
 
 
 SCHEMA = """
@@ -404,6 +405,7 @@ def fetch_listings(
     details_only: bool = False,
     engine_upto_liters: float | None = None,
     engine_volume_missing: bool = False,
+    passable_only: bool = False,
 ) -> list[dict[str, Any]]:
     if not db_path.is_file():
         return []
@@ -466,6 +468,8 @@ def fetch_listings(
             if (liters := engine_volume_liters(item)) is not None
             and liters <= engine_upto_liters
         ]
+    if passable_only:
+        listings = [item for item in listings if is_passable_age(item)]
     return listings
 
 
