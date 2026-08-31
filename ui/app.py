@@ -21,10 +21,12 @@ from scraper.db import (
     scrape_runs_analytics,
 )
 from scraper.s3_storage import get_s3_client
+from autoplius.cities_lt import distance_from_vilnius_label, google_maps_url
 from autoplius.translate import is_translation_error
 from autoplius.engine_volume import engine_volume_from_listing
 from autoplius.price_display import price_lt_lines
 from autoplius.price_rb import estimate_price_rb
+from collections import Counter
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
@@ -108,6 +110,16 @@ def price_rb_usd(item: dict[str, Any]) -> str:
     if breakdown is None:
         return "—"
     return breakdown.total_formatted
+
+
+@app.template_filter("city_distance")
+def city_distance(city: str | None) -> str:
+    return distance_from_vilnius_label(city) or ""
+
+
+@app.template_filter("city_maps_url")
+def city_maps_url(city: str | None) -> str:
+    return google_maps_url(city) or ""
 
 
 _LISTING_ID_SUFFIX_RE = re.compile(r"\s*\|\s*A?\d+\s*$")
@@ -262,6 +274,40 @@ def _over_3y_enabled() -> bool:
     return "1" in request.args.getlist("over_3y")
 
 
+def _selected_cities() -> list[str]:
+    seen: set[str] = set()
+    cities: list[str] = []
+    for raw in request.args.getlist("city"):
+        name = (raw or "").strip()
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        cities.append(name)
+    return cities
+
+
+def _city_options(listings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts = Counter(
+        (item.get("city") or "").strip()
+        for item in listings
+        if (item.get("city") or "").strip()
+    )
+    return [
+        {"name": name, "count": count}
+        for name, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0].casefold()))
+    ]
+
+
+def _filter_by_cities(
+    listings: list[dict[str, Any]],
+    selected: list[str],
+) -> list[dict[str, Any]]:
+    if not selected:
+        return listings
+    allowed = set(selected)
+    return [item for item in listings if (item.get("city") or "").strip() in allowed]
+
+
 def _current_tab() -> str:
     tab = (request.args.get("tab") or TAB_ALL).strip()
     return tab if tab in {TAB_ALL, TAB_NO_VOLUME, TAB_ARCHIVED} else TAB_ALL
@@ -361,6 +407,9 @@ def index():
         passable=passable,
         over_3y=over_3y,
     )
+    selected_cities = _selected_cities()
+    city_options = _city_options(filtered)
+    filtered = _filter_by_cities(filtered, selected_cities)
     no_volume_count = len(
         _fetch_index_listings(
             path,
@@ -400,6 +449,8 @@ def index():
         upto_19l=upto_19l,
         passable=passable,
         over_3y=over_3y,
+        selected_cities=selected_cities,
+        city_options=city_options,
         tab=tab,
         active_tab=tab,
         no_volume_count=no_volume_count,

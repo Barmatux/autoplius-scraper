@@ -6,6 +6,9 @@
   <title>Autoplius Scraper</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+{% macro city_qs() -%}
+{%- for c in selected_cities -%}&city={{ c|urlencode }}{%- endfor -%}
+{%- endmacro %}
 {% macro sort_th(label, asc, desc, default, col_class='') %}
 {% if sort == desc %}
   {% set next_sort = asc %}
@@ -16,7 +19,7 @@
 {% endif %}
 <th class="sortable th-wrap{% if sort in (asc, desc) %} active{% endif %}{% if col_class %} {{ col_class }}{% endif %}">
   <a
-    href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=next_sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=1) }}"
+    href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=next_sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=1) }}{{ city_qs() }}"
     class="sort-link"
   >
     <span class="sort-label">{{ label|safe }}</span>
@@ -84,6 +87,9 @@
         <input type="hidden" name="over_3y" value="0">
         <input type="checkbox" name="over_3y" value="1" {% if over_3y %}checked{% endif %}>
       </label>
+      {% for c in selected_cities %}
+      <input type="hidden" name="city" value="{{ c }}">
+      {% endfor %}
       <button type="submit">Показать</button>
     </form>
 
@@ -125,7 +131,43 @@
             <th class="col-price-rb th-wrap">Цена в РБ, $</th>
             {{ sort_th('Пробег', 'mileage_asc', 'mileage_desc', 'mileage_asc', 'col-mileage') }}
             <th class="col-gear th-wrap">КПП / Топливо</th>
-            <th class="col-city th-wrap">Город</th>
+            <th class="col-city th-wrap city-filter-th{% if selected_cities %} active{% endif %}" data-city-filter>
+              <button type="button" class="city-filter-toggle" data-city-filter-toggle aria-expanded="false">
+                <span class="sort-label">Город{% if selected_cities %} ({{ selected_cities|length }}){% endif %}</span>
+                <span class="sort-indicator" aria-hidden="true">▾</span>
+              </button>
+              <form
+                class="city-filter-panel"
+                method="get"
+                data-city-filter-panel
+                hidden
+              >
+                <input type="hidden" name="tab" value="{{ tab }}">
+                <input type="hidden" name="sort" value="{{ sort }}">
+                <input type="hidden" name="q" value="{{ q }}">
+                <input type="hidden" name="min_price" value="{{ min_price }}">
+                <input type="hidden" name="max_price" value="{{ max_price }}">
+                <input type="hidden" name="upto_19l" value="{{ '1' if upto_19l else '0' }}">
+                <input type="hidden" name="passable" value="{{ '1' if passable else '0' }}">
+                <input type="hidden" name="over_3y" value="{{ '1' if over_3y else '0' }}">
+                <input type="hidden" name="page" value="1">
+                <div class="city-filter-list">
+                  {% for option in city_options %}
+                  <label class="city-filter-item">
+                    <input type="checkbox" name="city" value="{{ option.name }}" {% if option.name in selected_cities %}checked{% endif %}>
+                    <span class="city-filter-name">{{ option.name }}</span>
+                    <span class="city-filter-count">{{ option.count }}</span>
+                  </label>
+                  {% else %}
+                  <p class="muted">Нет городов</p>
+                  {% endfor %}
+                </div>
+                <div class="city-filter-actions">
+                  <button type="submit">Применить</button>
+                  <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=1) }}">Сбросить</a>
+                </div>
+              </form>
+            </th>
             {{ sort_th('Дата добавления', 'added_asc', 'added_desc', 'added_desc', 'col-date') }}
           </tr>
         </thead>
@@ -180,7 +222,17 @@
               <div>{{ item.transmission or '—' }}</div>
               <div class="muted">{{ item.fuel or '—' }}</div>
             </td>
-            <td class="col-city">{{ item.city or '—' }}</td>
+            <td class="col-city">
+              {% if item.city %}
+              <div class="city-name">{{ item.city }}</div>
+              {% set dist = item.city|city_distance %}
+              {% if dist %}<div class="muted city-distance">{{ dist }}</div>{% endif %}
+              {% set maps = item.city|city_maps_url %}
+              {% if maps %}<a class="city-map-link" href="{{ maps }}" target="_blank" rel="noopener">На карте</a>{% endif %}
+              {% else %}
+              —
+              {% endif %}
+            </td>
             <td class="num date-added col-date">
               {% if item.first_seen_at %}
               <div>{{ item.first_seen_at|format_date }}</div>
@@ -198,11 +250,11 @@
     {% if pages > 1 %}
     <nav class="pager">
       {% if page > 1 %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=page-1) }}">← Назад</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=page-1) }}{{ city_qs() }}">← Назад</a>
       {% endif %}
       <span>Страница {{ page }} / {{ pages }}</span>
       {% if page < pages %}
-      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=page+1) }}">Вперёд →</a>
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=page+1) }}{{ city_qs() }}">Вперёд →</a>
       {% endif %}
     </nav>
     {% endif %}
@@ -210,5 +262,6 @@
   </main>
   <script src="{{ url_for('static', filename='price_rb_tooltip.js') }}" defer></script>
   <script src="{{ url_for('static', filename='list_photos.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='city_filter.js') }}" defer></script>
 </body>
 </html>
