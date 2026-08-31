@@ -112,6 +112,16 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
     if "description_ru" not in cols:
         conn.execute("ALTER TABLE listings ADD COLUMN description_ru TEXT")
 
+    run_cols = {row[1] for row in conn.execute("PRAGMA table_info(scrape_runs)")}
+    for name, ddl in (
+        ("scrape_mode", "TEXT"),
+        ("new_listings_found", "INTEGER"),
+        ("enrich_new_only", "INTEGER DEFAULT 0"),
+        ("photos_uploaded", "INTEGER"),
+    ):
+        if name not in run_cols:
+            conn.execute(f"ALTER TABLE scrape_runs ADD COLUMN {name} {ddl}")
+
 
 def _is_minio_photo_url(url: str | None) -> bool:
     return bool(url and url.startswith("/media/object"))
@@ -189,8 +199,9 @@ def save_payload_to_db(
                 mode, started_at, finished_at, duration_sec, pages_scraped,
                 listing_count, details_scraped, details_failed, enrich_details,
                 diff_new, diff_removed, diff_unchanged, snapshot_path,
-                page_stats_json, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                page_stats_json, scrape_mode, new_listings_found, enrich_new_only,
+                photos_uploaded, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 payload.get("mode") or "test",
@@ -207,6 +218,10 @@ def save_payload_to_db(
                 diff.get("unchanged"),
                 snap or None,
                 json.dumps(payload.get("page_stats") or [], ensure_ascii=False),
+                payload.get("scrape_mode"),
+                payload.get("new_listings_found"),
+                1 if payload.get("enrich_new_only") else 0,
+                (payload.get("photo_sync") or {}).get("uploaded"),
                 _utc_now(),
             ),
         )
@@ -577,7 +592,11 @@ def db_stats(db_path: Path) -> dict[str, Any]:
             "SELECT COUNT(*) AS c FROM listings WHERE vin_masked IS NOT NULL AND vin_masked != ''"
         ).fetchone()["c"]
         last = conn.execute(
-            "SELECT finished_at, listing_count, details_scraped FROM scrape_runs ORDER BY id DESC LIMIT 1"
+            """
+            SELECT finished_at, listing_count, details_scraped, scrape_mode,
+                   new_listings_found, duration_sec
+            FROM scrape_runs ORDER BY id DESC LIMIT 1
+            """
         ).fetchone()
     return {
         "exists": True,
@@ -588,4 +607,136 @@ def db_stats(db_path: Path) -> dict[str, Any]:
         "with_phone": phones,
         "with_vin": vins,
         "last_run": dict(last) if last else None,
+    }
+
+
+def _row_to_scrape_run(row: sqlite3.Row) -> dict[str, Any]:
+    page_stats: list[dict[str, Any]] = []
+    raw_stats = row["page_stats_json"]
+    if raw_stats:
+        try:
+            page_stats = json.loads(raw_stats)
+        except json.JSONDecodeError:
+            page_stats = []
+
+    scrape_mode = row["scrape_mode"]
+    if not scrape_mode:
+        pages = row["pages_scraped"] or 0
+        count = row["listing_count"] or 0
+        if pages >= 10 and count >= 50:
+            scrape_mode = "full"
+        elif pages <= 2 and count <= 25:
+            scrape_mode = "smoke"
+        else:
+            scrape_mode = "partial"
+
+    return {
+        "id": row["id"],
+        "mode": row["mode"],
+        "scrape_mode": scrape_mode,
+        "started_at": row["started_at"],
+        "finished_at": row["finished_at"],
+        "duration_sec": row["duration_sec"],
+        "pages_scraped": row["pages_scraped"],
+        "listing_count": row["listing_count"],
+        "details_scraped": row["details_scraped"],
+        "details_failed": row["details_failed"],
+        "enrich_details": bool(row["enrich_details"]),
+        "enrich_new_only": bool(row["enrich_new_only"]),
+        "diff_new": row["diff_new"],
+        "diff_removed": row["diff_removed"],
+        "diff_unchanged": row["diff_unchanged"],
+        "new_listings_found": row["new_listings_found"],
+        "photos_uploaded": row["photos_uploaded"],
+        "snapshot_path": row["snapshot_path"],
+        "page_stats": page_stats,
+    }
+
+
+def count_scrape_runs(db_path: Path) -> int:
+    if not db_path.is_file():
+        return 0
+    with connect(db_path) as conn:
+        return int(conn.execute("SELECT COUNT(*) FROM scrape_runs").fetchone()[0])
+
+
+def fetch_scrape_runs(
+    db_path: Path,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    if not db_path.is_file():
+        return []
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT id, mode, started_at, finished_at, duration_sec, pages_scraped,
+                   listing_count, details_scraped, details_failed, enrich_details,
+                   diff_new, diff_removed, diff_unchanged, snapshot_path,
+                   page_stats_json, scrape_mode, new_listings_found, enrich_new_only,
+                   photos_uploaded
+            FROM scrape_runs
+            ORDER BY id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        ).fetchall()
+    return [_row_to_scrape_run(row) for row in rows]
+
+
+def scrape_runs_analytics(db_path: Path, *, recent_limit: int = 24) -> dict[str, Any]:
+    """Aggregate metrics for the analytics dashboard."""
+    if not db_path.is_file():
+        return {"exists": False}
+
+    with connect(db_path) as conn:
+        totals = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS runs,
+                ROUND(AVG(duration_sec), 1) AS avg_duration_sec,
+                SUM(listing_count) AS total_listings_scraped,
+                SUM(details_scraped) AS total_details_scraped,
+                SUM(COALESCE(new_listings_found, diff_new, 0)) AS total_new_signal,
+                SUM(COALESCE(photos_uploaded, 0)) AS total_photos_uploaded
+            FROM scrape_runs
+            """
+        ).fetchone()
+
+        recent = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS runs,
+                ROUND(AVG(duration_sec), 1) AS avg_duration_sec,
+                SUM(COALESCE(new_listings_found, diff_new, 0)) AS new_signal
+            FROM (
+                SELECT duration_sec, new_listings_found, diff_new
+                FROM scrape_runs
+                ORDER BY id DESC
+                LIMIT ?
+            )
+            """,
+            (recent_limit,),
+        ).fetchone()
+
+        by_mode = conn.execute(
+            """
+            SELECT
+                COALESCE(scrape_mode, 'unknown') AS scrape_mode,
+                COUNT(*) AS runs,
+                ROUND(AVG(duration_sec), 1) AS avg_duration_sec,
+                SUM(COALESCE(new_listings_found, diff_new, 0)) AS new_signal
+            FROM scrape_runs
+            GROUP BY scrape_mode
+            ORDER BY runs DESC
+            """
+        ).fetchall()
+
+    return {
+        "exists": True,
+        "totals": dict(totals),
+        "recent": dict(recent),
+        "recent_limit": recent_limit,
+        "by_mode": [dict(row) for row in by_mode],
     }

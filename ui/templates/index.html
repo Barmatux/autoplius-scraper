@@ -45,16 +45,8 @@
   </header>
 
   <main>
-    <nav class="tabs">
-      <a
-        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', tab='all', page=1) }}"
-        class="tab{% if tab == 'all' %} active{% endif %}"
-      >Объявления</a>
-      <a
-        href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', tab='no_volume', page=1) }}"
-        class="tab{% if tab == 'no_volume' %} active{% endif %}"
-      >Без объема <span class="tab-count">{{ no_volume_count }}</span></a>
-    </nav>
+    {% set active_tab = tab %}
+    {% include "_tabs.html" %}
 
     <form class="filters" method="get">
       <input type="hidden" name="tab" value="{{ tab }}">

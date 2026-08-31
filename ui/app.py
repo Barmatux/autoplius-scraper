@@ -10,7 +10,15 @@ from botocore.exceptions import BotoCoreError, ClientError
 from flask import Flask, abort, jsonify, render_template, request, Response
 
 from scraper.config import Settings
-from scraper.db import db_stats, default_db_path, fetch_listing, fetch_listings
+from scraper.db import (
+    count_scrape_runs,
+    db_stats,
+    default_db_path,
+    fetch_listing,
+    fetch_listings,
+    fetch_scrape_runs,
+    scrape_runs_analytics,
+)
 from scraper.s3_storage import get_s3_client
 from autoplius.translate import is_translation_error
 from autoplius.engine_volume import engine_volume_from_listing
@@ -19,6 +27,7 @@ from autoplius.price_rb import estimate_price_rb_usd
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
 PAGE_SIZE = 50
+RUNS_PAGE_SIZE = 30
 SETTINGS = Settings.from_env()
 TAB_ALL = "all"
 TAB_NO_VOLUME = "no_volume"
@@ -59,6 +68,20 @@ def format_time(value: str | None) -> str:
     if dt is None:
         return ""
     return dt.strftime("%H:%M")
+
+
+@app.template_filter("format_duration")
+def format_duration(value: float | int | None) -> str:
+    if value is None:
+        return "—"
+    total = int(round(float(value)))
+    if total < 60:
+        return f"{total}с"
+    minutes, seconds = divmod(total, 60)
+    if minutes < 60:
+        return f"{minutes}м {seconds:02d}с"
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}ч {minutes:02d}м"
 
 
 @app.template_filter("engine_volume")
@@ -291,11 +314,39 @@ def index():
         upto_19l=upto_19l,
         passable=passable,
         tab=tab,
+        active_tab=tab,
         no_volume_count=no_volume_count,
         page=page,
         pages=pages,
         page_size=PAGE_SIZE,
         thumb_url=thumb_url,
+    )
+
+
+@app.get("/analytics")
+def analytics():
+    path = require_db()
+    page = max(1, int(request.args.get("page", "1") or "1"))
+    total_runs = count_scrape_runs(path)
+    pages = max(1, (total_runs + RUNS_PAGE_SIZE - 1) // RUNS_PAGE_SIZE)
+    page = min(page, pages)
+    offset = (page - 1) * RUNS_PAGE_SIZE
+
+    runs = fetch_scrape_runs(path, limit=RUNS_PAGE_SIZE, offset=offset)
+    no_volume_count = len(
+        fetch_listings(path, engine_volume_missing=True, passable_only=False)
+    )
+
+    return render_template(
+        "analytics.html",
+        runs=runs,
+        analytics=scrape_runs_analytics(path),
+        db_stats=db_stats(path),
+        total_runs=total_runs,
+        page=page,
+        pages=pages,
+        active_tab="analytics",
+        no_volume_count=no_volume_count,
     )
 
 
@@ -348,6 +399,22 @@ def api_listing(listing_id: int):
 @app.get("/api/db/stats")
 def api_db_stats():
     return jsonify(db_stats(require_db()))
+
+
+@app.get("/api/runs")
+def api_runs():
+    path = require_db()
+    page = max(1, int(request.args.get("page", "1") or "1"))
+    limit = min(100, max(1, int(request.args.get("limit", str(RUNS_PAGE_SIZE)) or RUNS_PAGE_SIZE)))
+    offset = (page - 1) * limit
+    return jsonify(
+        {
+            "runs": fetch_scrape_runs(path, limit=limit, offset=offset),
+            "analytics": scrape_runs_analytics(path),
+            "total": count_scrape_runs(path),
+            "page": page,
+        }
+    )
 
 
 def main() -> None:

@@ -488,6 +488,109 @@ a:hover {
   color: #3a352c;
 }
 
+.analytics-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+}
+
+.stat-label {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-value {
+  margin: 0.35rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.analytics-section {
+  margin-top: 1.5rem;
+}
+
+.section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.summary-line {
+  margin: 0 0 0.75rem;
+}
+
+.analytics-table th,
+.analytics-table td {
+  font-size: 0.88rem;
+  vertical-align: top;
+}
+
+.runs-table .diff-cell span {
+  display: inline-block;
+  margin-right: 0.35rem;
+}
+
+.diff-new { color: #1f7a45; }
+.diff-removed { color: #b45309; }
+.diff-same { color: var(--muted); }
+
+.fail-count { color: #b91c1c; }
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: #efe8da;
+  color: #5c5345;
+}
+
+.badge-incremental { background: #e0f2fe; color: #0369a1; }
+.badge-full { background: #dcfce7; color: #166534; }
+.badge-smoke { background: #fef3c7; color: #92400e; }
+.badge-partial { background: #f3e8ff; color: #6b21a8; }
+.badge-unknown { background: #f3f4f6; color: #6b7280; }
+
+.run-details-row td {
+  background: #faf8f4;
+  padding-top: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.run-details-row details {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.page-stats-list {
+  margin: 0.5rem 0 0.75rem 1.1rem;
+  padding: 0;
+}
+
+.page-stats-list li {
+  margin: 0.15rem 0;
+}
+
 @media (max-width: 900px) {
   .detail-layout {
     grid-template-columns: 1fr;

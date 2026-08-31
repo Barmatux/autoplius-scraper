@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Аналитика — Autoplius Scraper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <p class="brand-name">Autoplius Scraper</p>
+      <p class="brand-sub">История прогонов парсера</p>
+    </div>
+    <div class="meta">
+      <div class="pill accent">{{ analytics.totals.runs or 0 }} прогонов</div>
+      {% if analytics.recent.runs %}
+      <div class="pill">Последние {{ analytics.recent_limit }}: {{ analytics.recent.runs }}</div>
+      {% endif %}
+      {% if db_stats and db_stats.last_run and db_stats.last_run.finished_at %}
+      <div class="pill">Последний: {{ db_stats.last_run.finished_at|format_datetime }}</div>
+      {% endif %}
+    </div>
+  </header>
+
+  <main>
+    {% include "_tabs.html" %}
+
+    <section class="analytics-cards">
+      <article class="stat-card">
+        <p class="stat-label">Всего прогонов</p>
+        <p class="stat-value">{{ analytics.totals.runs or 0 }}</p>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">Средняя длительность</p>
+        <p class="stat-value">{{ analytics.totals.avg_duration_sec|format_duration }}</p>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">Объявлений собрано</p>
+        <p class="stat-value">{{ analytics.totals.total_listings_scraped or 0 }}</p>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">Detail-страниц</p>
+        <p class="stat-value">{{ analytics.totals.total_details_scraped or 0 }}</p>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">Сигнал «новых»</p>
+        <p class="stat-value">{{ analytics.totals.total_new_signal or 0 }}</p>
+        <p class="stat-hint">new vs БД или Δ снимка</p>
+      </article>
+      <article class="stat-card">
+        <p class="stat-label">Фото в MinIO</p>
+        <p class="stat-value">{{ analytics.totals.total_photos_uploaded or 0 }}</p>
+      </article>
+    </section>
+
+    {% if analytics.by_mode %}
+    <section class="analytics-section">
+      <h2 class="section-title">По режиму</h2>
+      <div class="table-wrap">
+        <table class="listings-table analytics-table">
+          <thead>
+            <tr>
+              <th>Режим</th>
+              <th>Прогонов</th>
+              <th>Ср. время</th>
+              <th>Новых (сигнал)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in analytics.by_mode %}
+            <tr>
+              <td><span class="badge badge-{{ row.scrape_mode|default('unknown') }}">{{ row.scrape_mode or 'unknown' }}</span></td>
+              <td class="num">{{ row.runs }}</td>
+              <td class="num">{{ row.avg_duration_sec|format_duration }}</td>
+              <td class="num">{{ row.new_signal or 0 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="analytics-section">
+      <h2 class="section-title">Прогоны</h2>
+      <p class="summary-line">
+        Показано <strong>{{ runs|length }}</strong> из {{ total_runs }}
+        (стр. {{ page }}/{{ pages }})
+      </p>
+      <p class="summary-line muted">
+        В таблице только успешные прогоны. «Новых vs БД» — с incremental-режима; «Δ снимок» — diff с прошлым JSON-снимком.
+      </p>
+
+      {% if not runs %}
+      <p class="empty">Пока нет сохранённых прогонов.</p>
+      {% else %}
+      <div class="table-wrap">
+        <table class="listings-table analytics-table runs-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Завершён</th>
+              <th>Режим</th>
+              <th>Время</th>
+              <th>Стр.</th>
+              <th>Объявл.</th>
+              <th>Новых vs БД</th>
+              <th>Δ снимок</th>
+              <th>Detail</th>
+              <th>Enrich</th>
+              <th>Фото</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for run in runs %}
+            <tr>
+              <td class="num">{{ run.id }}</td>
+              <td class="num">
+                {% if run.finished_at %}
+                <div>{{ run.finished_at|format_date }}</div>
+                <div class="date-added-time">{{ run.finished_at|format_time }}</div>
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                <span class="badge badge-{{ run.scrape_mode }}">{{ run.scrape_mode }}</span>
+                <div class="muted">{{ run.mode }}</div>
+              </td>
+              <td class="num">{{ run.duration_sec|format_duration }}</td>
+              <td class="num">{{ run.pages_scraped or 0 }}</td>
+              <td class="num">{{ run.listing_count or 0 }}</td>
+              <td class="num">{% if run.new_listings_found is not none %}{{ run.new_listings_found }}{% else %}—{% endif %}</td>
+              <td class="num diff-cell">
+                <span class="diff-new">+{{ run.diff_new or 0 }}</span>
+                <span class="diff-removed">−{{ run.diff_removed or 0 }}</span>
+                <span class="diff-same">={{ run.diff_unchanged or 0 }}</span>
+              </td>
+              <td class="num">
+                {{ run.details_scraped or 0 }}{% if run.details_failed %}<span class="fail-count"> / −{{ run.details_failed }}</span>{% endif %}
+              </td>
+              <td>
+                {% if run.enrich_details %}
+                да{% if run.enrich_new_only %}<span class="muted"> (только новые)</span>{% endif %}
+                {% else %}нет{% endif %}
+              </td>
+              <td class="num">{{ run.photos_uploaded if run.photos_uploaded is not none else '—' }}</td>
+            </tr>
+            {% if run.page_stats %}
+            <tr class="run-details-row">
+              <td colspan="11">
+                <details>
+                  <summary>Страницы поиска</summary>
+                  <ul class="page-stats-list">
+                    {% for ps in run.page_stats %}
+                    <li>
+                      стр. {{ ps.page }}: {{ ps.count }} объявл.
+                      {% if ps.new_unique is not none %}(новых {{ ps.new_unique }}){% endif %}
+                    </li>
+                    {% endfor %}
+                  </ul>
+                </details>
+              </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if pages > 1 %}
+      <nav class="pager">
+        {% if page > 1 %}
+        <a href="{{ url_for('analytics', page=page-1) }}">← Назад</a>
+        {% endif %}
+        <span>Страница {{ page }} / {{ pages }}</span>
+        {% if page < pages %}
+        <a href="{{ url_for('analytics', page=page+1) }}">Вперёд →</a>
+        {% endif %}
+      </nav>
+      {% endif %}
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>
