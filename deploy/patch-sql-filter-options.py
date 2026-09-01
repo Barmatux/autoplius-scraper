@@ -82,7 +82,19 @@ def patch_app(text: str) -> str:
         year_from=year_from,
         year_to=year_to,
     )
-    spec_options = fetch_listing_filter_options(path, vehicle_year_filters)
+    has_vehicle_year = (
+        year_from is not None
+        or year_to is not None
+        or any(
+            (row.get("make") or "").strip() or (row.get("model") or "").strip()
+            for row in vehicle_rows
+        )
+    )
+    spec_options = (
+        fetch_listing_filter_options(path, vehicle_year_filters)
+        if has_vehicle_year
+        else base_options
+    )
     spec_filters = spec_options.spec_filters(
         selected_body_types=selected_body_types,
         selected_fuels=selected_fuels,

@@ -276,6 +276,16 @@ def _listing_filters_for_tab(
             1,
         )
 
+    tab_old = """            "no_volume_count": len(
+                fetch_listings(path, engine_volume_missing=True, catalog_filter=False)
+            ),"""
+    tab_new = """            "no_volume_count": count_listings(
+                path,
+                ListingFilters(engine_volume_missing=True, catalog_filter=False),
+            ),"""
+    if tab_old in text:
+        text = text.replace(tab_old, tab_new, 1)
+
     return text
 
 
