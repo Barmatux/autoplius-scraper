@@ -20,6 +20,12 @@ cd "$APP"
 echo "=== fetch $REMOTE/$BRANCH ==="
 sudo -u autoplius git fetch "$REMOTE" "$BRANCH"
 
+# deploy/*.sh line-ending normalization can leave harmless local diffs; reset before pull.
+if sudo -u autoplius git status --porcelain deploy/ | grep -q .; then
+  echo "=== reset deploy/ script drift ==="
+  sudo -u autoplius git checkout -- deploy/
+fi
+
 if sudo -u autoplius git status --porcelain | grep -q .; then
   echo "ERROR: VM working tree is dirty; commit or stash changes before deploy" >&2
   sudo -u autoplius git status -sb >&2 || true
