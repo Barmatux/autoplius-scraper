@@ -2,7 +2,6 @@
 """Restore VM UI app.py from stash snapshot and re-apply admin routes from git."""
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 APP = Path("/opt/autoplius-scraper/ui/app.py")
@@ -18,17 +17,11 @@ def extract_block(text: str, start_marker: str, end_marker: str) -> str:
 
 def replace_auth(merged: str, git_app: str) -> str:
     auth_block = extract_block(git_app, "def _admin_credentials(", "def db_path(")
-    merged = re.sub(
-        r"def _check_basic_auth\(\).*?"
-        r'@app\.before_request\s*\n'
-        r"def require_auth\(\):.*?"
-        r'\{"WWW-Authenticate": \'Basic realm="Autoplius Scraper"\'\},\s*\)\s*\n',
-        auth_block,
-        merged,
-        count=1,
-        flags=re.DOTALL,
-    )
-    if "def require_admin_auth(" not in merged:
+    if "def _check_basic_auth(" in merged:
+        start = merged.index("def _check_basic_auth(")
+        end = merged.index("@app.context_processor", start)
+        merged = merged[:start] + auth_block + merged[end:]
+    elif "def require_admin_auth(" not in merged:
         insert_at = merged.index("def db_path(")
         merged = merged[:insert_at] + auth_block + merged[insert_at:]
     return merged
@@ -38,14 +31,9 @@ def replace_admin_block(merged: str, git_app: str) -> str:
     admin_block = extract_block(git_app, "def _admin_status_filter(", '@app.get("/api/listings")')
     marker = '@app.get("/api/listings")'
     if "def _admin_status_filter(" in merged:
-        merged = re.sub(
-            r"def _admin_status_filter\(.*?"
-            + re.escape(marker),
-            admin_block + marker,
-            merged,
-            count=1,
-            flags=re.DOTALL,
-        )
+        start = merged.index("def _admin_status_filter(")
+        end = merged.index(marker, start)
+        merged = merged[:start] + admin_block + merged[end:]
     elif "def admin_listings" not in merged:
         merged = merged.replace(marker, admin_block + marker, 1)
     return merged
