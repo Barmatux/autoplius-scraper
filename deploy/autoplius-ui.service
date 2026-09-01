@@ -8,11 +8,11 @@ Type=simple
 WorkingDirectory=/opt/autoplius-scraper
 EnvironmentFile=-/opt/autoplius-scraper/.env
 Environment=DATA_DIR=/var/lib/autoplius-scraper/data
-Environment=UI_HOST=127.0.0.1
-Environment=UI_PORT=8081
-# gevent: many concurrent /media/object S3 reads without blocking HTML pages.
+Environment=UI_HOST=0.0.0.0
+Environment=UI_PORT=8080
+# gevent: concurrent /media/object S3 reads without blocking HTML pages.
 ExecStart=/opt/autoplius-scraper/.venv/bin/gunicorn \
-    --bind 127.0.0.1:8081 \
+    --bind 0.0.0.0:8080 \
     --workers 1 \
     --worker-class gevent \
     --worker-connections 256 \
