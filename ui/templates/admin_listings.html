@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Админка · Autoplius Scraper</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script defer src="{{ url_for('static', filename='admin.js') }}"></script>
 </head>
 <body>
   <header class="top">
@@ -28,7 +29,7 @@
     <p class="notice success">Изменения сохранены.</p>
     {% endif %}
     {% if archived_msg %}
-    <p class="notice success">Объявление отправлено в архив и скрыто из выдачи.</p>
+    <p class="notice archive-flash">Объявление отправлено в архив и скрыто из выдачи.</p>
     {% endif %}
     {% if restored_msg %}
     <p class="notice success">Объявление возвращено в активную выдачу.</p>
@@ -89,18 +90,22 @@
             <td class="num">{% if item.price_eur is not none %}{{ item.price_eur }} €{% else %}—{% endif %}</td>
             <td>{{ item.city or '—' }}</td>
             <td>
-              {% if item.status == 'archived' %}Архив{% else %}Активно{% endif %}
+              {% if item.status == 'archived' %}
+              <span class="status-badge archived">Архив</span>
+              {% else %}
+              <span class="status-badge active">Активно</span>
+              {% endif %}
             </td>
             <td>{% if item.detail_scraped %}✓{% else %}—{% endif %}</td>
             <td class="admin-actions-cell">
               <a class="button-link" href="{{ url_for('admin_edit_listing', listing_id=item.autoplius_id) }}">Редактировать</a>
               {% if item.status == 'archived' %}
-              <form class="admin-inline-form" method="post" action="{{ url_for('admin_restore_listing', listing_id=item.autoplius_id) }}">
-                <button type="submit" class="button-link secondary">Вернуть</button>
+              <form class="admin-inline-form admin-restore-form" method="post" action="{{ url_for('admin_restore_listing', listing_id=item.autoplius_id) }}">
+                <button type="submit" class="btn-restore">Вернуть</button>
               </form>
               {% else %}
-              <form class="admin-inline-form" method="post" action="{{ url_for('admin_archive_listing', listing_id=item.autoplius_id) }}">
-                <button type="submit" class="button-link danger">В архив</button>
+              <form class="admin-inline-form admin-archive-form" method="post" action="{{ url_for('admin_archive_listing', listing_id=item.autoplius_id) }}">
+                <button type="submit" class="btn-archive">В архив</button>
               </form>
               {% endif %}
             </td>

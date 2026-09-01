@@ -1034,10 +1034,38 @@ body.lightbox-open {
   color: var(--muted);
 }
 
-.button-link.danger {
-  color: #8a2f1f;
-  border-color: #f0c4bc;
-  background: #fdecea;
+.button-link.danger,
+.btn-archive {
+  color: #fff;
+  background: #c0392b;
+  border: 2px solid #962d22;
+  box-shadow: 0 2px 6px rgba(192, 57, 43, 0.35);
+  font-weight: 700;
+}
+
+.button-link.danger:hover,
+.btn-archive:hover:not(:disabled) {
+  background: #a93226;
+  border-color: #7b241c;
+  box-shadow: 0 3px 10px rgba(192, 57, 43, 0.45);
+}
+
+.btn-archive:disabled,
+.button-link.danger:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.btn-restore {
+  color: var(--accent);
+  background: var(--card);
+  border: 2px solid #b7dccb;
+  font-weight: 700;
+}
+
+.btn-restore:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 .admin-actions-cell {
@@ -1057,8 +1085,11 @@ body.lightbox-open {
   font: inherit;
 }
 
-.button-link:hover,
-.admin-actions button:hover {
+.button-link:hover {
+  border-color: #b7dccb;
+}
+
+.admin-actions button[type="submit"]:not(.btn-archive):not(.btn-restore):hover {
   border-color: #b7dccb;
 }
 
@@ -1119,6 +1150,64 @@ body.lightbox-open {
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.admin-actions button.btn-archive,
+.admin-actions button.btn-restore,
+.admin-actions-cell button.btn-archive,
+.admin-actions-cell button.btn-restore {
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-actions button.btn-archive,
+.admin-actions-cell button.btn-archive {
+  background: #c0392b;
+  border: 2px solid #962d22;
+  color: #fff;
+}
+
+.admin-actions button.btn-restore,
+.admin-actions-cell button.btn-restore {
+  background: var(--card);
+  border: 2px solid #b7dccb;
+  color: var(--accent);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.status-badge.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid #b7dccb;
+}
+
+.status-badge.archived {
+  background: #fdecea;
+  color: #8a2f1f;
+  border: 1px solid #f0c4bc;
+}
+
+.admin-actions-standalone {
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--line);
+  max-width: 960px;
+}
+
+.notice.archive-flash {
+  background: #fff3cd;
+  border: 2px solid #f0ad4e;
+  color: #7a4e00;
+  font-weight: 600;
 }
 
 .admin-meta {

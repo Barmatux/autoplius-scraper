@@ -15,11 +15,16 @@ def main() -> int:
     merged = STASHED.read_text(encoding="utf-8")
 
     admin_marker = ".admin-filters"
-    if admin_marker not in merged and GIT.is_file():
+    if GIT.is_file():
         git_css = GIT.read_text(encoding="utf-8")
         start = git_css.find(admin_marker)
         if start != -1:
-            merged = merged.rstrip() + "\n\n" + git_css[start:].lstrip()
+            git_admin = git_css[start:].lstrip()
+            if admin_marker in merged:
+                merged_start = merged.find(admin_marker)
+                merged = merged[:merged_start].rstrip() + "\n\n" + git_admin
+            else:
+                merged = merged.rstrip() + "\n\n" + git_admin
 
     CSS.write_text(merged, encoding="utf-8")
     print("OK", CSS, "bytes", len(merged.encode("utf-8")))

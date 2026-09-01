@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Редактирование #{{ item.autoplius_id }} · Autoplius Scraper</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script defer src="{{ url_for('static', filename='admin.js') }}"></script>
 </head>
 <body>
   <header class="top">
@@ -163,17 +164,20 @@
       <div class="admin-actions">
         <button type="submit">Сохранить</button>
         <a class="button-link secondary" href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">Отмена</a>
-        {% if item.status == 'archived' %}
-        <form class="admin-inline-form" method="post" action="{{ url_for('admin_restore_listing', listing_id=item.autoplius_id) }}">
-          <button type="submit" class="button-link secondary">Вернуть в выдачу</button>
-        </form>
-        {% else %}
-        <form class="admin-inline-form" method="post" action="{{ url_for('admin_archive_listing', listing_id=item.autoplius_id) }}">
-          <button type="submit" class="button-link danger">Скрыть из выдачи</button>
-        </form>
-        {% endif %}
       </div>
     </form>
+
+    <div class="admin-actions admin-actions-standalone">
+      {% if item.status == 'archived' %}
+      <form class="admin-inline-form admin-restore-form" method="post" action="{{ url_for('admin_restore_listing', listing_id=item.autoplius_id) }}">
+        <button type="submit" class="btn-restore">Вернуть в выдачу</button>
+      </form>
+      {% else %}
+      <form class="admin-inline-form admin-archive-form" method="post" action="{{ url_for('admin_archive_listing', listing_id=item.autoplius_id) }}">
+        <button type="submit" class="btn-archive">Скрыть из выдачи</button>
+      </form>
+      {% endif %}
+    </div>
   </main>
 </body>
 </html>
