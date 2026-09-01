@@ -538,25 +538,7 @@ def media_proxy():
     url = request.args.get("url", "").strip()
     if not is_external_photo_url(url):
         abort(400, "Invalid photo URL")
-
-    try:
-        request_obj = Request(
-            url,
-            headers={
-                "User-Agent": "Mozilla/5.0 (compatible; AutopliusScraper/1.0)",
-                "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-                "Referer": f"{SETTINGS.autoplius_base_url}/",
-            },
-        )
-        with urlopen(request_obj, timeout=20) as response:
-            data = response.read()
-            content_type = (response.headers.get("Content-Type") or "image/jpeg").split(";")[0]
-    except Exception:
-        abort(502, "Failed to fetch image")
-
-    if not data:
-        abort(502, "Empty image response")
-    return _image_response(data, content_type)
+    return redirect(url, code=302)
 
 
 def display_description(item: dict[str, Any]) -> tuple[str | None, str | None]:

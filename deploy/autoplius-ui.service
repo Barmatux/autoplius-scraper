@@ -8,14 +8,14 @@ Type=simple
 WorkingDirectory=/opt/autoplius-scraper
 EnvironmentFile=-/opt/autoplius-scraper/.env
 Environment=DATA_DIR=/var/lib/autoplius-scraper/data
-Environment=UI_HOST=0.0.0.0
-Environment=UI_PORT=8080
-# gthread: one worker avoids SQLite write races; threads handle concurrent /media/* S3 I/O.
+Environment=UI_HOST=127.0.0.1
+Environment=UI_PORT=8081
+# gevent: many concurrent /media/object S3 reads without blocking HTML pages.
 ExecStart=/opt/autoplius-scraper/.venv/bin/gunicorn \
-    --bind 0.0.0.0:8080 \
+    --bind 127.0.0.1:8081 \
     --workers 1 \
-    --worker-class gthread \
-    --threads 16 \
+    --worker-class gevent \
+    --worker-connections 256 \
     --timeout 120 \
     --access-logfile - \
     ui.app:app
