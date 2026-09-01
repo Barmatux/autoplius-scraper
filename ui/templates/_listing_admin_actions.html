@@ -1,0 +1,16 @@
+{% if is_admin %}
+<td class="admin-actions-cell col-admin">
+  <a class="button-link" href="{{ url_for('admin_edit_listing', listing_id=item.autoplius_id, next=request.full_path) }}">Редактировать</a>
+  {% if item.status == 'archived' %}
+  <form class="admin-inline-form admin-restore-form" method="post" action="{{ url_for('admin_restore_listing', listing_id=item.autoplius_id) }}">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <button type="submit" class="btn-restore">Вернуть</button>
+  </form>
+  {% else %}
+  <form class="admin-inline-form admin-archive-form" method="post" action="{{ url_for('admin_archive_listing', listing_id=item.autoplius_id) }}">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <button type="submit" class="btn-archive">В архив</button>
+  </form>
+  {% endif %}
+</td>
+{% endif %}

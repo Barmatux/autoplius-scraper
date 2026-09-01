@@ -1203,6 +1203,42 @@ body.lightbox-open {
   max-width: 960px;
 }
 
+.listings-table col.col-admin { width: 150px; }
+
+.admin-enter-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-enter-link:hover {
+  border-color: #b7dccb;
+  color: var(--accent);
+}
+
+.admin-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.admin-mode-link {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+th.col-admin,
+td.col-admin {
+  min-width: 140px;
+}
+
 .notice.archive-flash {
   background: #fff3cd;
   border: 2px solid #f0ad4e;

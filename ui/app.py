@@ -9,7 +9,7 @@ from typing import Any
 from urllib.request import Request, urlopen
 
 from botocore.exceptions import BotoCoreError, ClientError
-from flask import Flask, abort, jsonify, redirect, render_template, request, Response, url_for
+from flask import Flask, abort, jsonify, redirect, render_template, request, Response, session, url_for
 
 from scraper.config import Settings
 from scraper.db import (
@@ -42,12 +42,16 @@ SETTINGS = Settings.from_env()
 TAB_ALL = "all"
 TAB_NO_VOLUME = "no_volume"
 TAB_ARCHIVED = "archived"
-TAB_ADMIN = "admin"
-ADMIN_PAGE_SIZE = 50
 
 app = Flask(__name__)
 app.config["DATA_DIR"] = DEFAULT_DATA_DIR
 app.config["DB_PATH"] = Path(os.environ.get("DB_PATH", default_db_path(DEFAULT_DATA_DIR)))
+app.secret_key = (
+    os.environ.get("FLASK_SECRET_KEY")
+    or os.environ.get("ADMIN_PASSWORD")
+    or os.environ.get("UI_PASSWORD")
+    or "autoplius-dev-secret-change-me"
+)
 
 
 def _parse_iso_datetime(value: str | None) -> datetime | None:
@@ -275,9 +279,15 @@ def _check_admin_auth() -> bool:
     return bool(auth and auth.username == user and auth.password == password)
 
 
+def _is_admin() -> bool:
+    return _check_admin_auth() or session.get("admin") is True
+
+
 @app.before_request
 def require_admin_auth():
     if not request.path.startswith("/admin"):
+        return None
+    if request.endpoint in {"admin_enter", "admin_logout"}:
         return None
     user, _password = _admin_credentials()
     if not user:
@@ -285,13 +295,50 @@ def require_admin_auth():
             503,
             "Admin auth is not configured. Set ADMIN_USER and ADMIN_PASSWORD in .env",
         )
-    if _check_admin_auth():
+    if _is_admin():
         return None
     return Response(
         "Admin authentication required",
         401,
         {"WWW-Authenticate": 'Basic realm="Autoplius Admin"'},
     )
+
+
+@app.context_processor
+def inject_admin():
+    return {"is_admin": _is_admin()}
+
+
+def _safe_redirect_target(raw: str | None) -> str:
+    target = (raw or "").strip()
+    if target.startswith("/") and not target.startswith("//"):
+        return target
+    return url_for("index")
+
+
+@app.get("/admin/enter")
+def admin_enter():
+    user, _password = _admin_credentials()
+    if not user:
+        abort(
+            503,
+            "Admin auth is not configured. Set ADMIN_USER and ADMIN_PASSWORD in .env",
+        )
+    if not _check_admin_auth():
+        return Response(
+            "Admin authentication required",
+            401,
+            {"WWW-Authenticate": 'Basic realm="Autoplius Admin"'},
+        )
+    session.permanent = True
+    session["admin"] = True
+    return redirect(_safe_redirect_target(request.args.get("next")))
+
+
+@app.get("/admin/logout")
+def admin_logout():
+    session.pop("admin", None)
+    return redirect(url_for("index"))
 
 
 def db_path() -> Path:
@@ -544,6 +591,8 @@ def index():
         pages=pages,
         page_size=PAGE_SIZE,
         thumb_url=thumb_url,
+        archived_msg=request.args.get("archived") == "1",
+        restored_msg=request.args.get("restored") == "1",
     )
 
 
@@ -590,34 +639,6 @@ def listing_detail(listing_id: int):
     )
 
 
-def _admin_status_filter() -> str:
-    status = (request.args.get("status") or "all").strip().lower()
-    if status in {"all", "active", "archived"}:
-        return status
-    return "all"
-
-
-def _admin_listing_query(path: Path) -> tuple[list[dict[str, Any]], int, int, int]:
-    q = request.args.get("q", "")
-    sort = request.args.get("sort", "added_desc")
-    status = _admin_status_filter()
-    page = max(1, int(request.args.get("page", "1") or "1"))
-    listings = fetch_listings(
-        path,
-        q=q,
-        sort=sort,
-        listing_status=status,
-        catalog_filter=False,
-        passable_only=False,
-        older_than_3_only=False,
-    )
-    total = len(listings)
-    pages = max(1, (total + ADMIN_PAGE_SIZE - 1) // ADMIN_PAGE_SIZE)
-    page = min(page, pages)
-    start = (page - 1) * ADMIN_PAGE_SIZE
-    return listings[start : start + ADMIN_PAGE_SIZE], total, page, pages
-
-
 def _parse_admin_form() -> tuple[dict[str, Any], bool]:
     clear_overrides = request.form.get("clear_overrides") == "1"
     patch: dict[str, Any] = {
@@ -652,30 +673,7 @@ def _parse_admin_form() -> tuple[dict[str, Any], bool]:
 
 @app.get("/admin/listings")
 def admin_listings():
-    path = require_db()
-    q = request.args.get("q", "")
-    sort = request.args.get("sort", "added_desc")
-    status = _admin_status_filter()
-    listings, total, page, pages = _admin_listing_query(path)
-    stats = db_stats(path)
-    return render_template(
-        "admin_listings.html",
-        listings=listings,
-        total=total,
-        q=q,
-        sort=sort,
-        status=status,
-        page=page,
-        pages=pages,
-        page_size=ADMIN_PAGE_SIZE,
-        db_stats=stats,
-        archived_count=int(stats.get("archived_listings") or 0),
-        active_tab=TAB_ADMIN,
-        no_volume_count=len(fetch_listings(path, engine_volume_missing=True, catalog_filter=False)),
-        saved=request.args.get("saved") == "1",
-        archived_msg=request.args.get("archived") == "1",
-        restored_msg=request.args.get("restored") == "1",
-    )
+    return redirect(url_for("index"))
 
 
 @app.route("/admin/listings/<int:listing_id>/edit", methods=["GET", "POST"])
@@ -715,14 +713,18 @@ def admin_edit_listing(listing_id: int):
         photo_urls_text=photo_urls_text,
         error=error,
         saved=request.args.get("saved") == "1",
-        active_tab=TAB_ADMIN,
+        active_tab=_current_tab(),
         archived_count=int(db_stats(path).get("archived_listings") or 0),
         no_volume_count=len(fetch_listings(path, engine_volume_missing=True, catalog_filter=False)),
+        back_url=_safe_redirect_target(request.args.get("next")),
     )
 
 
 def _admin_listing_redirect(**params: str):
-    return redirect(url_for("admin_listings", **params))
+    tab = (request.form.get("tab") or request.args.get("tab") or TAB_ALL).strip()
+    if tab not in {TAB_ALL, TAB_NO_VOLUME, TAB_ARCHIVED}:
+        tab = TAB_ALL
+    return redirect(url_for("index", tab=tab, **params))
 
 
 @app.post("/admin/listings/<int:listing_id>/archive")

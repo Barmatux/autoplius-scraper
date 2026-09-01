@@ -12,11 +12,12 @@
     <div class="brand">
       <p class="brand-name">Редактирование #{{ item.autoplius_id }}</p>
       <p class="brand-sub">
-        <a href="{{ url_for('admin_listings') }}">← к списку админки</a>
+        <a href="{{ back_url }}">← назад к списку</a>
         · <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">карточка</a>
       </p>
     </div>
     <div class="meta">
+      {% include "_admin_bar.html" %}
       {% if item.manual_overrides %}
       <div class="pill accent">Защита от парсера: {{ item.manual_overrides|length }} пол.</div>
       {% endif %}
@@ -163,17 +164,19 @@
 
       <div class="admin-actions">
         <button type="submit">Сохранить</button>
-        <a class="button-link secondary" href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">Отмена</a>
+        <a class="button-link secondary" href="{{ back_url }}">Отмена</a>
       </div>
     </form>
 
     <div class="admin-actions admin-actions-standalone">
       {% if item.status == 'archived' %}
       <form class="admin-inline-form admin-restore-form" method="post" action="{{ url_for('admin_restore_listing', listing_id=item.autoplius_id) }}">
+        <input type="hidden" name="tab" value="{{ active_tab }}">
         <button type="submit" class="btn-restore">Вернуть в выдачу</button>
       </form>
       {% else %}
       <form class="admin-inline-form admin-archive-form" method="post" action="{{ url_for('admin_archive_listing', listing_id=item.autoplius_id) }}">
+        <input type="hidden" name="tab" value="{{ active_tab }}">
         <button type="submit" class="btn-archive">Скрыть из выдачи</button>
       </form>
       {% endif %}

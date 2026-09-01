@@ -1,0 +1,8 @@
+{% if is_admin %}
+<div class="pill accent admin-mode-pill">
+  Режим администратора
+  <a class="admin-mode-link" href="{{ url_for('admin_logout') }}">Выйти</a>
+</div>
+{% else %}
+<a class="admin-enter-link" href="{{ url_for('admin_enter', next=request.full_path if request.full_path != '?' else request.path) }}">Вход для админа</a>
+{% endif %}

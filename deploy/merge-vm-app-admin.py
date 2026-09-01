@@ -21,6 +21,10 @@ def replace_auth(merged: str, git_app: str) -> str:
         start = merged.index("def _check_basic_auth(")
         end = merged.index("@app.context_processor", start)
         merged = merged[:start] + auth_block + merged[end:]
+    elif "def require_admin_auth(" in merged and "def admin_enter(" not in merged:
+        start = merged.index("def _admin_credentials(")
+        end = merged.index("@app.context_processor", start)
+        merged = merged[:start] + auth_block + merged[end:]
     elif "def require_admin_auth(" not in merged:
         insert_at = merged.index("def db_path(")
         merged = merged[:insert_at] + auth_block + merged[insert_at:]
@@ -54,12 +58,6 @@ def patch_imports(merged: str) -> str:
             "    scrape_runs_analytics,\n    update_listing_admin,\n    set_listing_archived,\n",
             1,
         )
-    if "TAB_ADMIN" not in merged:
-        merged = merged.replace(
-            'TAB_ARCHIVED = "archived"\n',
-            'TAB_ARCHIVED = "archived"\nTAB_ADMIN = "admin"\nADMIN_PAGE_SIZE = 50\n',
-            1,
-        )
     return merged
 
 
@@ -83,6 +81,7 @@ def main() -> int:
     print("engine_kpp_lines", "engine_kpp_lines" in merged)
     print("require_admin_auth", "def require_admin_auth(" in merged)
     print("admin_archive_listing", "def admin_archive_listing(" in merged)
+    print("admin_enter", "def admin_enter(" in merged)
     print("set_listing_archived import", "set_listing_archived" in merged.split("from scraper.db import")[1][:500])
     return 0
 

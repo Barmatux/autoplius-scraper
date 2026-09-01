@@ -23,5 +23,6 @@ cp "$TMP/git_style.css" /tmp/git_style.css
 python3 deploy/merge-vm-app-admin.py
 python3 deploy/merge-vm-db-admin.py
 python3 deploy/merge-vm-style-css.py
+python3 deploy/patch-vm-index-admin.py
 
 echo "Merge complete"
