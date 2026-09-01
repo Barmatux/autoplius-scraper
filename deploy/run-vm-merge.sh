@@ -27,6 +27,6 @@ fi
 python3 deploy/merge-vm-app-admin.py
 python3 deploy/merge-vm-db-admin.py
 python3 deploy/merge-vm-style-css.py
-python3 deploy/patch-vm-index-admin.py
+python3 deploy/fix-vm-index-inline-admin.py
 
 echo "Merge complete"
