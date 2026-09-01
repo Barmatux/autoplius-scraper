@@ -1,0 +1,86 @@
+# Deploy origin/main to the production VM after every push to main.
+#
+# Required repository secrets:
+#   VM_HOST              — public IP or hostname (e.g. 84.252.139.137)
+#   VM_USER              — SSH user with passwordless sudo (e.g. romanshleg)
+#   VM_SSH_PRIVATE_KEY   — private key for VM_USER (OpenSSH format, full PEM)
+#
+# The VM checkout at /opt/autoplius-scraper must already track origin/main and
+# be able to `git pull` as the autoplius user (deploy key or HTTPS token on VM).
+
+name: Deploy to VM
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-autoplius-vm
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy main → VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+
+      - name: Trust VM host key
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
+
+      - name: Run deploy-from-git.sh on VM
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${VM_USER}@${VM_HOST}" \
+            'sudo bash /opt/autoplius-scraper/deploy/deploy-from-git.sh'
+
+      - name: Smoke test (Flask UI)
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          ssh -o BatchMode=yes "${VM_USER}@${VM_HOST}" <<'REMOTE'
+          set -euo pipefail
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/ || true)
+          ttfb=$(curl -s -o /dev/null -w '%{time_starttransfer}' http://127.0.0.1:8080/ || true)
+          echo "flask_http=${code} ttfb=${ttfb}s"
+          if [[ "$code" != "200" ]]; then
+            echo "ERROR: UI returned HTTP ${code}" >&2
+            sudo journalctl -u autoplius-ui.service -n 40 --no-pager >&2 || true
+            exit 1
+          fi
+          REMOTE
+
+      - name: Smoke test (nginx + gzip)
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          ssh -o BatchMode=yes "${VM_USER}@${VM_HOST}" <<'REMOTE'
+          set -euo pipefail
+          read -r code ttfb size <<< "$(curl -s -H 'Accept-Encoding: gzip' -o /dev/null \
+            -w '%{http_code} %{time_starttransfer} %{size_download}' http://127.0.0.1/ || echo '000 0 0')"
+          echo "nginx_http=${code} ttfb=${ttfb}s download=${size}B"
+          if [[ "$code" != "200" ]]; then
+            echo "ERROR: nginx returned HTTP ${code}" >&2
+            exit 1
+          fi
+          REMOTE

@@ -45,6 +45,11 @@ fi
 sudo systemctl daemon-reload
 sudo systemctl enable autoplius-scraper.timer autoplius-ui.service
 
+if [[ -f "$APP/deploy/post-deploy-vm.sh" ]]; then
+  echo "=== post-deploy patches ==="
+  sudo bash "$APP/deploy/post-deploy-vm.sh"
+fi
+
 echo "=== restart UI ==="
 sudo systemctl restart autoplius-ui.service
 sleep 1
