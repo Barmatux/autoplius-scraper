@@ -31,6 +31,7 @@ run_patch deploy/patch-sql-filters.py
 run_patch deploy/patch-sql-filter-options.py
 run_patch deploy/fix-sql-options-reuse.py
 run_patch deploy/fix-tab-counts-sql.py
+run_patch deploy/fix-transmission-import.py
 
 # nginx: sync repo config when present (gzip may be enabled in sites-enabled separately)
 if [[ -f deploy/nginx-autoplius-ui.conf ]]; then

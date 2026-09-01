@@ -1,7 +1,9 @@
-# Files/dirs maintained on the VM outside git (or ahead of origin/main).
-# Snapshotted before each deploy pull and restored after git pull + post-deploy patches.
-#
-# Do NOT list ui/app.py or scraper/db.py — those come from git + deploy/post-deploy-vm.sh.
+# Files maintained on the VM outside git (or ahead of origin/main).
+# Snapshotted before each deploy pull, restored after pull, then post-deploy patches run.
+
+scraper/db.py
+scraper/job.py
+scraper/listing_sync.py
 
 autoplius/engine_catalog.py
 autoplius/listing_display.py
@@ -16,6 +18,7 @@ autoplius/parse_search.py
 autoplius/price_display.py
 autoplius/price_rb.py
 
+ui/app.py
 ui/templates/index.html
 ui/templates/catalog.html
 ui/templates/detail.html
@@ -40,9 +43,6 @@ ui/static/sort_preference.js
 
 ui/table_layout.json
 ui/table_layout.py
-
-scraper/job.py
-scraper/listing_sync.py
 
 tools/_probe_listing_photos.py
 tools/_status.py
