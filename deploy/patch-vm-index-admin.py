@@ -7,11 +7,6 @@ from pathlib import Path
 INDEX = Path("/opt/autoplius-scraper/ui/templates/index.html")
 TABS = Path("/opt/autoplius-scraper/ui/templates/_tabs.html")
 ACTIONS_MARKER = '{% include "_listing_admin_actions.html" %}'
-ACTIONS_INLINE = (
-    '              {% include "_listing_admin_actions.html" %}\n'
-    "            </td>\n"
-    "            <td class=\"col-engine\">"
-)
 ADMIN_COL_HEAD = '          {% include "_index_admin_column_head.html" %}\n'
 ADMIN_COL_TH = '            {% include "_index_admin_column_th.html" %}\n'
 
@@ -36,12 +31,24 @@ def remove_admin_column(text: str) -> str:
 
 def move_actions_inline(text: str) -> str:
     text = remove_admin_column(text)
-    if ACTIONS_MARKER in text:
+    if ACTIONS_MARKER in text and "listing-admin-actions" in text:
         return text
-    anchor = "              {% endif %}\n            </td>\n            <td class=\"col-engine\">"
+    anchor = (
+        "              {% endfor %}\n"
+        "              {% endif %}\n"
+        "            </td>\n"
+        "            <td class=\"col-engine\">"
+    )
+    replacement = (
+        "              {% endfor %}\n"
+        "              {% endif %}\n"
+        "              {% include \"_listing_admin_actions.html\" %}\n"
+        "            </td>\n"
+        "            <td class=\"col-engine\">"
+    )
     if anchor not in text:
         raise SystemExit("could not find col-auto anchor for admin actions")
-    return text.replace(anchor, ACTIONS_INLINE, 1)
+    return text.replace(anchor, replacement, 1)
 
 
 def main() -> int:
