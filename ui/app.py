@@ -343,7 +343,6 @@ def _fetch_index_listings(
     upto_19l: bool,
     passable: bool,
     over_3y: bool,
-    *,
     lite: bool = False,
 ) -> list[dict[str, Any]]:
     common = dict(
