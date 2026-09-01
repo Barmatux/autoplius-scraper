@@ -5,7 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 
 INDEX = Path("/opt/autoplius-scraper/ui/templates/index.html")
-GIT = Path("/tmp/git_index.html")
+TABS = Path("/opt/autoplius-scraper/ui/templates/_tabs.html")
+ACTIONS_MARKER = '{% include "_listing_admin_actions.html" %}'
+ACTIONS_INLINE = (
+    '              {% include "_listing_admin_actions.html" %}\n'
+    "            </td>\n"
+    "            <td class=\"col-engine\">"
+)
+ADMIN_COL_HEAD = '          {% include "_index_admin_column_head.html" %}\n'
+ADMIN_COL_TH = '            {% include "_index_admin_column_th.html" %}\n'
 
 
 def ensure(text: str, needle: str, insert: str, *, before: str | None = None) -> str:
@@ -16,6 +24,26 @@ def ensure(text: str, needle: str, insert: str, *, before: str | None = None) ->
     return text[:pos] + insert + text[pos:]
 
 
+def remove_admin_column(text: str) -> str:
+    text = text.replace(ADMIN_COL_HEAD, "")
+    text = text.replace(ADMIN_COL_TH, "")
+    text = text.replace(
+        "            </td>\n            {% include \"_listing_admin_actions.html\" %}\n          </tr>",
+        "            </td>\n          </tr>",
+    )
+    return text
+
+
+def move_actions_inline(text: str) -> str:
+    text = remove_admin_column(text)
+    if ACTIONS_MARKER in text:
+        return text
+    anchor = "              {% endif %}\n            </td>\n            <td class=\"col-engine\">"
+    if anchor not in text:
+        raise SystemExit("could not find col-auto anchor for admin actions")
+    return text.replace(anchor, ACTIONS_INLINE, 1)
+
+
 def main() -> int:
     if not INDEX.is_file():
         raise SystemExit(f"missing {INDEX}")
@@ -23,34 +51,17 @@ def main() -> int:
 
     text = ensure(
         text,
-        '_admin_bar.html',
+        "_admin_bar.html",
         '      {% include "_admin_bar.html" %}\n',
         before='      <div class="pill accent">{{ total_in_db }}',
     )
     text = ensure(
         text,
-        '_admin_flash.html',
+        "_admin_flash.html",
         '    {% include "_admin_flash.html" %}\n\n',
         before='    <form class="filters" method="get">',
     )
-    text = ensure(
-        text,
-        '_index_admin_column_head.html',
-        '          {% include "_index_admin_column_head.html" %}\n',
-        before='        </colgroup>',
-    )
-    text = ensure(
-        text,
-        '_index_admin_column_th.html',
-        '            {% include "_index_admin_column_th.html" %}\n',
-        before='          </tr>\n        </thead>',
-    )
-    text = ensure(
-        text,
-        '_listing_admin_actions.html',
-        '            {% include "_listing_admin_actions.html" %}\n',
-        before='          </tr>\n          {% endfor %}',
-    )
+    text = move_actions_inline(text)
     text = ensure(
         text,
         "admin.js",
@@ -58,19 +69,8 @@ def main() -> int:
         before='  <script src="{{ url_for(\'static\', filename=\'make_model_filter.js\') }}" defer></script>',
     )
 
-    if 'url_for(\'admin_listings\')' in text:
-        text = text.replace(
-            """  <a
-    href="{{ url_for('admin_listings') }}"
-    class="tab{% if active_tab == 'admin' %} active{% endif %}"
-  >Админка</a>
-""",
-            "",
-        )
-
-    tabs = INDEX.parent / "_tabs.html"
-    if tabs.is_file():
-        tabs_text = tabs.read_text(encoding="utf-8")
+    if TABS.is_file():
+        tabs_text = TABS.read_text(encoding="utf-8")
         if "admin_listings" in tabs_text:
             tabs_text = tabs_text.replace(
                 """  <a
@@ -80,12 +80,12 @@ def main() -> int:
 """,
                 "",
             )
-            tabs.write_text(tabs_text, encoding="utf-8")
+            TABS.write_text(tabs_text, encoding="utf-8")
 
     INDEX.write_text(text, encoding="utf-8")
     print("OK patched", INDEX)
     print("_admin_bar", "_admin_bar.html" in text)
-    print("_listing_admin_actions", "_listing_admin_actions.html" in text)
+    print("inline_actions", ACTIONS_MARKER in text and ADMIN_COL_HEAD not in text)
     print("admin.js", "admin.js" in text)
     return 0
 

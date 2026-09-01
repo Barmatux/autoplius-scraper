@@ -280,7 +280,18 @@ def _check_admin_auth() -> bool:
 
 
 def _is_admin() -> bool:
-    return _check_admin_auth() or session.get("admin") is True
+    if _check_admin_auth():
+        session.permanent = True
+        session["admin"] = True
+        return True
+    return session.get("admin") is True
+
+
+@app.before_request
+def sync_admin_session_from_auth():
+    if _check_admin_auth():
+        session.permanent = True
+        session["admin"] = True
 
 
 @app.before_request

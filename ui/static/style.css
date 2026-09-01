@@ -1203,6 +1203,21 @@ body.lightbox-open {
   max-width: 960px;
 }
 
+.listing-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.button-link-small,
+.listing-admin-actions .button-link,
+.listing-admin-actions button {
+  padding: 0.28rem 0.55rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
 .listings-table col.col-admin { width: 150px; }
 
 .admin-enter-link {
