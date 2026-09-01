@@ -48,6 +48,20 @@ def replace_admin_block(merged: str, git_app: str) -> str:
 def patch_imports(merged: str) -> str:
     if "import json" not in merged.splitlines()[:8]:
         merged = merged.replace("import os\n", "import json\nimport os\n", 1)
+    if ", session," not in merged and " session," not in merged:
+        merged = merged.replace("request, Response,", "request, Response, session,", 1)
+    if "app.secret_key" not in merged:
+        merged = merged.replace(
+            'app.config["DB_PATH"] = Path(os.environ.get("DB_PATH", default_db_path(DEFAULT_DATA_DIR)))\n',
+            'app.config["DB_PATH"] = Path(os.environ.get("DB_PATH", default_db_path(DEFAULT_DATA_DIR)))\n'
+            "app.secret_key = (\n"
+            '    os.environ.get("FLASK_SECRET_KEY")\n'
+            '    or os.environ.get("ADMIN_PASSWORD")\n'
+            '    or os.environ.get("UI_PASSWORD")\n'
+            '    or "autoplius-dev-secret-change-me"\n'
+            ")\n",
+            1,
+        )
     if "set_listing_archived" not in merged:
         merged = merged.replace(
             "    update_listing_admin,\n",
