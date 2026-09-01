@@ -49,6 +49,21 @@ def body_type_lines(body_type: str | None) -> list[str]:
     return [text]
 '''
 
+DETAIL_FILTERS_BLOCK = '''
+
+@app.template_filter("detail_scrape_pending")
+def detail_scrape_pending(item: dict[str, Any]) -> bool:
+    return bool(item) and not bool(item.get("detail_scraped"))
+
+
+@app.template_filter("detail_error_public")
+def detail_error_public(item: dict[str, Any]) -> str | None:
+    if not item:
+        return None
+    error = (item.get("detail_error") or "").strip()
+    return error or None
+'''
+
 
 def main() -> int:
     text = APP.read_text(encoding="utf-8")
@@ -85,6 +100,13 @@ def main() -> int:
         if end == -1:
             raise SystemExit("listing_make_model block end not found")
         text = text[: end + 2] + BODY_TYPE_BLOCK.lstrip("\n") + text[end + 2 :]
+        changed = True
+
+    if '@app.template_filter("detail_scrape_pending")' not in text:
+        anchor = '@app.template_filter("listing_description")\ndef listing_description(item: dict[str, Any]) -> str | None:\n    primary, _ = display_description(item)\n    if not primary:\n        return None\n    text = primary.strip()\n    return text or None\n\n\n'
+        if anchor not in text:
+            raise SystemExit("listing_description anchor not found")
+        text = text.replace(anchor, anchor.rstrip("\n") + DETAIL_FILTERS_BLOCK + "\n\n", 1)
         changed = True
 
     if changed:

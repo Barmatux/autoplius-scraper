@@ -302,6 +302,19 @@ def body_type_lines(body_type: str | None) -> list[str]:
     return [text]
 
 
+@app.template_filter("detail_scrape_pending")
+def detail_scrape_pending(item: dict[str, Any]) -> bool:
+    return bool(item) and not bool(item.get("detail_scraped"))
+
+
+@app.template_filter("detail_error_public")
+def detail_error_public(item: dict[str, Any]) -> str | None:
+    if not item:
+        return None
+    error = (item.get("detail_error") or "").strip()
+    return error or None
+
+
 def _admin_credentials() -> tuple[str, str]:
     user = (os.environ.get("ADMIN_USER") or os.environ.get("UI_USER") or "").strip()
     password = (os.environ.get("ADMIN_PASSWORD") or os.environ.get("UI_PASSWORD") or "").strip()
