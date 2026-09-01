@@ -5,6 +5,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.request import Request, urlopen
 
 from botocore.exceptions import BotoCoreError, ClientError
 from flask import Flask, abort, jsonify, render_template, request, Response
@@ -21,6 +22,7 @@ from scraper.db import (
     scrape_runs_analytics,
 )
 from scraper.s3_storage import get_s3_client
+from ui.photo_urls import is_external_photo_url, photo_display_url, photo_display_urls
 from autoplius.cities_lt import distance_from_vilnius_label, google_maps_url
 from autoplius.translate import is_translation_error
 from autoplius.engine_volume import engine_volume_from_listing
@@ -67,7 +69,15 @@ def listing_photos_filter(item: dict[str, Any]) -> dict[str, Any]:
     urls = item.get("photo_urls") or []
     if not urls and item.get("photo_url"):
         urls = [item["photo_url"]]
-    return listing_photo_sets(urls)
+    sets = listing_photo_sets(urls)
+    full = photo_display_urls(sets["full"])
+    thumb = photo_display_urls(sets["thumb"])
+    return {
+        "full": full,
+        "thumb": thumb,
+        "cover_full": full[0] if full else None,
+        "cover_thumb": thumb[0] if thumb else None,
+    }
 
 
 @app.template_filter("format_datetime")
@@ -116,6 +126,16 @@ def engine_volume(item: dict[str, Any]) -> str:
 @app.template_filter("price_rb")
 def price_rb(item: dict[str, Any]):
     return estimate_price_rb(item)
+
+
+@app.template_filter("photo_src")
+def photo_src(url: str | None) -> str:
+    return photo_display_url(url) or ""
+
+
+@app.template_filter("photo_srcs")
+def photo_srcs(urls: list[str] | None) -> list[str]:
+    return photo_display_urls(urls)
 
 
 @app.template_filter("price_lt_lines")
@@ -270,9 +290,9 @@ def require_db() -> Path:
 
 def thumb_url(item: dict[str, Any]) -> str | None:
     if item.get("photo_url"):
-        return item["photo_url"]
+        return photo_display_url(item["photo_url"])
     photos = item.get("photo_urls") or []
-    return photos[0] if photos else None
+    return photo_display_url(photos[0]) if photos else None
 
 
 def _upto_19l_enabled() -> bool:
@@ -369,6 +389,14 @@ def _fetch_index_listings(
     )
 
 
+def _image_response(data: bytes, content_type: str) -> Response:
+    return Response(
+        data,
+        mimetype=content_type,
+        headers={"Cache-Control": "public, max-age=86400, immutable"},
+    )
+
+
 @app.get("/media/object")
 def media_object():
     key = request.args.get("key", "").strip()
@@ -386,8 +414,33 @@ def media_object():
     if body is None:
         abort(404, "Object body missing")
     content_type = response.get("ContentType") or "application/octet-stream"
-    data = body.read()
-    return Response(data, mimetype=content_type)
+    return _image_response(body.read(), content_type)
+
+
+@app.get("/media/proxy")
+def media_proxy():
+    url = request.args.get("url", "").strip()
+    if not is_external_photo_url(url):
+        abort(400, "Invalid photo URL")
+
+    try:
+        request_obj = Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (compatible; AutopliusScraper/1.0)",
+                "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+                "Referer": f"{SETTINGS.autoplius_base_url}/",
+            },
+        )
+        with urlopen(request_obj, timeout=20) as response:
+            data = response.read()
+            content_type = (response.headers.get("Content-Type") or "image/jpeg").split(";")[0]
+    except Exception:
+        abort(502, "Failed to fetch image")
+
+    if not data:
+        abort(502, "Empty image response")
+    return _image_response(data, content_type)
 
 
 def display_description(item: dict[str, Any]) -> tuple[str | None, str | None]:
