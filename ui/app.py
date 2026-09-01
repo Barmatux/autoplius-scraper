@@ -343,6 +343,8 @@ def _fetch_index_listings(
     upto_19l: bool,
     passable: bool,
     over_3y: bool,
+    *,
+    lite: bool = False,
 ) -> list[dict[str, Any]]:
     common = dict(
         q=q,
@@ -358,11 +360,13 @@ def _fetch_index_listings(
             path,
             **common,
             engine_volume_missing=True,
+            lite=lite,
         )
     return fetch_listings(
         path,
         **common,
         engine_upto_liters=1.9 if upto_19l else None,
+        lite=lite,
     )
 
 
@@ -425,22 +429,15 @@ def index():
         upto_19l=upto_19l,
         passable=passable,
         over_3y=over_3y,
+        lite=True,
     )
     selected_cities = _selected_cities()
     city_options = _city_options(filtered)
     filtered = _filter_by_cities(filtered, selected_cities)
-    no_volume_count = len(
-        _fetch_index_listings(
-            path,
-            q=q,
-            min_price=min_price,
-            max_price=max_price,
-            sort=sort,
-            tab=TAB_NO_VOLUME,
-            upto_19l=upto_19l,
-            passable=passable,
-            over_3y=over_3y,
-        )
+    no_volume_count = (
+        len(filtered)
+        if tab == TAB_NO_VOLUME
+        else None
     )
 
     total_in_db = int(stats.get("active_listings") or stats.get("listings") or 0)

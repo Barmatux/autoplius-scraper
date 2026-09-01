@@ -103,6 +103,8 @@ def connect(db_path: Path) -> Iterator[sqlite3.Connection]:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 30000")
+    conn.execute("PRAGMA journal_mode = WAL")
     try:
         yield conn
         conn.commit()
@@ -528,6 +530,7 @@ def hours_since_last_full_scrape(db_path: Path, *, min_listings: int = 50) -> fl
 
 
 def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
+    keys = row.keys()
     listing = {
         "autoplius_id": row["autoplius_id"],
         "url": row["url"],
@@ -535,29 +538,31 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         "year": row["year"],
         "body_type": row["body_type"],
         "price_eur": row["price_eur"],
-        "price_net_eur": row["price_net_eur"] if "price_net_eur" in row.keys() else None,
-        "price_gross_eur": row["price_gross_eur"] if "price_gross_eur" in row.keys() else None,
-        "price_vat_note": row["price_vat_note"] if "price_vat_note" in row.keys() else None,
+        "price_net_eur": row["price_net_eur"] if "price_net_eur" in keys else None,
+        "price_gross_eur": row["price_gross_eur"] if "price_gross_eur" in keys else None,
+        "price_vat_note": row["price_vat_note"] if "price_vat_note" in keys else None,
         "fuel": row["fuel"],
         "transmission": row["transmission"],
         "engine": row["engine"],
         "mileage_km": row["mileage_km"],
         "city": row["city"],
         "photo_url": row["photo_url"],
-        "has_vin_badge": bool(row["has_vin_badge"]),
-        "description": row["description"],
-        "description_ru": row["description_ru"],
-        "phone": row["phone"],
-        "vin_masked": row["vin_masked"],
-        "parameters": json.loads(row["parameters_json"] or "{}"),
-        "photo_urls": normalize_photo_list(json.loads(row["photo_urls_json"] or "[]")),
-        "detail_scraped": bool(row["detail_scraped"]),
-        "detail_error": row["detail_error"],
-        "status": row["status"] if "status" in row.keys() else LISTING_STATUS_ACTIVE,
-        "archived_at": row["archived_at"] if "archived_at" in row.keys() else None,
-        "first_seen_at": row["first_seen_at"],
-        "last_seen_at": row["last_seen_at"],
-        "last_run_id": row["last_run_id"],
+        "has_vin_badge": bool(row["has_vin_badge"]) if "has_vin_badge" in keys else False,
+        "description": row["description"] if "description" in keys else None,
+        "description_ru": row["description_ru"] if "description_ru" in keys else None,
+        "phone": row["phone"] if "phone" in keys else None,
+        "vin_masked": row["vin_masked"] if "vin_masked" in keys else None,
+        "parameters": json.loads(row["parameters_json"] or "{}") if "parameters_json" in keys else {},
+        "photo_urls": normalize_photo_list(json.loads(row["photo_urls_json"] or "[]"))
+        if "photo_urls_json" in keys
+        else [],
+        "detail_scraped": bool(row["detail_scraped"]) if "detail_scraped" in keys else False,
+        "detail_error": row["detail_error"] if "detail_error" in keys else None,
+        "status": row["status"] if "status" in keys else LISTING_STATUS_ACTIVE,
+        "archived_at": row["archived_at"] if "archived_at" in keys else None,
+        "first_seen_at": row["first_seen_at"] if "first_seen_at" in keys else None,
+        "last_seen_at": row["last_seen_at"] if "last_seen_at" in keys else None,
+        "last_run_id": row["last_run_id"] if "last_run_id" in keys else None,
     }
     listing = localize_listing(listing)
     photos = listing.get("photo_urls") or []
@@ -580,6 +585,7 @@ def fetch_listings(
     passable_only: bool = False,
     listing_status: str = "active",
     older_than_3_only: bool = False,
+    lite: bool = False,
 ) -> list[dict[str, Any]]:
     if not db_path.is_file():
         return []
@@ -629,7 +635,13 @@ def fetch_listings(
     }.get(sort, "CASE WHEN price_eur IS NULL THEN 1 ELSE 0 END, price_eur ASC")
 
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-    sql = f"SELECT * FROM listings {where} ORDER BY {order_sql}"
+    columns = "*" if not lite else (
+        "autoplius_id, url, title, year, body_type, price_eur, price_net_eur, "
+        "price_gross_eur, price_vat_note, fuel, transmission, engine, mileage_km, "
+        "city, photo_url, photo_urls_json, has_vin_badge, parameters_json, "
+        "first_seen_at, last_seen_at, status, archived_at, detail_scraped"
+    )
+    sql = f"SELECT {columns} FROM listings {where} ORDER BY {order_sql}"
 
     with connect(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()

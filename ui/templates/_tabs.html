@@ -6,7 +6,7 @@
   <a
     href="{{ url_for('index', tab='no_volume') }}"
     class="tab{% if active_tab == 'no_volume' %} active{% endif %}"
-  >Без объема{% if no_volume_count is defined %} <span class="tab-count">{{ no_volume_count }}</span>{% endif %}</a>
+  >Без объема{% if no_volume_count is not none %} <span class="tab-count">{{ no_volume_count }}</span>{% endif %}</a>
   <a
     href="{{ url_for('index', tab='archived') }}"
     class="tab{% if active_tab == 'archived' %} active{% endif %}"
