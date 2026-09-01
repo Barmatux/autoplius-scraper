@@ -20,6 +20,10 @@ cp "$TMP/git_app.py" /tmp/git_app.py
 cp "$TMP/git_db.py" /tmp/git_db.py
 cp "$TMP/git_style.css" /tmp/git_style.css
 
+if [ ! -f ui/templates/index.html ]; then
+  git show 'stash@{0}:ui/templates/index.html' > ui/templates/index.html
+fi
+
 python3 deploy/merge-vm-app-admin.py
 python3 deploy/merge-vm-db-admin.py
 python3 deploy/merge-vm-style-css.py

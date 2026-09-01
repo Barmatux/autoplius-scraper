@@ -32,13 +32,15 @@ def replace_auth(merged: str, git_app: str) -> str:
 
 
 def replace_admin_block(merged: str, git_app: str) -> str:
-    admin_block = extract_block(git_app, "def _admin_status_filter(", '@app.get("/api/listings")')
+    admin_block = extract_block(git_app, '@app.get("/admin/listings")', '@app.get("/api/listings")')
     marker = '@app.get("/api/listings")'
-    if "def _admin_status_filter(" in merged:
-        start = merged.index("def _admin_status_filter(")
-        end = merged.index(marker, start)
-        merged = merged[:start] + admin_block + merged[end:]
-    elif "def admin_listings" not in merged:
+    for start_marker in ('def _admin_status_filter(', '@app.get("/admin/listings")'):
+        if start_marker in merged:
+            start = merged.index(start_marker)
+            end = merged.index(marker, start)
+            merged = merged[:start] + admin_block + merged[end:]
+            return merged
+    if "def admin_listings" not in merged:
         merged = merged.replace(marker, admin_block + marker, 1)
     return merged
 
