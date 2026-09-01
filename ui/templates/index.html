@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Autoplius Scraper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+{% macro city_qs() -%}
+{%- for c in selected_cities -%}&city={{ c|urlencode }}{%- endfor -%}
+{%- endmacro %}
+{% macro vehicle_qs() -%}
+{%- for row in vehicle_rows -%}
+{%- if row.make -%}&make={{ row.make|urlencode }}{%- endif -%}
+{%- if row.model -%}&model={{ row.model|urlencode }}{%- endif -%}
+{%- endfor -%}
+{%- if year_from -%}&year_from={{ year_from }}{%- endif -%}
+{%- if year_to -%}&year_to={{ year_to }}{%- endif -%}
+{%- endmacro %}
+{% macro spec_qs() -%}
+{%- for v in selected_body_types -%}&body_type={{ v|urlencode }}{%- endfor -%}
+{%- for v in selected_fuels -%}&fuel={{ v|urlencode }}{%- endfor -%}
+{%- for v in selected_transmissions -%}&transmission={{ v|urlencode }}{%- endfor -%}
+{%- if volume_from -%}&volume_from={{ volume_from|urlencode }}{%- endif -%}
+{%- if volume_to -%}&volume_to={{ volume_to|urlencode }}{%- endif -%}
+{%- endmacro %}
+{% macro filter_qs() -%}
+{{ vehicle_qs() }}{{ city_qs() }}{{ spec_qs() }}
+{%- endmacro %}
+{% macro sort_th(label, asc, desc, default, col_class='') %}
+{% if sort == desc %}
+  {% set next_sort = asc %}
+{% elif sort == asc %}
+  {% set next_sort = desc %}
+{% else %}
+  {% set next_sort = default %}
+{% endif %}
+<th class="sortable th-wrap{% if sort in (asc, desc) %} active{% endif %}{% if col_class %} {{ col_class }}{% endif %}">
+  <a
+    href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=next_sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=1) }}{{ filter_qs() }}"
+    class="sort-link"
+  >
+    <span class="sort-label">{{ label|safe }}</span>
+    {% if sort == desc %}<span class="sort-indicator" aria-hidden="true">↓</span>{% elif sort == asc %}<span class="sort-indicator" aria-hidden="true">↑</span>{% endif %}
+  </a>
+</th>
+{% endmacro %}
+<body>
+  {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
+  <header class="top">
+    <div class="brand">
+      <p class="brand-name">Autoplius Scraper</p>
+      <p class="brand-sub">Все объявления из SQLite</p>
+    </div>
+    <div class="meta">
+      {% include "_admin_bar.html" %}
+    </div>
+  </header>
+
+  <main>
+    {% set active_tab = tab %}
+    {% include "_tabs.html" %}
+
+    <form class="filters" method="get">
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <input type="hidden" name="sort" value="{{ sort }}">
+      <div
+        class="vehicle-hierarchy-filters make-model-filters"
+        data-make-model-filter
+        data-make-model-config='{{ make_model_options | tojson }}'
+      >
+        <div class="vehicle-hierarchy-rows">
+          {% for row in vehicle_rows %}
+          <div class="vehicle-hierarchy-row">
+            <label class="vehicle-hierarchy-field">
+              <span class="vehicle-hierarchy-label">Марка</span>
+              <select name="make" data-tier="make">
+                <option value="">Марка</option>
+                {% for make in make_model_options.makes %}
+                <option value="{{ make }}" {% if row.make == make %}selected{% endif %}>{{ make }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="vehicle-hierarchy-field">
+              <span class="vehicle-hierarchy-label">Модель</span>
+              <select name="model" data-tier="model"{% if not row.make %} disabled{% endif %}>
+                <option value="">Модель</option>
+                {% if row.make %}
+                  {% for model in make_model_options.modelMap.get(row.make, []) %}
+                  <option value="{{ model }}" {% if row.model == model %}selected{% endif %}>{{ model }}</option>
+                  {% endfor %}
+                {% endif %}
+              </select>
+            </label>
+            <button type="button" class="vehicle-hierarchy-remove" aria-label="Удалить строку">×</button>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="vehicle-hierarchy-actions">
+          <button type="button" class="vehicle-hierarchy-add">+ Марка</button>
+        </div>
+      </div>
+      <div class="year-range-filters{% if year_from or year_to %} is-active{% endif %}">
+        <span class="year-range-label">Год</span>
+        <div class="year-range-inputs">
+          <select name="year_from" aria-label="Год от">
+            <option value="" {% if not year_from %}selected{% endif %}>от</option>
+            {% for year in year_options %}
+            <option value="{{ year }}" {% if year_from == year %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+          </select>
+          <select name="year_to" aria-label="Год до">
+            <option value="" {% if not year_to %}selected{% endif %}>до</option>
+            {% for year in year_options %}
+            <option value="{{ year }}" {% if year_to == year %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      {% include "_spec_filters.html" %}
+      <label>
+        Поиск
+        <input type="search" name="q" value="{{ q }}" placeholder="BMW, телефон, VIN, город…">
+      </label>
+      <label>
+        Цена от
+        <input type="number" name="min_price" value="{{ min_price }}" min="0" step="100">
+      </label>
+      <label>
+        Цена до
+        <input type="number" name="max_price" value="{{ max_price }}" min="0" step="100">
+      </label>
+      {% if tab != 'no_volume' %}
+      <label class="check">
+        <span>до 1.9л</span>
+        <input type="hidden" name="upto_19l" value="0">
+        <input type="checkbox" name="upto_19l" value="1" {% if upto_19l %}checked{% endif %}>
+      </label>
+      {% endif %}
+      <label class="check">
+        <span>проходные</span>
+        <input type="hidden" name="passable" value="0">
+        <input type="checkbox" name="passable" value="1" {% if passable %}checked{% endif %}>
+      </label>
+      <label class="check">
+        <span>Старше 3-х лет</span>
+        <input type="hidden" name="over_3y" value="0">
+        <input type="checkbox" name="over_3y" value="1" {% if over_3y %}checked{% endif %}>
+      </label>
+      {% for c in selected_cities %}
+      <input type="hidden" name="city" value="{{ c }}">
+      {% endfor %}
+      <button type="submit">Показать</button>
+    </form>
+
+    <section class="summary">
+      <p>
+        {% if tab == 'no_volume' %}
+        Показано <strong>{{ listings|length }}</strong> без определённого объёма
+        {% else %}
+        Показано <strong>{{ listings|length }}</strong>
+        {% endif %}
+        (стр. {{ page }}/{{ pages }}, по фильтру {{ total_filtered }} из {{ total_in_db }} в БД)
+      </p>
+    </section>
+
+    {% if not listings %}
+    <p class="empty">Нет объявлений в базе по фильтру.</p>
+    {% else %}
+    {% if is_admin %}
+    <div class="table-layout-controls" data-table-layout-controls>
+      <span class="table-layout-hint">Потяните границу столбца в заголовке таблицы, чтобы изменить ширину.</span>
+      <button type="button" class="table-layout-btn" data-table-layout-save>Сохранить разметку</button>
+      <button type="button" class="table-layout-btn table-layout-btn-muted" data-table-layout-reset>Сбросить</button>
+      <span class="table-layout-status" data-table-layout-status aria-live="polite"></span>
+    </div>
+    {% endif %}
+    <div class="table-wrap">
+      <table
+        class="listings-table"
+        data-col-resize
+        {% if is_admin %}data-col-resize-editable{% endif %}
+        {% if table_layout %}data-saved-layout='{{ table_layout | tojson }}'{% endif %}
+      >
+        <colgroup>
+          <col class="col-photo" data-col="photo">
+          <col class="col-auto" data-col="auto">
+          <col class="col-engine" data-col="engine">
+          <col class="col-price-lt" data-col="price-lt">
+          <col class="col-price-rb" data-col="price-rb">
+          <col class="col-city" data-col="city">
+          <col class="col-description" data-col="description">
+          <col class="col-date" data-col="date">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="photo-col"></th>
+            {{ sort_th('Авто', 'title_asc', 'title_desc', 'title_asc', 'col-auto') }}
+            {{ sort_th('Регистрация /<br>Характеристики', 'year_asc', 'year_desc', 'year_desc', 'col-engine') }}
+            {{ sort_th('Цена в LT,&nbsp;€', 'price_asc', 'price_desc', 'price_asc', 'col-price-lt') }}
+            <th class="col-price-rb th-wrap"><span class="col-head-label">Цена в РБ, $</span></th>
+            <th class="col-city th-wrap city-filter-th{% if selected_cities %} active{% endif %}" data-city-filter>
+              <button type="button" class="city-filter-toggle" data-city-filter-toggle aria-expanded="false">
+                <span class="col-head-label sort-label">Город{% if selected_cities %} ({{ selected_cities|length }}){% endif %}</span>
+                <span class="sort-indicator" aria-hidden="true">▾</span>
+              </button>
+              <form
+                class="city-filter-panel"
+                method="get"
+                data-city-filter-panel
+                hidden
+              >
+                <input type="hidden" name="tab" value="{{ tab }}">
+                <input type="hidden" name="sort" value="{{ sort }}">
+                <input type="hidden" name="q" value="{{ q }}">
+                <input type="hidden" name="min_price" value="{{ min_price }}">
+                <input type="hidden" name="max_price" value="{{ max_price }}">
+                <input type="hidden" name="upto_19l" value="{{ '1' if upto_19l else '0' }}">
+                <input type="hidden" name="passable" value="{{ '1' if passable else '0' }}">
+                <input type="hidden" name="over_3y" value="{{ '1' if over_3y else '0' }}">
+                {% for row in vehicle_rows %}
+                  {% if row.make %}<input type="hidden" name="make" value="{{ row.make }}">{% endif %}
+                  {% if row.model %}<input type="hidden" name="model" value="{{ row.model }}">{% endif %}
+                {% endfor %}
+                {% if year_from %}<input type="hidden" name="year_from" value="{{ year_from }}">{% endif %}
+                {% if year_to %}<input type="hidden" name="year_to" value="{{ year_to }}">{% endif %}
+                {% for v in selected_body_types %}<input type="hidden" name="body_type" value="{{ v }}">{% endfor %}
+                {% for v in selected_fuels %}<input type="hidden" name="fuel" value="{{ v }}">{% endfor %}
+                {% for v in selected_transmissions %}<input type="hidden" name="transmission" value="{{ v }}">{% endfor %}
+                {% if volume_from %}<input type="hidden" name="volume_from" value="{{ volume_from }}">{% endif %}
+                {% if volume_to %}<input type="hidden" name="volume_to" value="{{ volume_to }}">{% endif %}
+                <input type="hidden" name="page" value="1">
+                <div class="city-filter-list">
+                  {% for option in city_options %}
+                  <label class="city-filter-item">
+                    <input type="checkbox" name="city" value="{{ option.name }}" {% if option.name in selected_cities %}checked{% endif %}>
+                    <span class="city-filter-name">{{ option.name }}</span>
+                    <span class="city-filter-count">{{ option.count }}</span>
+                  </label>
+                  {% else %}
+                  <p class="muted">Нет городов</p>
+                  {% endfor %}
+                </div>
+                <div class="city-filter-actions">
+                  <button type="submit">Применить</button>
+                  <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=1) }}{{ vehicle_qs() }}">Сбросить</a>
+                </div>
+              </form>
+            </th>
+            <th class="col-description th-wrap"><span class="col-head-label">Описание</span></th>
+            {{ sort_th('Дата добавления', 'added_asc', 'added_desc', 'added_desc', 'col-date') }}
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in listings %}
+          {% set photos = item|listing_photos %}
+          {% set list_photos = photos.thumb if photos.thumb else photos.full %}
+          <tr data-listing-row="{{ item.autoplius_id }}">
+            <td class="photo">
+              {% if list_photos %}
+              <div class="list-gallery" data-list-gallery data-photos='{{ list_photos|tojson }}'>
+                <img data-list-photo src="{{ list_photos[0] }}" alt="" loading="lazy">
+                {% if list_photos|length > 1 %}
+                <button type="button" class="list-photo-nav list-photo-prev" data-list-photo-prev aria-label="Предыдущее фото">‹</button>
+                <button type="button" class="list-photo-nav list-photo-next" data-list-photo-next aria-label="Следующее фото">›</button>
+                <div class="list-photo-counter" data-list-photo-counter>1/{{ list_photos|length }}</div>
+                {% endif %}
+              </div>
+              {% else %}
+              <div class="photo-empty"></div>
+              {% endif %}
+            </td>
+            <td class="col-auto">
+              {% set make, model = item|listing_make_model %}
+              <a class="listing-name" href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">
+                <span class="listing-make">{{ make }}</span>
+                {% if model %}<span class="listing-model">{{ model }}</span>{% endif %}
+              </a>
+              {% if item.body_type %}
+              {% for line in item.body_type|body_type_lines %}
+              <div class="muted body-type-line">{{ line }}</div>
+              {% endfor %}
+              {% endif %}
+            </td>
+            <td class="col-engine">
+              <div class="spec-year-line">{{ item.year or '—' }}</div>
+              {% set engine_lines = item|engine_kpp_lines %}
+              {% if engine_lines %}
+                {% for line in engine_lines %}
+                <div class="muted engine-kpp-sub">{{ line }}</div>
+                {% endfor %}
+              {% endif %}
+              {% if is_admin and tab == 'no_volume' %}
+              {% include "_no_volume_editor.html" %}
+              {% endif %}
+            </td>
+            {% set price_lines = item|catalog_price_lines %}
+            <td class="num col-price-lt{% if price_lines and price_lines[0].label %} col-price-vat{% endif %}">
+              {% if price_lines and price_lines[0].label %}
+              {{ render_price_lt_vat(item) }}
+              {% else %}
+              {{ render_price_lt(item) }}
+              {% endif %}
+              {% include "_listing_admin_actions.html" %}
+            </td>
+            <td class="num col-price-rb{% if price_lines and price_lines[0].label %} col-price-vat{% endif %}">
+              {% if price_lines and price_lines[0].label %}
+              {{ render_price_rb_vat(item) }}
+              {% else %}
+              {{ render_price_rb(item) }}
+              {% endif %}
+              {% include "_listing_admin_actions_rb.html" %}
+            </td>
+            <td class="col-city">
+              {% if item.city %}
+              <div class="city-name">{{ item.city }}</div>
+              {% set dist = item.city|city_distance %}
+              {% if dist %}<div class="muted city-distance">{{ dist }}</div>{% endif %}
+              {% set maps = item.city|city_maps_url %}
+              {% if maps %}<a class="city-map-link" href="{{ maps }}" target="_blank" rel="noopener">На карте</a>{% endif %}
+              {% else %}
+              —
+              {% endif %}
+            </td>
+            <td class="col-description">
+              {% set desc = item|listing_description %}
+              {% if desc %}
+              <div class="list-description" title="{{ desc }}">{{ desc }}</div>
+              {% else %}
+              —
+              {% endif %}
+            </td>
+            <td class="num date-added col-date">
+              {% if item.first_seen_at %}
+              <div>{{ item.first_seen_at|format_date }}</div>
+              <div class="date-added-time">{{ item.first_seen_at|format_time }}</div>
+              {% else %}
+              —
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if pages > 1 %}
+    <nav class="pager">
+      {% if page > 1 %}
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=page-1) }}{{ filter_qs() }}">← Назад</a>
+      {% endif %}
+      <span>Страница {{ page }} / {{ pages }}</span>
+      {% if page < pages %}
+      <a href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=sort, upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=page+1) }}{{ filter_qs() }}">Вперёд →</a>
+      {% endif %}
+    </nav>
+    {% endif %}
+    {% endif %}
+  </main>
+  {% if is_admin and tab == 'no_volume' %}
+  <script src="{{ url_for('static', filename='no_volume_save.js') }}" defer></script>
+  {% endif %}
+  <script src="{{ url_for('static', filename='admin_listing_actions.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='catalog_multi_select.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='make_model_filter.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='price_rb_tooltip.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='list_photos.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='city_filter.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='sort_preference.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='column_resize.js') }}" defer></script>
+</body>
+</html>

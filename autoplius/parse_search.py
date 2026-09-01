@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from autoplius.models import SearchListingPreview
 from autoplius.parse_price import parse_listing_prices, parse_price_amount
 from autoplius.urls import extract_listing_id, normalize_listing_url
+from autoplius.listing_titles import is_invalid_listing_title, resolve_listing_title
 
 PRICE_RE = re.compile(r"([\d\s]+)\s*€")
 MILEAGE_RE = re.compile(r"([\d\s]+)\s*km", re.I)
@@ -54,6 +55,10 @@ def parse_search_html(html: str) -> list[SearchListingPreview]:
 
         title_el = item.select_one(".announcement-title")
         title = title_el.get_text(strip=True) if title_el else ""
+        if is_invalid_listing_title(title):
+            from autoplius.listing_titles import resolve_listing_title
+
+            title = resolve_listing_title(title=title, url=normalize_listing_url(href))
 
         param_spans = item.select(".announcement-parameters span")
         year = param_spans[0].get_text(strip=True) if len(param_spans) > 0 else None

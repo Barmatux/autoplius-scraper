@@ -46,10 +46,10 @@ ssh romanshleg@84.252.139.137 "sudo bash /opt/autoplius-scraper/deploy/deploy-fr
 
 1. SSH to VM
 2. `deploy/deploy-from-git.sh`:
-   - `git fetch` + `git pull --ff-only origin main`
+   - `git fetch` + `git pull --ff-only origin main` (fails if VM working tree is dirty)
    - `pip install -r requirements.txt`
    - refresh systemd units
-   - `deploy/post-deploy-vm.sh` (SQL/pagination patches)
+   - `deploy/post-deploy-vm.sh` (`engine_liters` backfill, nginx reload)
    - restart `autoplius-ui.service`
 3. smoke tests: HTTP 200 on Flask `:8080` and nginx `:80`
 
@@ -58,5 +58,5 @@ Scraper code is picked up on the next timer run; the workflow does not restart a
 ## Troubleshooting
 
 - **pull fails (dirty tree)** — SSH to VM, inspect `git status`, commit or stash local changes, then re-run workflow.
-- **patch WARN lines** — some deploy patches target VM-specific `app.py` blocks; merge VM UI changes into git to remove drift.
+- **500 after deploy** — check `journalctl -u autoplius-ui.service`; ensure all production files are committed on `main` (no VM-only overlays).
 - **smoke test fails** — check `sudo journalctl -u autoplius-ui.service -n 50` on the VM.

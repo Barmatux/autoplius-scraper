@@ -458,6 +458,13 @@ def scrape_search_pages(
         snapshot_path=str(snapshot_path),
     )
 
+    try:
+        from autoplius.engine_catalog import refresh_engine_catalog
+
+        refresh_engine_catalog(settings.db_path)
+    except Exception:
+        logger.exception("Engine catalog refresh failed")
+
     photo_sync = sync_run_photos(settings, listings)
     payload["photo_sync"] = photo_sync
 

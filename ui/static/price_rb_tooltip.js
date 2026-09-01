@@ -1,19 +1,27 @@
 (function () {
   var activeTip = null;
+  var activeHost = null;
 
   function hideTip() {
     if (!activeTip) return;
     activeTip.hidden = true;
     activeTip.style.left = "";
     activeTip.style.top = "";
+    if (activeHost && activeTip.parentNode === document.body) {
+      activeHost.appendChild(activeTip);
+    }
     activeTip = null;
+    activeHost = null;
   }
 
-  function placeTip(anchor, tip) {
+  function placeTip(host, tip) {
+    if (tip.parentNode !== document.body) {
+      document.body.appendChild(tip);
+    }
     tip.hidden = false;
     tip.style.left = "0px";
     tip.style.top = "0px";
-    var anchorRect = anchor.getBoundingClientRect();
+    var anchorRect = host.getBoundingClientRect();
     var tipRect = tip.getBoundingClientRect();
     var gap = 8;
     var left = anchorRect.left;
@@ -29,14 +37,19 @@
     tip.style.top = Math.round(top) + "px";
   }
 
+  function showTip(host, tip) {
+    if (activeTip && activeTip !== tip) hideTip();
+    activeHost = host;
+    activeTip = tip;
+    placeTip(host, tip);
+  }
+
   document.addEventListener("mouseover", function (event) {
     var host = event.target.closest(".price-rb");
     if (!host) return;
     var tip = host.querySelector(".price-rb-tooltip");
     if (!tip) return;
-    if (activeTip && activeTip !== tip) hideTip();
-    activeTip = tip;
-    placeTip(host, tip);
+    showTip(host, tip);
   });
 
   document.addEventListener("mouseout", function (event) {
@@ -52,9 +65,7 @@
     if (!host) return;
     var tip = host.querySelector(".price-rb-tooltip");
     if (!tip) return;
-    if (activeTip && activeTip !== tip) hideTip();
-    activeTip = tip;
-    placeTip(host, tip);
+    showTip(host, tip);
   });
 
   document.addEventListener("focusout", function (event) {

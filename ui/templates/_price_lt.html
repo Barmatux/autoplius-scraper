@@ -1,12 +1,55 @@
+{% macro render_price_rb_value(rb) %}
+{% if rb %}
+<div class="price-rb" tabindex="0">
+  <span class="price-rb-value">{{ rb.total_formatted }}</span>
+  <div class="price-rb-tooltip" role="tooltip" hidden>
+    {% for tooltip_line in rb.tooltip_lines() %}
+    <p>{{ tooltip_line }}</p>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+—
+{% endif %}
+{% endmacro %}
+
+{% macro render_price_lt_vat(item) %}
+{% for line in item|catalog_price_lines %}
+<div class="price-vat-slot">
+  <div class="price-vat-label-bridge">
+    <span class="price-vat-label-text muted">{{ line.label }}</span>
+  </div>
+  <div class="price-vat-lt-value">{{ line.lt_formatted }}</div>
+</div>
+{% endfor %}
+{% endmacro %}
+
+{% macro render_price_rb_vat(item) %}
+{% for line in item|catalog_price_lines %}
+<div class="price-vat-slot">
+  <div class="price-vat-label-bridge price-vat-label-bridge-spacer" aria-hidden="true"></div>
+  <div class="price-vat-rb-value">{{ render_price_rb_value(line.rb) }}</div>
+</div>
+{% endfor %}
+{% endmacro %}
+
 {% macro render_price_lt(item) %}
-{% for label, amount in item|price_lt_lines %}
-  {% if label %}
-  <div class="price-vat-line"><span class="muted">{{ label }}:</span> {{ amount }}</div>
+{% for line in item|catalog_price_lines %}
+  {% if line.label %}
+  <div class="price-vat-line">
+    <div class="price-vat-label muted">{{ line.label }}</div>
+    <div class="price-vat-amount">{{ line.lt_formatted }}</div>
+  </div>
   {% else %}
-  <div>{{ amount }}</div>
+  <div>{{ line.lt_formatted }}</div>
   {% endif %}
 {% endfor %}
-{% if item.price_vat_note %}
-<div class="price-vat-note muted">{{ item.price_vat_note }}</div>
-{% endif %}
+{% endmacro %}
+
+{% macro render_price_rb(item) %}
+{% for line in item|catalog_price_lines %}
+  <div class="price-rb-line{% if line.label %} price-vat-line{% endif %}">
+    {{ render_price_rb_value(line.rb) }}
+  </div>
+{% endfor %}
 {% endmacro %}

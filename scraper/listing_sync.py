@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from autoplius.listing_titles import is_invalid_listing_title, resolve_listing_title
+
 LISTING_STATUS_ACTIVE = "active"
 LISTING_STATUS_ARCHIVED = "archived"
 
@@ -158,6 +160,15 @@ def merge_listing_row(
 
         new_value = incoming.get(field)
         old_value = existing.get(field)
+        if field == "title":
+            merged[field] = resolve_listing_title(
+                title=new_value if _has_value(new_value) else old_value,
+                url=incoming.get("url") or existing.get("url"),
+                fallback_item={**existing, **incoming, "autoplius_id": incoming.get("autoplius_id") or existing.get("autoplius_id")},
+            )
+            if is_invalid_listing_title(merged[field]):
+                merged[field] = old_value if _has_value(old_value) and not is_invalid_listing_title(old_value) else merged[field]
+            continue
         if field in {"description_ru", "phone", "vin_masked"} and _has_value(old_value):
             if not _has_value(new_value):
                 merged[field] = old_value

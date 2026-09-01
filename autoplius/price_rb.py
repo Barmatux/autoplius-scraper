@@ -10,7 +10,7 @@ from autoplius.customs_duty import (
     customs_age_band_from_months,
     duty_rate_eur_per_cm3,
 )
-from autoplius.engine_volume import engine_volume_cm3
+from autoplius.engine_volume import customs_engine_volume_cm3
 from autoplius.myfin_rates import eur_usd_rate, usd_byn_rate
 from autoplius.passable_age import listing_age_months
 
@@ -59,7 +59,7 @@ class PriceRbBreakdown:
 
     @property
     def total_formatted(self) -> str:
-        return f"{_fmt_money(self.total_usd)} $"
+        return f"{_fmt_money(self.total_usd)}\u00a0$"
 
     def tooltip_lines(self) -> list[str]:
         return [
@@ -85,16 +85,16 @@ class PriceRbBreakdown:
         ]
 
 
-def estimate_price_rb(item: dict[str, Any]) -> PriceRbBreakdown | None:
-    price_eur = item.get("price_eur")
-    if price_eur is None:
+def estimate_price_rb(item: dict[str, Any], *, price_eur: int | None = None) -> PriceRbBreakdown | None:
+    base_price = price_eur if price_eur is not None else item.get("price_eur")
+    if base_price is None:
         return None
     try:
-        price_eur_i = int(price_eur)
+        price_eur_i = int(base_price)
     except (TypeError, ValueError):
         return None
 
-    engine_cm3 = engine_volume_cm3(item)
+    engine_cm3 = customs_engine_volume_cm3(item)
     if engine_cm3 is None:
         return None
 

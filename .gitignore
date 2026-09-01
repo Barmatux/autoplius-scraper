@@ -1,5 +1,7 @@
 .venv/
 .browser-profile/
+.deploy-keys/
+_vm_sync/
 __pycache__/
 *.py[cod]
 .env

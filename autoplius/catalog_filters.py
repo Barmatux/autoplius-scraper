@@ -31,7 +31,34 @@ def listing_year(item: dict[str, Any]) -> int | None:
     return parsed[0] if parsed else None
 
 
+MIN_CATALOG_YEAR = 2008
+HIDDEN_MAKES = frozenset({"skoda"})
+PICKUP_BODY_TYPES = frozenset({"pikapas", "pikap", "pickup", "пикап"})
+
+
+def is_pickup_body_type(body_type: str | None) -> bool:
+    text = (body_type or "").strip().casefold()
+    if not text:
+        return False
+    if text in PICKUP_BODY_TYPES:
+        return True
+    return "pikap" in text or "pickup" in text
+
+
+def is_pickup_listing(item: dict[str, Any]) -> bool:
+    if is_pickup_body_type(item.get("body_type")):
+        return True
+    params = item.get("parameters") or {}
+    for key in ("Kėbulo tipas", "Тип кузова", "body_type"):
+        if is_pickup_body_type(params.get(key) if isinstance(params.get(key), str) else None):
+            return True
+    return False
+
+
 def is_catalog_visible(item: dict[str, Any]) -> bool:
+    if is_pickup_listing(item):
+        return False
+
     make = listing_make(item)
     if make in HIDDEN_MAKES:
         return False

@@ -7,12 +7,18 @@
     href="{{ url_for('index', tab='no_volume') }}"
     class="tab{% if active_tab == 'no_volume' %} active{% endif %}"
   >Без объема{% if no_volume_count is not none %} <span class="tab-count">{{ no_volume_count }}</span>{% endif %}</a>
+  {% if is_admin %}
   <a
     href="{{ url_for('index', tab='archived') }}"
     class="tab{% if active_tab == 'archived' %} active{% endif %}"
   >Архив{% if archived_count is defined %} <span class="tab-count">{{ archived_count }}</span>{% endif %}</a>
   <a
+    href="{{ url_for('catalog') }}"
+    class="tab{% if active_tab == 'catalog' %} active{% endif %}"
+  >Каталог{% if catalog_new_count %} <span class="tab-count">{{ catalog_new_count }}</span>{% endif %}</a>
+  <a
     href="{{ url_for('analytics') }}"
     class="tab{% if active_tab == 'analytics' %} active{% endif %}"
   >Аналитика</a>
+  {% endif %}
 </nav>

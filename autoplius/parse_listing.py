@@ -9,6 +9,7 @@ from autoplius.models import ListingDetail
 from autoplius.parse_price import parse_listing_prices, parse_price_amount
 from autoplius.photo_urls import best_photo_url, normalize_photo_list, photo_asset_key
 from autoplius.urls import extract_listing_id, normalize_listing_url
+from autoplius.listing_titles import is_invalid_listing_title, resolve_listing_title
 from typing import Any
 
 PRICE_RE = re.compile(r"([\d\s]+)\s*(?:€|<span[^>]*>€</span>)")
@@ -242,6 +243,8 @@ def parse_listing_html(html: str, url: str) -> ListingDetail:
         title = soup.title.string.strip()
     else:
         title = ""
+
+    title = resolve_listing_title(title=title, url=url)
 
     description = _parse_description(soup)
     prices = _parse_prices(soup)

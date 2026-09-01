@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 import os
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -16,20 +16,63 @@ from scraper.db import (
     count_scrape_runs,
     db_stats,
     default_db_path,
+    fetch_engine_catalog,
     fetch_listing,
     fetch_listings,
+    fetch_listings_by_ids,
     fetch_scrape_runs,
     init_db,
+    engine_catalog_missing_count,
+    engine_catalog_new_count,
     scrape_runs_analytics,
     update_listing_admin,
     set_listing_archived,
+    update_engine_catalog_entry,
 )
+from scraper.listing_filter_options import fetch_listing_filter_options
+from scraper.listing_query import count_listings, fetch_listing_ids
+from scraper.listing_sql_filters import ListingFilters
 from scraper.s3_storage import get_s3_client
 from ui.photo_urls import is_external_photo_url, photo_display_url, photo_display_urls
+from ui.table_layout import COL_KEYS, load_table_layout, save_table_layout, validate_layout
 from autoplius.cities_lt import distance_from_vilnius_label, google_maps_url
+from autoplius.engine_catalog import (
+    catalog_stats,
+    configure_catalog_db,
+    filter_catalog_entries_upto_liters,
+    invalidate_catalog_cache,
+    refresh_engine_catalog,
+    split_catalog_entries,
+)
 from autoplius.translate import is_translation_error
 from autoplius.engine_volume import engine_volume_from_listing
 from autoplius.photo_urls import listing_photo_sets, normalize_photo_list, thumb_photo_url
+from autoplius.listing_display import clean_listing_title, listing_headline as display_listing_headline
+from autoplius.listing_display import listing_make_model as parse_listing_make_model
+from autoplius.make_model_filters import (
+    build_make_model_options,
+    build_year_options,
+    exclude_blocked_makes,
+    filter_by_vehicle_rows,
+    filter_by_year,
+    parse_optional_year,
+    parse_vehicle_filter_rows,
+    sanitize_vehicle_rows,
+)
+from autoplius.spec_filters import (
+    build_spec_filter_options,
+    build_transmission_raw_values,
+    filter_by_body_types,
+    filter_by_fuel_types,
+    filter_by_transmissions,
+    filter_by_volume_range,
+    parse_multi_param_values,
+    parse_volume_param,
+)
+from autoplius.transmission_labels import (
+    parse_transmission_filter_values,
+    transmission_db_values_for_slugs,
+)
 from autoplius.price_display import catalog_price_lines, price_lt_lines
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
@@ -42,6 +85,8 @@ SETTINGS = Settings.from_env()
 TAB_ALL = "all"
 TAB_NO_VOLUME = "no_volume"
 TAB_ARCHIVED = "archived"
+TAB_ADMIN = "admin"
+ADMIN_PAGE_SIZE = 50
 
 app = Flask(__name__)
 app.config["DATA_DIR"] = DEFAULT_DATA_DIR
@@ -93,7 +138,7 @@ def listing_photos_filter(item: dict[str, Any]) -> dict[str, Any]:
 def format_datetime(value: str | None) -> str:
     dt = _parse_iso_datetime(value)
     if dt is None:
-        return "—" if not value else value[:16].replace("T", " ")
+        return "тАФ" if not value else value[:16].replace("T", " ")
     return dt.strftime("%d.%m.%Y %H:%M")
 
 
@@ -101,7 +146,7 @@ def format_datetime(value: str | None) -> str:
 def format_date(value: str | None) -> str:
     dt = _parse_iso_datetime(value)
     if dt is None:
-        return "—" if not value else value[:10]
+        return "тАФ" if not value else value[:10]
     return dt.strftime("%d.%m.%Y")
 
 
@@ -116,20 +161,20 @@ def format_time(value: str | None) -> str:
 @app.template_filter("format_duration")
 def format_duration(value: float | int | None) -> str:
     if value is None:
-        return "—"
+        return "тАФ"
     total = int(round(float(value)))
     if total < 60:
-        return f"{total}с"
+        return f"{total}╤Б"
     minutes, seconds = divmod(total, 60)
     if minutes < 60:
-        return f"{minutes}м {seconds:02d}с"
+        return f"{minutes}╨╝ {seconds:02d}╤Б"
     hours, minutes = divmod(minutes, 60)
-    return f"{hours}ч {minutes:02d}м"
+    return f"{hours}╤З {minutes:02d}╨╝"
 
 
 @app.template_filter("engine_volume")
 def engine_volume(item: dict[str, Any]) -> str:
-    return engine_volume_from_listing(item) or "—"
+    return engine_volume_from_listing(item) or "тАФ"
 
 
 @app.template_filter("engine_kpp_lines")
@@ -137,7 +182,7 @@ def engine_kpp_lines(item: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     volume = engine_volume_from_listing(item)
     if volume:
-        lines.append(volume.replace(" л", ""))
+        lines.append(volume.replace(" ╨╗", ""))
     fuel = (item.get("fuel") or "").strip()
     if fuel:
         lines.append(fuel)
@@ -179,7 +224,7 @@ def price_lt_lines_filter(item: dict[str, Any]) -> list[tuple[str, str]]:
 def price_rb_usd(item: dict[str, Any]) -> str:
     breakdown = estimate_price_rb(item)
     if breakdown is None:
-        return "—"
+        return "тАФ"
     return breakdown.total_formatted
 
 
@@ -193,99 +238,19 @@ def city_maps_url(city: str | None) -> str:
     return google_maps_url(city) or ""
 
 
-_LISTING_ID_SUFFIX_RE = re.compile(r"\s*\|\s*A?\d+\s*$")
-
-_MULTI_WORD_MAKES = (
-    "Alfa Romeo",
-    "Aston Martin",
-    "Land Rover",
-    "Range Rover",
-    "Rolls-Royce",
-    "Rolls Royce",
-    "Great Wall",
-    "Mercedes-Benz",
-    "Mercedes Benz",
-)
-
-
-def _clean_listing_title(value: str | None) -> str:
-    if not value:
-        return "—"
-    cleaned = _LISTING_ID_SUFFIX_RE.sub("", value).strip().rstrip(",").strip()
-    return cleaned or value.strip()
-
-
-def _strip_body_type_from_title(title: str, body_type: str | None) -> str:
-    if not title or title == "—":
-        return title
-    if body_type:
-        title = re.sub(rf",\s*{re.escape(body_type)}\b", "", title, flags=re.I)
-        title = re.sub(rf"\b{re.escape(body_type)}\s+", "", title, flags=re.I)
-    # Drop LT/other body label before the year suffix, e.g. ", Universalas 2020-10 m."
-    title = re.sub(
-        r",\s*\S+\s+(?=\d{4}(?:-\d{2})?\s*m\.?\s*$)",
-        ", ",
-        title,
-        flags=re.I,
-    )
-    return re.sub(r"\s{2,}", " ", title).strip().rstrip(",").strip()
-
-
-def _strip_year_from_title(title: str, year: str | None) -> str:
-    if not title or title == "—":
-        return title
-    if year:
-        title = re.sub(rf",?\s*{re.escape(str(year).strip())}\s*m\.?\s*$", "", title, flags=re.I)
-    title = re.sub(r",?\s*\d{4}(?:-\d{2})?\s*m\.?\s*$", "", title, flags=re.I)
-    return title.strip().rstrip(",").strip()
-
-
-def _strip_engine_from_title(title: str, engine: str | None) -> str:
-    if not title or title == "—":
-        return title
-    if engine:
-        engine_text = engine.strip()
-        if engine_text:
-            title = re.sub(rf",\s*{re.escape(engine_text)}\b", "", title, flags=re.I)
-            title = re.sub(rf"\b{re.escape(engine_text)}\b", "", title, flags=re.I)
-    title = re.sub(r",\s*\d+(?:[.,]\d+)?\s*l\.?\b", "", title, flags=re.I)
-    return re.sub(r"\s{2,}", " ", title).strip().rstrip(",").strip()
-
-
 @app.template_filter("listing_title")
 def listing_title(value: str | None) -> str:
-    return _clean_listing_title(value)
+    return clean_listing_title(value)
 
 
 @app.template_filter("listing_headline")
-def listing_headline(item: dict[str, Any]) -> str:
-    title = _clean_listing_title(item.get("title"))
-    title = _strip_body_type_from_title(title, (item.get("body_type") or "").strip())
-    title = _strip_year_from_title(title, item.get("year"))
-    return _strip_engine_from_title(title, item.get("engine"))
-
-
-def _split_make_model(headline: str) -> tuple[str, str]:
-    text = headline.strip().rstrip(".,").strip()
-    if not text or text == "—":
-        return "—", ""
-    lower = text.casefold()
-    for make in sorted(_MULTI_WORD_MAKES, key=len, reverse=True):
-        prefix = make.casefold()
-        if lower == prefix:
-            return make, ""
-        if lower.startswith(prefix + " "):
-            model = text[len(make) :].strip(" .,")
-            return make, model
-    parts = text.split(None, 1)
-    if len(parts) == 1:
-        return parts[0], ""
-    return parts[0], parts[1].strip(" .,")
+def listing_headline_filter(item: dict[str, Any]) -> str:
+    return display_listing_headline(item)
 
 
 @app.template_filter("listing_make_model")
-def listing_make_model(item: dict[str, Any]) -> tuple[str, str]:
-    return _split_make_model(listing_headline(item))
+def listing_make_model_filter(item: dict[str, Any]) -> tuple[str, str]:
+    return parse_listing_make_model(item)
 
 
 @app.template_filter("body_type_lines")
@@ -300,19 +265,6 @@ def body_type_lines(body_type: str | None) -> list[str]:
         if left and right:
             return [left, right]
     return [text]
-
-
-@app.template_filter("detail_scrape_pending")
-def detail_scrape_pending(item: dict[str, Any]) -> bool:
-    return bool(item) and not bool(item.get("detail_scraped"))
-
-
-@app.template_filter("detail_error_public")
-def detail_error_public(item: dict[str, Any]) -> str | None:
-    if not item:
-        return None
-    error = (item.get("detail_error") or "").strip()
-    return error or None
 
 
 def _admin_credentials() -> tuple[str, str]:
@@ -330,18 +282,7 @@ def _check_admin_auth() -> bool:
 
 
 def _is_admin() -> bool:
-    if _check_admin_auth():
-        session.permanent = True
-        session["admin"] = True
-        return True
-    return session.get("admin") is True
-
-
-@app.before_request
-def sync_admin_session_from_auth():
-    if _check_admin_auth():
-        session.permanent = True
-        session["admin"] = True
+    return _check_admin_auth() or session.get("admin") is True
 
 
 @app.before_request
@@ -402,6 +343,25 @@ def admin_logout():
     return redirect(url_for("index"))
 
 
+@app.context_processor
+def inject_tab_counts():
+    path = db_path()
+    if not path.is_file():
+        return {}
+    try:
+        init_db(path)
+        return {
+            "catalog_missing_count": engine_catalog_missing_count(path),
+            "catalog_new_count": engine_catalog_new_count(path),
+            "no_volume_count": count_listings(
+                path,
+                ListingFilters(engine_volume_missing=True, catalog_filter=False),
+            ),
+        }
+    except Exception:
+        return {}
+
+
 def db_path() -> Path:
     return Path(app.config["DB_PATH"])
 
@@ -411,6 +371,7 @@ def require_db() -> Path:
     if not path.is_file():
         abort(503, "SQLite database not found. Run import_to_db.py first.")
     init_db(path)
+    configure_catalog_db(path)
     return path
 
 
@@ -478,6 +439,33 @@ def _current_tab() -> str:
     return tab if tab in {TAB_ALL, TAB_NO_VOLUME, TAB_ARCHIVED} else TAB_ALL
 
 
+
+
+def _listing_filters_for_tab(
+    *,
+    q: str,
+    min_price: int | None,
+    max_price: int | None,
+    sort: str,
+    tab: str,
+    upto_19l: bool,
+    passable: bool,
+    over_3y: bool,
+) -> ListingFilters:
+    return ListingFilters(
+        q=q,
+        min_price=min_price,
+        max_price=max_price,
+        sort=sort,
+        listing_status="archived" if tab == TAB_ARCHIVED else "active",
+        older_than_3_only=over_3y,
+        passable_only=passable,
+        engine_volume_missing=tab == TAB_NO_VOLUME,
+        engine_upto_liters=1.9 if upto_19l and tab != TAB_NO_VOLUME else None,
+        catalog_filter=tab != TAB_NO_VOLUME,
+        exclude_blocked_makes=True,
+    )
+
 def _fetch_index_listings(
     path: Path,
     *,
@@ -501,18 +489,20 @@ def _fetch_index_listings(
         older_than_3_only=over_3y,
     )
     if tab == TAB_NO_VOLUME:
-        return fetch_listings(
+        listings = fetch_listings(
             path,
             **common,
             engine_volume_missing=True,
             lite=lite,
         )
-    return fetch_listings(
-        path,
-        **common,
-        engine_upto_liters=1.9 if upto_19l else None,
-        lite=lite,
-    )
+    else:
+        listings = fetch_listings(
+            path,
+            **common,
+            engine_upto_liters=1.9 if upto_19l else None,
+            lite=lite,
+        )
+    return exclude_blocked_makes(listings)
 
 
 def _image_response(data: bytes, content_type: str) -> Response:
@@ -581,6 +571,27 @@ def display_description(item: dict[str, Any]) -> tuple[str | None, str | None]:
     return original, None
 
 
+@app.template_filter("listing_description")
+def listing_description(item: dict[str, Any]) -> str | None:
+    primary, _ = display_description(item)
+    if not primary:
+        return None
+    text = primary.strip()
+    return text or None
+
+@app.template_filter("detail_scrape_pending")
+def detail_scrape_pending(item: dict[str, Any]) -> bool:
+    return bool(item) and not bool(item.get("detail_scraped"))
+
+
+@app.template_filter("detail_error_public")
+def detail_error_public(item: dict[str, Any]) -> str | None:
+    if not item:
+        return None
+    error = (item.get("detail_error") or "").strip()
+    return error or None
+
+
 @app.get("/")
 def index():
     path = require_db()
@@ -597,8 +608,7 @@ def index():
     max_price = int(max_price_raw) if max_price_raw.isdigit() else None
 
     stats = db_stats(path)
-    filtered = _fetch_index_listings(
-        path,
+    base_filters = _listing_filters_for_tab(
         q=q,
         min_price=min_price,
         max_price=max_price,
@@ -607,28 +617,97 @@ def index():
         upto_19l=upto_19l,
         passable=passable,
         over_3y=over_3y,
-        lite=True,
     )
+    vehicle_rows = parse_vehicle_filter_rows(
+        [value.strip() for value in request.args.getlist("make")],
+        [value.strip() for value in request.args.getlist("model")],
+    )
+    year_from = parse_optional_year(request.args.get("year_from"))
+    year_to = parse_optional_year(request.args.get("year_to"))
+    if year_from is not None and year_to is not None and year_from > year_to:
+        year_from, year_to = year_to, year_from
+
+    base_options = fetch_listing_filter_options(path, base_filters)
+    make_model_options = base_options.make_model_options
+    year_options = base_options.year_options
+    vehicle_rows = sanitize_vehicle_rows(vehicle_rows, make_model_options)
+
     selected_cities = _selected_cities()
-    city_options = _city_options(filtered)
-    filtered = _filter_by_cities(filtered, selected_cities)
+    selected_body_types = parse_multi_param_values(request.args.getlist("body_type"))
+    selected_fuels = parse_multi_param_values(request.args.getlist("fuel"))
+    selected_transmissions = parse_transmission_filter_values(request.args.getlist("transmission"))
+    volume_from_str = request.args.get("volume_from", "").strip()
+    volume_to_str = request.args.get("volume_to", "").strip()
+    volume_from_raw = parse_volume_param(volume_from_str)
+    volume_to_raw = parse_volume_param(volume_to_str)
+    if volume_from_raw is not None and volume_to_raw is not None and volume_from_raw > volume_to_raw:
+        volume_from_raw, volume_to_raw = volume_to_raw, volume_from_raw
+        volume_from_str, volume_to_str = volume_to_str, volume_from_str
+
+    city_options = base_options.city_options
+    vehicle_year_filters = replace(
+        base_filters,
+        vehicle_rows=vehicle_rows,
+        year_from=year_from,
+        year_to=year_to,
+    )
+    has_vehicle_year = (
+        year_from is not None
+        or year_to is not None
+        or any(
+            (row.get("make") or "").strip() or (row.get("model") or "").strip()
+            for row in vehicle_rows
+        )
+    )
+    spec_options = (
+        fetch_listing_filter_options(path, vehicle_year_filters)
+        if has_vehicle_year
+        else base_options
+    )
+    spec_filters = spec_options.spec_filters(
+        selected_body_types=selected_body_types,
+        selected_fuels=selected_fuels,
+        selected_transmissions=selected_transmissions,
+    )
+    transmission_values = transmission_db_values_for_slugs(
+        spec_options.transmission_values,
+        selected_transmissions,
+    )
+
+    selected_filters = replace(
+        vehicle_year_filters,
+        cities=selected_cities,
+        body_types=selected_body_types,
+        fuels=selected_fuels,
+        transmissions=transmission_values,
+        volume_from=volume_from_raw,
+        volume_to=volume_to_raw,
+    )
+
     no_volume_count = (
-        len(filtered)
+        count_listings(path, ListingFilters(engine_volume_missing=True, catalog_filter=False))
         if tab == TAB_NO_VOLUME
         else None
     )
 
     total_in_db = int(stats.get("active_listings") or stats.get("listings") or 0)
     archived_count = int(stats.get("archived_listings") or 0)
-    total_filtered = len(filtered)
+    total_filtered = count_listings(path, selected_filters)
     pages = max(1, (total_filtered + PAGE_SIZE - 1) // PAGE_SIZE)
     page = min(page, pages)
     start = (page - 1) * PAGE_SIZE
-    listings = filtered[start : start + PAGE_SIZE]
+    page_ids = fetch_listing_ids(
+        path,
+        selected_filters,
+        limit=PAGE_SIZE,
+        offset=start,
+    )
+    listings = fetch_listings_by_ids(path, page_ids, lite=True)
 
     return render_template(
         "index.html",
         listings=listings,
+        table_layout=load_table_layout(app.config["DATA_DIR"]),
         total_in_db=total_in_db,
         archived_count=archived_count,
         total_filtered=total_filtered,
@@ -644,7 +723,18 @@ def index():
         passable=passable,
         over_3y=over_3y,
         selected_cities=selected_cities,
+        selected_body_types=selected_body_types,
+        selected_fuels=selected_fuels,
+        selected_transmissions=selected_transmissions,
+        spec_filters=spec_filters,
+        volume_from=volume_from_str,
+        volume_to=volume_to_str,
         city_options=city_options,
+        vehicle_rows=vehicle_rows,
+        make_model_options=make_model_options,
+        year_options=year_options,
+        year_from=year_from if year_from is not None else "",
+        year_to=year_to if year_to is not None else "",
         tab=tab,
         active_tab=tab,
         no_volume_count=no_volume_count,
@@ -652,9 +742,27 @@ def index():
         pages=pages,
         page_size=PAGE_SIZE,
         thumb_url=thumb_url,
-        archived_msg=request.args.get("archived") == "1",
-        restored_msg=request.args.get("restored") == "1",
     )
+
+
+@app.get("/api/table-layout")
+def get_table_layout_api():
+    layout = load_table_layout(app.config["DATA_DIR"])
+    if layout is None:
+        return jsonify({"version": 1, "widths": None})
+    return jsonify(layout)
+
+
+@app.post("/api/table-layout")
+def save_table_layout_api():
+    body = request.get_json(silent=True) or {}
+    widths = body.get("widths")
+    if not isinstance(widths, dict):
+        return jsonify({"error": "widths required"}), 400
+    if not validate_layout({"widths": widths}):
+        return jsonify({"error": f"widths must include: {', '.join(COL_KEYS)}"}), 400
+    saved = save_table_layout(app.config["DATA_DIR"], widths, source="ui")
+    return jsonify(saved)
 
 
 @app.get("/analytics")
@@ -667,8 +775,9 @@ def analytics():
     offset = (page - 1) * RUNS_PAGE_SIZE
 
     runs = fetch_scrape_runs(path, limit=RUNS_PAGE_SIZE, offset=offset)
-    no_volume_count = len(
-        fetch_listings(path, engine_volume_missing=True, passable_only=False)
+    no_volume_count = count_listings(
+        path,
+        ListingFilters(engine_volume_missing=True, catalog_filter=False),
     )
 
     stats = db_stats(path)
@@ -686,6 +795,110 @@ def analytics():
     )
 
 
+@app.get("/catalog")
+def catalog():
+    path = require_db()
+    refresh_engine_catalog(path)
+    invalidate_catalog_cache()
+
+    q = request.args.get("q", "").strip()
+    make_filter = request.args.get("make", "").strip()
+    model_filter = request.args.get("model", "").strip()
+    only_missing = request.args.get("missing") == "1"
+    upto_19l = _upto_19l_enabled()
+
+    entries = fetch_engine_catalog(path, q=q, make=make_filter, model=model_filter)
+    if only_missing:
+        entries = [entry for entry in entries if entry.get("customs_cm3") is None]
+    entries = filter_catalog_entries_upto_liters(entries, enabled=upto_19l)
+    catalog_sections = split_catalog_entries(entries)
+
+    make_options = sorted({entry["make"] for entry in fetch_engine_catalog(path)}, key=str.casefold)
+    model_options: list[str] = []
+    if make_filter:
+        model_options = sorted(
+            {
+                entry["model"]
+                for entry in fetch_engine_catalog(path, make=make_filter)
+            },
+            key=str.casefold,
+        )
+
+    stats = db_stats(path)
+    no_volume_count = count_listings(
+        path,
+        ListingFilters(engine_volume_missing=True, catalog_filter=False),
+    )
+    return render_template(
+        "catalog.html",
+        catalog_tree=catalog_sections["main_tree"],
+        new_catalog_tree=catalog_sections["new_tree"],
+        new_catalog_count=catalog_sections["new_count"],
+        catalog_entries=entries,
+        catalog_summary=catalog_stats(entries),
+        q=q,
+        make_filter=make_filter,
+        model_filter=model_filter,
+        only_missing=only_missing,
+        upto_19l=upto_19l,
+        make_options=make_options,
+        model_options=model_options,
+        db_stats=stats,
+        archived_count=int(stats.get("archived_listings") or 0),
+        active_tab="catalog",
+        no_volume_count=no_volume_count,
+    )
+
+
+@app.post("/catalog/sync")
+def catalog_sync():
+    path = require_db()
+    inserted, updated = refresh_engine_catalog(path)
+    invalidate_catalog_cache()
+    params: dict[str, Any] = {}
+    for key in ("q", "make", "model"):
+        value = (request.values.get(key) or "").strip()
+        if value:
+            params[key] = value
+    if request.values.get("missing") == "1":
+        params["missing"] = "1"
+    if "upto_19l" in request.values:
+        params["upto_19l"] = "1" if "1" in request.values.getlist("upto_19l") else "0"
+    params["synced"] = inserted + updated
+    params["inserted"] = inserted
+    params["updated"] = updated
+    return redirect(url_for("catalog", **params))
+
+
+@app.post("/api/catalog/<int:entry_id>")
+def api_catalog_update(entry_id: int):
+    path = require_db()
+    payload = request.get_json(silent=True) or {}
+    raw_cm3 = payload.get("customs_cm3", request.form.get("customs_cm3"))
+    notes = payload.get("notes", request.form.get("notes"))
+    customs_cm3: int | None
+    if raw_cm3 is None or str(raw_cm3).strip() == "":
+        customs_cm3 = None
+    else:
+        try:
+            customs_cm3 = int(str(raw_cm3).strip())
+        except ValueError:
+            return jsonify({"ok": False, "error": "invalid customs_cm3"}), 400
+        if customs_cm3 <= 0:
+            return jsonify({"ok": False, "error": "customs_cm3 must be positive"}), 400
+
+    if not update_engine_catalog_entry(
+        path,
+        entry_id,
+        customs_cm3=customs_cm3,
+        notes=(str(notes).strip() if notes is not None else None),
+    ):
+        return jsonify({"ok": False, "error": "not found"}), 404
+
+    invalidate_catalog_cache()
+    return jsonify({"ok": True, "id": entry_id, "customs_cm3": customs_cm3, "is_new": customs_cm3 is None})
+
+
 @app.get("/listing/<int:listing_id>")
 def listing_detail(listing_id: int):
     item = fetch_listing(require_db(), listing_id)
@@ -698,38 +911,6 @@ def listing_detail(listing_id: int):
         photos=photos,
         display_description=display_description,
     )
-
-
-def _parse_admin_form() -> tuple[dict[str, Any], bool]:
-    clear_overrides = request.form.get("clear_overrides") == "1"
-    patch: dict[str, Any] = {
-        "url": request.form.get("url", ""),
-        "title": request.form.get("title", ""),
-        "year": request.form.get("year", ""),
-        "body_type": request.form.get("body_type", ""),
-        "price_eur": request.form.get("price_eur", ""),
-        "price_net_eur": request.form.get("price_net_eur", ""),
-        "price_gross_eur": request.form.get("price_gross_eur", ""),
-        "price_vat_note": request.form.get("price_vat_note", ""),
-        "fuel": request.form.get("fuel", ""),
-        "transmission": request.form.get("transmission", ""),
-        "engine": request.form.get("engine", ""),
-        "mileage_km": request.form.get("mileage_km", ""),
-        "city": request.form.get("city", ""),
-        "photo_url": request.form.get("photo_url", ""),
-        "photo_urls_json": request.form.get("photo_urls", ""),
-        "has_vin_badge": request.form.get("has_vin_badge"),
-        "description": request.form.get("description", ""),
-        "description_ru": request.form.get("description_ru", ""),
-        "phone": request.form.get("phone", ""),
-        "vin_masked": request.form.get("vin_masked", ""),
-        "parameters_json": request.form.get("parameters_json", ""),
-        "status": request.form.get("status", "active"),
-        "archived_at": request.form.get("archived_at", ""),
-        "detail_scraped": request.form.get("detail_scraped"),
-        "detail_error": request.form.get("detail_error", ""),
-    }
-    return patch, clear_overrides
 
 
 @app.get("/admin/listings")
@@ -760,7 +941,7 @@ def admin_edit_listing(listing_id: int):
         if updated is not None:
             return redirect(url_for("admin_edit_listing", listing_id=listing_id, saved=1))
         if error is None:
-            error = "Не удалось сохранить объявление"
+            error = "╨Э╨╡ ╤Г╨┤╨░╨╗╨╛╤Б╤М ╤Б╨╛╤Е╤А╨░╨╜╨╕╤В╤М ╨╛╨▒╤К╤П╨▓╨╗╨╡╨╜╨╕╨╡"
         item = fetch_listing(path, listing_id) or item
 
     photos = listing_photos_filter(item)
@@ -776,7 +957,10 @@ def admin_edit_listing(listing_id: int):
         saved=request.args.get("saved") == "1",
         active_tab=_current_tab(),
         archived_count=int(db_stats(path).get("archived_listings") or 0),
-        no_volume_count=len(fetch_listings(path, engine_volume_missing=True, catalog_filter=False)),
+        no_volume_count=count_listings(
+            path,
+            ListingFilters(engine_volume_missing=True, catalog_filter=False),
+        ),
         back_url=_safe_redirect_target(request.args.get("next")),
     )
 

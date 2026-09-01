@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Deploy autoplius-scraper on VM from git (source of truth).
-# Usage on VM: sudo bash /opt/autoplius-scraper/deploy/deploy-from-git.sh
+# Triggered by GitHub Actions on push to main, or manually on VM:
+#   sudo bash /opt/autoplius-scraper/deploy/deploy-from-git.sh
 set -euo pipefail
 
 APP="${APP_DIR:-/opt/autoplius-scraper}"
@@ -8,8 +9,6 @@ REMOTE="${DEPLOY_REMOTE:-origin}"
 BRANCH="${DEPLOY_BRANCH:-main}"
 PY="$APP/.venv/bin/python"
 PIP="$APP/.venv/bin/pip"
-OVERLAY="${VM_OVERLAY_DIR:-/var/lib/autoplius-scraper/vm-overlays}"
-PRESERVE_LIST="$APP/deploy/vm-overlay-paths.txt"
 
 if [[ ! -d "$APP/.git" ]]; then
   echo "ERROR: $APP is not a git checkout" >&2
@@ -18,51 +17,17 @@ fi
 
 cd "$APP"
 
-snapshot_overlays() {
-  [[ -f "$PRESERVE_LIST" ]] || return 0
-  echo "=== snapshot VM overlays → $OVERLAY ==="
-  mkdir -p "$OVERLAY"
-  while IFS= read -r rel || [[ -n "$rel" ]]; do
-    rel="${rel%%$'\r'}"
-    [[ -z "$rel" || "$rel" =~ ^# ]] && continue
-    if [[ -e "$APP/$rel" ]]; then
-      mkdir -p "$OVERLAY/$(dirname "$rel")"
-      cp -a "$APP/$rel" "$OVERLAY/$rel"
-    fi
-  done < "$PRESERVE_LIST"
-}
-
-restore_overlays() {
-  [[ -f "$PRESERVE_LIST" ]] || return 0
-  echo "=== restore VM overlays ← $OVERLAY ==="
-  while IFS= read -r rel || [[ -n "$rel" ]]; do
-    rel="${rel%%$'\r'}"
-    [[ -z "$rel" || "$rel" =~ ^# ]] && continue
-    if [[ -e "$OVERLAY/$rel" ]]; then
-      mkdir -p "$APP/$(dirname "$rel")"
-      cp -a "$OVERLAY/$rel" "$APP/$rel"
-    fi
-  done < "$PRESERVE_LIST"
-}
-
 echo "=== fetch $REMOTE/$BRANCH ==="
 sudo -u autoplius git fetch "$REMOTE" "$BRANCH"
 
-snapshot_overlays
-
 if sudo -u autoplius git status --porcelain | grep -q .; then
-  echo "=== stash local VM changes (incl. untracked) ==="
-  sudo -u autoplius git stash push -u -m "deploy-autostash-$(date +%Y%m%d-%H%M%S)" || true
-fi
-
-echo "=== pull --ff-only $REMOTE/$BRANCH ==="
-if ! sudo -u autoplius git pull --ff-only "$REMOTE" "$BRANCH"; then
-  echo "ERROR: git pull failed; inspect stash and overlay backups" >&2
+  echo "ERROR: VM working tree is dirty; commit or stash changes before deploy" >&2
   sudo -u autoplius git status -sb >&2 || true
   exit 1
 fi
 
-restore_overlays
+echo "=== pull --ff-only $REMOTE/$BRANCH ==="
+sudo -u autoplius git pull --ff-only "$REMOTE" "$BRANCH"
 
 echo "=== pip install ==="
 sudo -u autoplius "$PIP" install -q -r requirements.txt
@@ -83,7 +48,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable autoplius-scraper.timer autoplius-ui.service
 
 if [[ -f "$APP/deploy/post-deploy-vm.sh" ]]; then
-  echo "=== post-deploy patches ==="
+  echo "=== post-deploy ==="
   bash "$APP/deploy/post-deploy-vm.sh"
 fi
 

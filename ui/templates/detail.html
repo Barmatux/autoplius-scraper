@@ -3,32 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ item.title or item.autoplius_id }} · Autoplius Scraper</title>
+  <title>{{ item|listing_headline }} · Autoplius Scraper</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   {% from "_price_lt.html" import render_price_lt %}
   <header class="top">
     <div class="brand">
-      <p class="brand-name">{{ item.title or ('#' ~ item.autoplius_id) }}</p>
+      <p class="brand-name">{{ item|listing_headline }}</p>
       <p class="brand-sub">
         <a href="{{ url_for('index') }}">← к списку</a>
         · #{{ item.autoplius_id }} · SQLite
       </p>
     </div>
     <div class="meta">
+      {% include "_admin_bar.html" %}
       <div class="pill accent">{{ render_price_lt(item) }}</div>
       {% if item.phone %}<div class="pill">{{ item.phone }}</div>{% endif %}
       {% if item.vin_masked %}<div class="pill mono">{{ item.vin_masked }}</div>{% endif %}
       {% if item.status == 'archived' %}<div class="pill">Архив</div>{% endif %}
+      {% if is_admin and item.status != 'archived' %}
+      <form
+        class="detail-archive-form admin-inline-form"
+        method="post"
+        action="{{ url_for('admin_archive_listing', listing_id=item.autoplius_id) }}"
+        onsubmit="return confirm('Переместить объявление в архив?');"
+      >
+        <button type="submit" class="pill detail-archive-btn">В архив</button>
+      </form>
+      {% endif %}
       <a class="pill" href="{{ item.url }}" target="_blank" rel="noopener">Открыть на autoplius</a>
-      <a class="pill" href="{{ url_for('admin_edit_listing', listing_id=item.autoplius_id) }}">Редактировать</a>
     </div>
   </header>
 
-  <main class="detail-layout">
+  <main class="detail-layout{% if not photos.full %} detail-layout-no-gallery{% endif %}">
+    {% if photos.full %}
     <section class="detail-gallery">
-      {% if photos.full %}
         <div
           class="gallery"
           data-gallery
@@ -52,10 +62,8 @@
           </div>
           {% endif %}
         </div>
-      {% else %}
-        <div class="photo-empty hero-empty"></div>
-      {% endif %}
     </section>
+    {% endif %}
 
     <section class="detail-info">
       <h2>Кратко</h2>
@@ -94,8 +102,15 @@
       </dl>
       {% endif %}
 
-      {% if item.detail_error %}
-      <p class="empty">Ошибка детального парсинга: {{ item.detail_error }}</p>
+      {% if item|detail_scrape_pending %}
+      <p class="detail-scrape-note muted">Детальная страница Autoplius пока не загружена — показаны данные из списка объявлений. <a href="{{ item.url }}" target="_blank" rel="noopener">Открыть на Autoplius</a></p>
+      {% elif not photos.full %}
+      <p class="detail-scrape-note muted">Фото не загружены. <a href="{{ item.url }}" target="_blank" rel="noopener">Смотреть на Autoplius</a></p>
+      {% endif %}
+
+      {% set public_detail_error = item|detail_error_public %}
+      {% if public_detail_error %}
+      <p class="empty">Ошибка детального парсинга: {{ public_detail_error }}</p>
       {% endif %}
     </section>
   </main>

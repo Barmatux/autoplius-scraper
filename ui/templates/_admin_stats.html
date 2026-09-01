@@ -1,0 +1,15 @@
+{% if is_admin and admin_dashboard %}
+<div class="pill accent">{{ admin_dashboard.total_active }} активных</div>
+{% if admin_dashboard.archived_count %}
+<div class="pill">Архив: {{ admin_dashboard.archived_count }}</div>
+{% endif %}
+{% if admin_dashboard.runs %}
+<div class="pill">Прогонов: {{ admin_dashboard.runs }}</div>
+{% endif %}
+<div class="pill">Детали: {{ admin_dashboard.enriched_count }}</div>
+<div class="pill">Телефон: {{ admin_dashboard.with_phone }}</div>
+<div class="pill">VIN: {{ admin_dashboard.with_vin }}</div>
+{% if admin_dashboard.last_run_finished_at %}
+<div class="pill">Последний прогон: {{ admin_dashboard.last_run_finished_at|format_datetime }}</div>
+{% endif %}
+{% endif %}

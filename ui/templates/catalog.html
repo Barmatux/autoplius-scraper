@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Каталог двигателей — Autoplius Scraper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+{% macro render_catalog_tree(catalog_tree, section_class='') %}
+  {% for make_group in catalog_tree %}
+  <section class="catalog-make-block {{ section_class }}">
+    <h2 class="catalog-make-title">{{ make_group.make }}</h2>
+    {% for model_group in make_group.models %}
+    <article class="catalog-model-block">
+      <h3 class="catalog-model-title">{{ model_group.model or '—' }}</h3>
+      <div class="table-wrap">
+        <table class="listings-table catalog-table">
+          <thead>
+            <tr>
+              <th>Двигатель</th>
+              <th>Топливо</th>
+              <th>Из объявлений</th>
+              <th>Для растаможки, см³</th>
+              <th>Объявлений</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in model_group.entries %}
+            <tr class="catalog-row{% if entry.customs_cm3 is none %} catalog-row-missing{% endif %}{% if entry.is_manual %} catalog-row-manual{% endif %}{% if entry.is_new %} catalog-row-new{% endif %}" data-catalog-row data-entry-id="{{ entry.id }}" data-make="{{ entry.make }}" data-model="{{ entry.model or '' }}"{% if entry.is_new %} data-catalog-new="1"{% endif %}>
+              <td>{{ entry.engine_label }}</td>
+              <td>{{ entry.fuel or '—' }}</td>
+              <td class="num">{% if entry.suggested_cm3 %}{{ entry.suggested_cm3 }}{% else %}—{% endif %}</td>
+              <td class="catalog-edit-cell">
+                <input
+                  type="number"
+                  class="catalog-cm3-input"
+                  min="1"
+                  step="1"
+                  value="{{ entry.customs_cm3 if entry.customs_cm3 is not none else '' }}"
+                  placeholder="{% if entry.suggested_cm3 %}{{ entry.suggested_cm3 }}{% else %}см³{% endif %}"
+                  aria-label="Объём для растаможки"
+                >
+              </td>
+              <td class="num">{{ entry.listing_count }}</td>
+              <td class="catalog-actions">
+                <button type="button" class="catalog-save-btn" data-catalog-save>Сохранить</button>
+                <span class="catalog-save-status" data-catalog-status aria-live="polite"></span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+  {% endfor %}
+{% endmacro %}
+<body>
+  <header class="top">
+    <div class="brand">
+      <p class="brand-name">Autoplius Scraper</p>
+      <p class="brand-sub">Справочник объёмов для расчёта растаможки</p>
+    </div>
+    <div class="meta">
+      {% include "_admin_bar.html" %}
+      <div class="pill accent">{{ catalog_summary.total }} модификаций</div>
+      {% if catalog_summary.new %}
+      <div class="pill warn">Новые: {{ catalog_summary.new }}</div>
+      {% endif %}
+      <div class="pill">Заполнено: {{ catalog_summary.filled }}</div>
+      <div class="pill">Вручную: {{ catalog_summary.manual }}</div>
+      {% if catalog_summary.missing %}
+      <div class="pill warn">Без объёма: {{ catalog_summary.missing }}</div>
+      {% endif %}
+    </div>
+  </header>
+
+  <main>
+    {% include "_tabs.html" %}
+
+    {% if request.args.get('synced') %}
+    <p class="flash ok">Каталог обновлён из объявлений: добавлено {{ request.args.get('inserted', 0) }}, обновлено {{ request.args.get('updated', 0) }}.</p>
+    {% endif %}
+
+    <section class="catalog-toolbar">
+      <form class="filters catalog-filters" method="get">
+        <label>
+          Поиск
+          <input type="search" name="q" value="{{ q }}" placeholder="Марка, модель, двигатель…">
+        </label>
+        <label>
+          Марка
+          <select name="make">
+            <option value="">Все</option>
+            {% for make in make_options %}
+            <option value="{{ make }}" {% if make_filter == make %}selected{% endif %}>{{ make }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Модель
+          <select name="model"{% if not make_filter %} disabled{% endif %}>
+            <option value="">Все</option>
+            {% for model in model_options %}
+            <option value="{{ model }}" {% if model_filter == model %}selected{% endif %}>{{ model }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="check">
+          <span>до 1.9л</span>
+          <input type="hidden" name="upto_19l" value="0">
+          <input type="checkbox" name="upto_19l" value="1" {% if upto_19l %}checked{% endif %}>
+        </label>
+        <label class="check">
+          <span>Только без объёма</span>
+          <input type="checkbox" name="missing" value="1" {% if only_missing %}checked{% endif %}>
+        </label>
+        <button type="submit">Показать</button>
+      </form>
+
+      <form method="post" action="{{ url_for('catalog_sync') }}">
+        <input type="hidden" name="q" value="{{ q }}">
+        <input type="hidden" name="make" value="{{ make_filter }}">
+        <input type="hidden" name="model" value="{{ model_filter }}">
+        {% if only_missing %}<input type="hidden" name="missing" value="1">{% endif %}
+        <input type="hidden" name="upto_19l" value="{{ '1' if upto_19l else '0' }}">
+        <button type="submit" class="catalog-sync-btn">Обновить из объявлений</button>
+      </form>
+    </section>
+
+    <section class="summary">
+      <p>
+        Укажите точный объём двигателя в см³ для каждой модификации. Это значение используется при расчёте «Цены в РБ».
+        Новые модификации из объявлений появляются сверху — после сохранения объёма они переходят в основной каталог.
+      </p>
+    </section>
+
+    {% if not new_catalog_tree and not catalog_tree %}
+    <p class="empty">Каталог пуст. Нажмите «Обновить из объявлений», чтобы собрать марки, модели и двигатели из базы.</p>
+    {% else %}
+    <div class="catalog-tree">
+      {% if new_catalog_tree %}
+      <section class="catalog-new-section">
+        <div class="catalog-section-head">
+          <h2 class="catalog-section-title">Новые модификации</h2>
+          <p class="catalog-section-hint">Появились в объявлениях и ждут точного объёма для растаможки</p>
+        </div>
+        {{ render_catalog_tree(new_catalog_tree, 'catalog-new-block') }}
+      </section>
+      {% endif %}
+
+      {% if catalog_tree %}
+      <section class="catalog-main-section">
+        {% if new_catalog_tree %}
+        <div class="catalog-section-head">
+          <h2 class="catalog-section-title">Основной каталог</h2>
+        </div>
+        {% endif %}
+        {{ render_catalog_tree(catalog_tree) }}
+      </section>
+      {% endif %}
+    </div>
+    {% endif %}
+  </main>
+  <script src="{{ url_for('static', filename='engine_catalog.js') }}" defer></script>
+</body>
+</html>

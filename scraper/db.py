@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import sqlite3
@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from autoplius.engine_volume import engine_volume_liters
+from autoplius.listing_titles import is_invalid_listing_title, resolve_listing_title
 from autoplius.passable_age import is_older_than_years, is_passable_age
-from autoplius.catalog_filters import is_catalog_visible
+from autoplius.catalog_filters import is_catalog_visible, is_pickup_body_type, is_pickup_listing
 from autoplius.localize import localize_listing
 from autoplius.photo_urls import normalize_photo_list
 from scraper.listing_sync import (
@@ -89,6 +90,24 @@ CREATE INDEX IF NOT EXISTS idx_listings_price ON listings(price_eur);
 CREATE INDEX IF NOT EXISTS idx_listings_city ON listings(city);
 CREATE INDEX IF NOT EXISTS idx_listings_last_seen ON listings(last_seen_at);
 CREATE INDEX IF NOT EXISTS idx_runs_finished ON scrape_runs(finished_at);
+
+CREATE TABLE IF NOT EXISTS engine_catalog (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    make TEXT NOT NULL,
+    model TEXT NOT NULL,
+    engine_label TEXT NOT NULL,
+    fuel TEXT NOT NULL DEFAULT '',
+    customs_cm3 INTEGER,
+    suggested_cm3 INTEGER,
+    listing_count INTEGER NOT NULL DEFAULT 0,
+    is_manual INTEGER NOT NULL DEFAULT 0,
+    is_new INTEGER NOT NULL DEFAULT 0,
+    notes TEXT,
+    updated_at TEXT NOT NULL,
+    UNIQUE(make, model, engine_label, fuel)
+);
+
+CREATE INDEX IF NOT EXISTS idx_engine_catalog_make_model ON engine_catalog(make, model);
 """
 
 
@@ -163,6 +182,40 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
     ):
         if name not in run_cols:
             conn.execute(f"ALTER TABLE scrape_runs ADD COLUMN {name} {ddl}")
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS engine_catalog (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            make TEXT NOT NULL,
+            model TEXT NOT NULL,
+            engine_label TEXT NOT NULL,
+            fuel TEXT NOT NULL DEFAULT '',
+            customs_cm3 INTEGER,
+            suggested_cm3 INTEGER,
+            listing_count INTEGER NOT NULL DEFAULT 0,
+            is_manual INTEGER NOT NULL DEFAULT 0,
+            is_new INTEGER NOT NULL DEFAULT 0,
+            notes TEXT,
+            updated_at TEXT NOT NULL,
+            UNIQUE(make, model, engine_label, fuel)
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_engine_catalog_make_model ON engine_catalog(make, model)"
+    )
+
+    catalog_cols = {row[1] for row in conn.execute("PRAGMA table_info(engine_catalog)")}
+    if "is_new" not in catalog_cols:
+        conn.execute("ALTER TABLE engine_catalog ADD COLUMN is_new INTEGER NOT NULL DEFAULT 0")
+        conn.execute(
+            """
+            UPDATE engine_catalog
+            SET is_new = 1
+            WHERE customs_cm3 IS NULL AND is_manual = 0
+            """
+        )
 
 
 def _is_minio_photo_url(url: str | None) -> bool:
@@ -254,7 +307,20 @@ def _archive_listings(
     return int(cur.rowcount)
 
 
+def _normalize_listing_title(row: dict[str, Any]) -> None:
+    row["title"] = resolve_listing_title(
+        title=row.get("title"),
+        url=row.get("url"),
+        fallback_item=row,
+    )
+
+
 def _upsert_listing(conn: sqlite3.Connection, row: dict[str, Any], *, seen_at: str) -> None:
+    if is_pickup_body_type(row.get("body_type")):
+        return
+
+    _normalize_listing_title(row)
+
     existing = conn.execute(
         "SELECT * FROM listings WHERE autoplius_id = ?",
         (row["autoplius_id"],),
@@ -339,6 +405,8 @@ def upsert_listing_item(
     seen_at: str | None = None,
 ) -> None:
     """Upsert one listing row (used for incremental target-scrape checkpoints)."""
+    if is_pickup_listing(item):
+        return
     init_db(db_path)
     when = seen_at or _utc_now()
     with connect(db_path) as conn:
@@ -403,6 +471,8 @@ def save_payload_to_db(
 
         for item in payload.get("listings") or []:
             if item.get("autoplius_id") is None:
+                continue
+            if is_pickup_listing(item):
                 continue
             row = _listing_row(item, run_id=run_id, seen_at=finished_at)
             _upsert_listing(conn, row, seen_at=finished_at)
@@ -706,7 +776,7 @@ def fetch_listings(
     q: str = "",
     min_price: int | None = None,
     max_price: int | None = None,
-    sort: str = "price_asc",
+    sort: str = "added_desc",
     details_only: bool = False,
     engine_upto_liters: float | None = None,
     engine_volume_missing: bool = False,
@@ -776,7 +846,6 @@ def fetch_listings_by_ids(
     with connect(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
         return [row_to_listing(r) for r in rows]
-
 
 def fetch_listing(db_path: Path, listing_id: int) -> dict[str, Any] | None:
     if not db_path.is_file():
@@ -983,6 +1052,65 @@ def set_listing_archived(
     return update_listing_admin(db_path, listing_id, {"status": status})
 
 
+def repair_invalid_listing_titles(db_path: Path) -> int:
+    """Replace Autoplius error-page titles with labels recovered from listing URLs."""
+    if not db_path.is_file():
+        return 0
+    init_db(db_path)
+    repaired = 0
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT autoplius_id, title, url, year, body_type, engine
+            FROM listings
+            WHERE title LIKE '%╨╜╨╡ ╤Б╤Г╤Й╨╡╤Б╤В╨▓╤Г╨╡╤В%'
+               OR title LIKE '%neegzistuoja%'
+               OR title LIKE '%does not exist%'
+            """
+        ).fetchall()
+        for row in rows:
+            item = dict(row)
+            resolved = resolve_listing_title(
+                title=item.get("title"),
+                url=item.get("url"),
+                fallback_item=item,
+            )
+            if not resolved or is_invalid_listing_title(resolved):
+                continue
+            conn.execute(
+                """
+                UPDATE listings
+                SET title = ?, updated_at = ?
+                WHERE autoplius_id = ?
+                """,
+                (resolved, _utc_now(), item["autoplius_id"]),
+            )
+            repaired += 1
+    return repaired
+
+
+def repair_stale_detail_errors(db_path: Path) -> int:
+    """Clear false 'Page not found' detail errors when search-level data exists."""
+    if not db_path.is_file():
+        return 0
+    init_db(db_path)
+    with connect(db_path) as conn:
+        cur = conn.execute(
+            """
+            UPDATE listings
+            SET detail_error = NULL, updated_at = ?
+            WHERE detail_error LIKE '%Page not found%'
+              AND (
+                year IS NOT NULL AND year != ''
+                OR body_type IS NOT NULL AND body_type != ''
+                OR price_eur IS NOT NULL
+              )
+            """,
+            (_utc_now(),),
+        )
+        return int(cur.rowcount)
+
+
 def db_stats(db_path: Path) -> dict[str, Any]:
     if not db_path.is_file():
         return {"exists": False}
@@ -1161,3 +1289,236 @@ def scrape_runs_analytics(db_path: Path, *, recent_limit: int = 24) -> dict[str,
         "recent_limit": recent_limit,
         "by_mode": [dict(row) for row in by_mode],
     }
+
+
+def _row_to_engine_catalog(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "make": row["make"],
+        "model": row["model"],
+        "engine_label": row["engine_label"],
+        "fuel": row["fuel"],
+        "customs_cm3": row["customs_cm3"],
+        "suggested_cm3": row["suggested_cm3"],
+        "listing_count": row["listing_count"],
+        "is_manual": bool(row["is_manual"]),
+        "is_new": bool(row["is_new"]) if "is_new" in row.keys() else False,
+        "notes": row["notes"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def fetch_engine_catalog(
+    db_path: Path,
+    *,
+    q: str = "",
+    make: str = "",
+    model: str = "",
+) -> list[dict[str, Any]]:
+    if not db_path.is_file():
+        return []
+    init_db(db_path)
+
+    clauses = ["1=1"]
+    params: list[Any] = []
+    if make:
+        clauses.append("make = ?")
+        params.append(make)
+    if model:
+        clauses.append("model = ?")
+        params.append(model)
+    if q:
+        like = f"%{q.strip()}%"
+        clauses.append(
+            "(make LIKE ? OR model LIKE ? OR engine_label LIKE ? OR fuel LIKE ? OR notes LIKE ?)"
+        )
+        params.extend([like, like, like, like, like])
+
+    sql = f"""
+        SELECT id, make, model, engine_label, fuel, customs_cm3, suggested_cm3,
+               listing_count, is_manual, is_new, notes, updated_at
+        FROM engine_catalog
+        WHERE {' AND '.join(clauses)}
+        ORDER BY make COLLATE NOCASE, model COLLATE NOCASE, engine_label COLLATE NOCASE
+    """
+    with connect(db_path) as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [_row_to_engine_catalog(row) for row in rows]
+
+
+def fetch_engine_catalog_lookup(db_path: Path) -> dict[tuple[str, str, str, str], int]:
+    if not db_path.is_file():
+        return {}
+    init_db(db_path)
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT make, model, engine_label, fuel, customs_cm3
+            FROM engine_catalog
+            WHERE customs_cm3 IS NOT NULL
+            """
+        ).fetchall()
+    return {
+        (row["make"], row["model"], row["engine_label"], row["fuel"] or ""): int(row["customs_cm3"])
+        for row in rows
+    }
+
+
+def sync_engine_catalog_from_listings(
+    db_path: Path,
+    groups: list[dict[str, Any]],
+) -> tuple[int, int]:
+    if not db_path.is_file():
+        return 0, 0
+    init_db(db_path)
+    inserted = 0
+    updated = 0
+    now = _utc_now()
+    with connect(db_path) as conn:
+        for group in groups:
+            existing = conn.execute(
+                """
+                SELECT id, customs_cm3, is_manual, is_new
+                FROM engine_catalog
+                WHERE make = ? AND model = ? AND engine_label = ? AND fuel = ?
+                """,
+                (
+                    group["make"],
+                    group["model"],
+                    group["engine_label"],
+                    group.get("fuel") or "",
+                ),
+            ).fetchone()
+            if existing is None:
+                conn.execute(
+                    """
+                    INSERT INTO engine_catalog (
+                        make, model, engine_label, fuel, customs_cm3, suggested_cm3,
+                        listing_count, is_manual, is_new, notes, updated_at
+                    ) VALUES (?, ?, ?, ?, NULL, ?, ?, 0, 1, NULL, ?)
+                    """,
+                    (
+                        group["make"],
+                        group["model"],
+                        group["engine_label"],
+                        group.get("fuel") or "",
+                        group.get("suggested_cm3"),
+                        int(group.get("listing_count") or 0),
+                        now,
+                    ),
+                )
+                inserted += 1
+                continue
+
+            customs_cm3 = existing["customs_cm3"]
+            is_manual = bool(existing["is_manual"])
+            is_new = bool(existing["is_new"])
+            if (
+                not is_manual
+                and not is_new
+                and customs_cm3 is None
+                and group.get("suggested_cm3") is not None
+            ):
+                customs_cm3 = group["suggested_cm3"]
+
+            conn.execute(
+                """
+                UPDATE engine_catalog
+                SET suggested_cm3 = ?,
+                    listing_count = ?,
+                    customs_cm3 = CASE
+                        WHEN is_manual = 1 THEN customs_cm3
+                        WHEN is_new = 1 THEN NULL
+                        ELSE ?
+                    END,
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    group.get("suggested_cm3"),
+                    int(group.get("listing_count") or 0),
+                    customs_cm3,
+                    now,
+                    existing["id"],
+                ),
+            )
+            updated += 1
+    return inserted, updated
+
+
+def update_engine_catalog_entry(
+    db_path: Path,
+    entry_id: int,
+    *,
+    customs_cm3: int | None,
+    notes: str | None = None,
+) -> bool:
+    if not db_path.is_file():
+        return False
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT id FROM engine_catalog WHERE id = ?",
+            (entry_id,),
+        ).fetchone()
+        if row is None:
+            return False
+        conn.execute(
+            """
+            UPDATE engine_catalog
+            SET customs_cm3 = ?,
+                notes = COALESCE(?, notes),
+                is_manual = CASE WHEN ? IS NULL THEN is_manual ELSE 1 END,
+                is_new = CASE WHEN ? IS NULL THEN is_new ELSE 0 END,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (customs_cm3, notes, customs_cm3, customs_cm3, _utc_now(), entry_id),
+        )
+    return True
+
+
+def engine_catalog_new_count(db_path: Path) -> int:
+    if not db_path.is_file():
+        return 0
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM engine_catalog WHERE is_new = 1"
+        ).fetchone()
+    return int(row[0] if row else 0)
+
+
+def engine_catalog_missing_count(db_path: Path) -> int:
+    if not db_path.is_file():
+        return 0
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM engine_catalog WHERE customs_cm3 IS NULL"
+        ).fetchone()
+    return int(row[0] if row else 0)
+
+
+def archive_pickup_listings(db_path: Path) -> int:
+    if not db_path.is_file():
+        return 0
+    init_db(db_path)
+    now = _utc_now()
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT autoplius_id, body_type
+            FROM listings
+            WHERE COALESCE(status, 'active') = 'active'
+            """
+        ).fetchall()
+        pickup_ids = [
+            int(row["autoplius_id"])
+            for row in rows
+            if is_pickup_body_type(row["body_type"])
+        ]
+        if not pickup_ids:
+            return 0
+        return _archive_listings(conn, pickup_ids, archived_at=now)
+
