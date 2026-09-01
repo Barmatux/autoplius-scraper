@@ -142,6 +142,11 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE listings ADD COLUMN price_vat_note TEXT")
     if "manual_overrides_json" not in cols:
         conn.execute("ALTER TABLE listings ADD COLUMN manual_overrides_json TEXT")
+    if "engine_liters" not in cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN engine_liters REAL")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_listings_engine_liters ON listings(engine_liters)"
+        )
 
     cols = {row[1] for row in conn.execute("PRAGMA table_info(listings)")}
     if "status" in cols:
@@ -215,6 +220,7 @@ def _listing_row(item: dict[str, Any], *, run_id: int | None, seen_at: str) -> d
         "photo_urls_json": json.dumps(item.get("photo_urls") or [], ensure_ascii=False),
         "detail_scraped": 1 if item.get("detail_scraped") else 0,
         "detail_error": item.get("detail_error"),
+        "engine_liters": engine_volume_liters(item),
         "status": item.get("status") or LISTING_STATUS_ACTIVE,
         "archived_at": item.get("archived_at"),
         "last_run_id": run_id,
@@ -286,6 +292,7 @@ def _upsert_listing(conn: sqlite3.Connection, row: dict[str, Any], *, seen_at: s
                 photo_urls_json = :photo_urls_json,
                 detail_scraped = :detail_scraped,
                 detail_error = :detail_error,
+                engine_liters = :engine_liters,
                 status = :status,
                 archived_at = :archived_at,
                 manual_overrides_json = :manual_overrides_json,
@@ -310,14 +317,14 @@ def _upsert_listing(conn: sqlite3.Connection, row: dict[str, Any], *, seen_at: s
             price_gross_eur, price_vat_note, fuel,
             transmission, engine, mileage_km, city, photo_url, has_vin_badge,
             description, description_ru, phone, vin_masked, parameters_json, photo_urls_json,
-            detail_scraped, detail_error, status, archived_at,
+            detail_scraped, detail_error, engine_liters, status, archived_at,
             first_seen_at, last_seen_at, last_run_id, updated_at
         ) VALUES (
             :autoplius_id, :url, :title, :year, :body_type, :price_eur, :price_net_eur,
             :price_gross_eur, :price_vat_note, :fuel,
             :transmission, :engine, :mileage_km, :city, :photo_url, :has_vin_badge,
             :description, :description_ru, :phone, :vin_masked, :parameters_json, :photo_urls_json,
-            :detail_scraped, :detail_error, :status, :archived_at,
+            :detail_scraped, :detail_error, :engine_liters, :status, :archived_at,
             :seen_at, :seen_at, :last_run_id, :updated_at
         )
         """,
@@ -563,6 +570,7 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         if "photo_urls_json" in keys
         else [],
         "detail_scraped": bool(row["detail_scraped"]) if "detail_scraped" in keys else False,
+        "engine_liters": row["engine_liters"] if "engine_liters" in keys else None,
         "detail_error": row["detail_error"] if "detail_error" in keys else None,
         "status": row["status"] if "status" in keys else LISTING_STATUS_ACTIVE,
         "archived_at": row["archived_at"] if "archived_at" in keys else None,
@@ -582,25 +590,44 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
     return listing
 
 
-def fetch_listings(
-    db_path: Path,
-    *,
-    q: str = "",
-    min_price: int | None = None,
-    max_price: int | None = None,
-    sort: str = "price_asc",
-    details_only: bool = False,
-    engine_upto_liters: float | None = None,
-    engine_volume_missing: bool = False,
-    passable_only: bool = False,
-    listing_status: str = "active",
-    older_than_3_only: bool = False,
-    lite: bool = False,
-    catalog_filter: bool = True,
-) -> list[dict[str, Any]]:
-    if not db_path.is_file():
-        return []
+LISTING_COLUMNS_FILTER = (
+    "autoplius_id, url, title, year, body_type, price_eur, price_net_eur, "
+    "price_gross_eur, price_vat_note, fuel, transmission, engine, mileage_km, "
+    "city, photo_url, has_vin_badge, parameters_json, "
+    "first_seen_at, last_seen_at, status, archived_at, detail_scraped"
+)
+LISTING_COLUMNS_LITE = (
+    "autoplius_id, url, title, year, body_type, price_eur, price_net_eur, "
+    "price_gross_eur, price_vat_note, fuel, transmission, engine, mileage_km, "
+    "city, photo_url, photo_urls_json, has_vin_badge, parameters_json, "
+    "description, description_ru, "
+    "first_seen_at, last_seen_at, status, archived_at, detail_scraped"
+)
 
+
+def _listing_sort_sql(sort: str) -> str:
+    return {
+        "price_asc": "CASE WHEN price_eur IS NULL THEN 1 ELSE 0 END, price_eur ASC",
+        "price_desc": "CASE WHEN price_eur IS NULL THEN 1 ELSE 0 END, price_eur DESC",
+        "mileage_asc": "CASE WHEN mileage_km IS NULL THEN 1 ELSE 0 END, mileage_km ASC",
+        "mileage_desc": "CASE WHEN mileage_km IS NULL THEN 1 ELSE 0 END, mileage_km DESC",
+        "year_desc": "CASE WHEN year IS NULL THEN 1 ELSE 0 END, year DESC",
+        "year_asc": "CASE WHEN year IS NULL THEN 1 ELSE 0 END, year ASC",
+        "title_asc": "CASE WHEN title IS NULL THEN 1 ELSE 0 END, title ASC",
+        "title_desc": "CASE WHEN title IS NULL THEN 1 ELSE 0 END, title DESC",
+        "added_desc": "CASE WHEN first_seen_at IS NULL THEN 1 ELSE 0 END, first_seen_at DESC",
+        "added_asc": "CASE WHEN first_seen_at IS NULL THEN 1 ELSE 0 END, first_seen_at ASC",
+    }.get(sort, "CASE WHEN first_seen_at IS NULL THEN 1 ELSE 0 END, first_seen_at DESC")
+
+
+def _listing_sql_filters(
+    *,
+    q: str,
+    min_price: int | None,
+    max_price: int | None,
+    details_only: bool,
+    listing_status: str,
+) -> tuple[list[str], list[Any]]:
     clauses: list[str] = []
     params: list[Any] = []
     if details_only:
@@ -633,33 +660,18 @@ def fetch_listings(
             )"""
         )
         params.extend([like] * 9)
+    return clauses, params
 
-    order_sql = {
-        "price_asc": "CASE WHEN price_eur IS NULL THEN 1 ELSE 0 END, price_eur ASC",
-        "price_desc": "CASE WHEN price_eur IS NULL THEN 1 ELSE 0 END, price_eur DESC",
-        "mileage_asc": "CASE WHEN mileage_km IS NULL THEN 1 ELSE 0 END, mileage_km ASC",
-        "mileage_desc": "CASE WHEN mileage_km IS NULL THEN 1 ELSE 0 END, mileage_km DESC",
-        "year_desc": "CASE WHEN year IS NULL THEN 1 ELSE 0 END, year DESC",
-        "year_asc": "CASE WHEN year IS NULL THEN 1 ELSE 0 END, year ASC",
-        "title_asc": "CASE WHEN title IS NULL THEN 1 ELSE 0 END, title ASC",
-        "title_desc": "CASE WHEN title IS NULL THEN 1 ELSE 0 END, title DESC",
-        "added_desc": "CASE WHEN first_seen_at IS NULL THEN 1 ELSE 0 END, first_seen_at DESC",
-        "added_asc": "CASE WHEN first_seen_at IS NULL THEN 1 ELSE 0 END, first_seen_at ASC",
-    }.get(sort, "CASE WHEN price_eur IS NULL THEN 1 ELSE 0 END, price_eur ASC")
 
-    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-    columns = "*" if not lite else (
-        "autoplius_id, url, title, year, body_type, price_eur, price_net_eur, "
-        "price_gross_eur, price_vat_note, fuel, transmission, engine, mileage_km, "
-        "city, photo_url, photo_urls_json, has_vin_badge, parameters_json, "
-        "first_seen_at, last_seen_at, status, archived_at, detail_scraped"
-    )
-    sql = f"SELECT {columns} FROM listings {where} ORDER BY {order_sql}"
-
-    with connect(db_path) as conn:
-        rows = conn.execute(sql, params).fetchall()
-        listings = [row_to_listing(r) for r in rows]
-
+def _listing_python_filters(
+    listings: list[dict[str, Any]],
+    *,
+    engine_upto_liters: float | None,
+    engine_volume_missing: bool,
+    passable_only: bool,
+    older_than_3_only: bool,
+    catalog_filter: bool,
+) -> list[dict[str, Any]]:
     if engine_volume_missing:
         listings = [
             item for item in listings if engine_volume_liters(item) is None
@@ -678,6 +690,92 @@ def fetch_listings(
     if catalog_filter:
         listings = [item for item in listings if is_catalog_visible(item)]
     return listings
+
+
+def _listing_columns(*, lite: bool = False, profile: str | None = None) -> str:
+    if profile == "filter":
+        return LISTING_COLUMNS_FILTER
+    if profile in {"page", "lite"} or lite:
+        return LISTING_COLUMNS_LITE
+    return "*"
+
+
+def fetch_listings(
+    db_path: Path,
+    *,
+    q: str = "",
+    min_price: int | None = None,
+    max_price: int | None = None,
+    sort: str = "price_asc",
+    details_only: bool = False,
+    engine_upto_liters: float | None = None,
+    engine_volume_missing: bool = False,
+    passable_only: bool = False,
+    listing_status: str = "active",
+    older_than_3_only: bool = False,
+    lite: bool = False,
+    profile: str | None = None,
+    catalog_filter: bool = True,
+    limit: int | None = None,
+    offset: int | None = None,
+) -> list[dict[str, Any]]:
+    if not db_path.is_file():
+        return []
+
+    clauses, params = _listing_sql_filters(
+        q=q,
+        min_price=min_price,
+        max_price=max_price,
+        details_only=details_only,
+        listing_status=listing_status,
+    )
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    columns = _listing_columns(lite=lite, profile=profile)
+    sql = f"SELECT {columns} FROM listings {where} ORDER BY {_listing_sort_sql(sort)}"
+    query_params = list(params)
+    if limit is not None:
+        sql += " LIMIT ?"
+        query_params.append(int(limit))
+        if offset is not None:
+            sql += " OFFSET ?"
+            query_params.append(int(offset))
+
+    with connect(db_path) as conn:
+        rows = conn.execute(sql, query_params).fetchall()
+        listings = [row_to_listing(r) for r in rows]
+
+    return _listing_python_filters(
+        listings,
+        engine_upto_liters=engine_upto_liters,
+        engine_volume_missing=engine_volume_missing,
+        passable_only=passable_only,
+        older_than_3_only=older_than_3_only,
+        catalog_filter=catalog_filter,
+    )
+
+
+def fetch_listings_by_ids(
+    db_path: Path,
+    listing_ids: list[int],
+    *,
+    lite: bool = True,
+) -> list[dict[str, Any]]:
+    if not listing_ids or not db_path.is_file():
+        return []
+
+    columns = _listing_columns(lite=lite, profile="page" if lite else None)
+    placeholders = ",".join("?" for _ in listing_ids)
+    order_cases = " ".join(f"WHEN ? THEN {idx}" for idx in range(len(listing_ids)))
+    sql = (
+        f"SELECT {columns} FROM listings "
+        f"WHERE autoplius_id IN ({placeholders}) "
+        f"ORDER BY CASE autoplius_id {order_cases} END"
+    )
+    params = [*listing_ids, *listing_ids]
+
+    with connect(db_path) as conn:
+        rows = conn.execute(sql, params).fetchall()
+        return [row_to_listing(r) for r in rows]
 
 
 def fetch_listing(db_path: Path, listing_id: int) -> dict[str, Any] | None:
