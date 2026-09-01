@@ -1007,3 +1007,118 @@ body.lightbox-open {
   .top { padding: 1rem; }
   main { padding: 1rem; }
 }
+
+.admin-filters {
+  margin-bottom: 1rem;
+}
+
+.admin-table td,
+.admin-table th {
+  vertical-align: top;
+}
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.button-link.secondary {
+  color: var(--muted);
+}
+
+.button-link:hover,
+.admin-actions button:hover {
+  border-color: #b7dccb;
+}
+
+.admin-form {
+  display: grid;
+  gap: 1rem;
+  max-width: 960px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.admin-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.admin-form input,
+.admin-form textarea,
+.admin-form select,
+.admin-filters select {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+}
+
+.admin-check {
+  display: flex !important;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.admin-check input {
+  width: auto;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.admin-actions button {
+  padding: 0.65rem 1.2rem;
+  border: 1px solid #b7dccb;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-meta {
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: rgba(255, 253, 248, 0.8);
+}
+
+.notice {
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  margin: 0 0 1rem;
+}
+
+.notice.success {
+  background: var(--accent-soft);
+  border: 1px solid #b7dccb;
+  color: var(--accent);
+}
+
+.notice.error {
+  background: #fdecea;
+  border: 1px solid #f0c4bc;
+  color: #8a2f1f;
+}

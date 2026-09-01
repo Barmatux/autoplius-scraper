@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from datetime import datetime
@@ -7,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from botocore.exceptions import BotoCoreError, ClientError
-from flask import Flask, abort, jsonify, render_template, request, Response
+from flask import Flask, abort, jsonify, redirect, render_template, request, Response, url_for
 
 from scraper.config import Settings
 from scraper.db import (
@@ -19,6 +20,7 @@ from scraper.db import (
     fetch_scrape_runs,
     init_db,
     scrape_runs_analytics,
+    update_listing_admin,
 )
 from scraper.s3_storage import get_s3_client
 from autoplius.cities_lt import distance_from_vilnius_label, google_maps_url
@@ -37,6 +39,8 @@ SETTINGS = Settings.from_env()
 TAB_ALL = "all"
 TAB_NO_VOLUME = "no_volume"
 TAB_ARCHIVED = "archived"
+TAB_ADMIN = "admin"
+ADMIN_PAGE_SIZE = 50
 
 app = Flask(__name__)
 app.config["DATA_DIR"] = DEFAULT_DATA_DIR
@@ -516,6 +520,135 @@ def listing_detail(listing_id: int):
         item=item,
         photos=photos,
         display_description=display_description,
+    )
+
+
+def _admin_status_filter() -> str:
+    status = (request.args.get("status") or "all").strip().lower()
+    if status in {"all", "active", "archived"}:
+        return status
+    return "all"
+
+
+def _admin_listing_query(path: Path) -> tuple[list[dict[str, Any]], int, int, int]:
+    q = request.args.get("q", "")
+    sort = request.args.get("sort", "added_desc")
+    status = _admin_status_filter()
+    page = max(1, int(request.args.get("page", "1") or "1"))
+    listings = fetch_listings(
+        path,
+        q=q,
+        sort=sort,
+        listing_status=status,
+        catalog_filter=False,
+        passable_only=False,
+        older_than_3_only=False,
+    )
+    total = len(listings)
+    pages = max(1, (total + ADMIN_PAGE_SIZE - 1) // ADMIN_PAGE_SIZE)
+    page = min(page, pages)
+    start = (page - 1) * ADMIN_PAGE_SIZE
+    return listings[start : start + ADMIN_PAGE_SIZE], total, page, pages
+
+
+def _parse_admin_form() -> tuple[dict[str, Any], bool]:
+    clear_overrides = request.form.get("clear_overrides") == "1"
+    patch: dict[str, Any] = {
+        "url": request.form.get("url", ""),
+        "title": request.form.get("title", ""),
+        "year": request.form.get("year", ""),
+        "body_type": request.form.get("body_type", ""),
+        "price_eur": request.form.get("price_eur", ""),
+        "price_net_eur": request.form.get("price_net_eur", ""),
+        "price_gross_eur": request.form.get("price_gross_eur", ""),
+        "price_vat_note": request.form.get("price_vat_note", ""),
+        "fuel": request.form.get("fuel", ""),
+        "transmission": request.form.get("transmission", ""),
+        "engine": request.form.get("engine", ""),
+        "mileage_km": request.form.get("mileage_km", ""),
+        "city": request.form.get("city", ""),
+        "photo_url": request.form.get("photo_url", ""),
+        "photo_urls_json": request.form.get("photo_urls", ""),
+        "has_vin_badge": request.form.get("has_vin_badge"),
+        "description": request.form.get("description", ""),
+        "description_ru": request.form.get("description_ru", ""),
+        "phone": request.form.get("phone", ""),
+        "vin_masked": request.form.get("vin_masked", ""),
+        "parameters_json": request.form.get("parameters_json", ""),
+        "status": request.form.get("status", "active"),
+        "archived_at": request.form.get("archived_at", ""),
+        "detail_scraped": request.form.get("detail_scraped"),
+        "detail_error": request.form.get("detail_error", ""),
+    }
+    return patch, clear_overrides
+
+
+@app.get("/admin/listings")
+def admin_listings():
+    path = require_db()
+    q = request.args.get("q", "")
+    sort = request.args.get("sort", "added_desc")
+    status = _admin_status_filter()
+    listings, total, page, pages = _admin_listing_query(path)
+    stats = db_stats(path)
+    return render_template(
+        "admin_listings.html",
+        listings=listings,
+        total=total,
+        q=q,
+        sort=sort,
+        status=status,
+        page=page,
+        pages=pages,
+        page_size=ADMIN_PAGE_SIZE,
+        db_stats=stats,
+        archived_count=int(stats.get("archived_listings") or 0),
+        active_tab=TAB_ADMIN,
+        no_volume_count=len(fetch_listings(path, engine_volume_missing=True, catalog_filter=False)),
+        saved=request.args.get("saved") == "1",
+    )
+
+
+@app.route("/admin/listings/<int:listing_id>/edit", methods=["GET", "POST"])
+def admin_edit_listing(listing_id: int):
+    path = require_db()
+    item = fetch_listing(path, listing_id)
+    if item is None:
+        abort(404, "listing not found in database")
+
+    error: str | None = None
+    if request.method == "POST":
+        patch, clear_overrides = _parse_admin_form()
+        try:
+            updated = update_listing_admin(
+                path,
+                listing_id,
+                patch,
+                clear_overrides=clear_overrides,
+            )
+        except ValueError as exc:
+            error = str(exc)
+            updated = None
+        if updated is not None:
+            return redirect(url_for("admin_edit_listing", listing_id=listing_id, saved=1))
+        if error is None:
+            error = "Не удалось сохранить объявление"
+        item = fetch_listing(path, listing_id) or item
+
+    photos = listing_photos_filter(item)
+    parameters_json = json.dumps(item.get("parameters") or {}, ensure_ascii=False, indent=2)
+    photo_urls_text = "\n".join(item.get("photo_urls") or [])
+    return render_template(
+        "admin_edit.html",
+        item=item,
+        photos=photos,
+        parameters_json=parameters_json,
+        photo_urls_text=photo_urls_text,
+        error=error,
+        saved=request.args.get("saved") == "1",
+        active_tab=TAB_ADMIN,
+        archived_count=int(db_stats(path).get("archived_listings") or 0),
+        no_volume_count=len(fetch_listings(path, engine_volume_missing=True, catalog_filter=False)),
     )
 
 

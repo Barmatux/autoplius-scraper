@@ -13,9 +13,12 @@ from autoplius.catalog_filters import is_catalog_visible
 from autoplius.localize import localize_listing
 from autoplius.photo_urls import normalize_photo_list
 from scraper.listing_sync import (
+    ADMIN_EDITABLE_FIELDS,
     LISTING_STATUS_ACTIVE,
     LISTING_STATUS_ARCHIVED,
+    encode_manual_overrides,
     merge_listing_row,
+    parse_manual_overrides,
 )
 
 
@@ -137,6 +140,8 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE listings ADD COLUMN price_gross_eur INTEGER")
     if "price_vat_note" not in cols:
         conn.execute("ALTER TABLE listings ADD COLUMN price_vat_note TEXT")
+    if "manual_overrides_json" not in cols:
+        conn.execute("ALTER TABLE listings ADD COLUMN manual_overrides_json TEXT")
 
     cols = {row[1] for row in conn.execute("PRAGMA table_info(listings)")}
     if "status" in cols:
@@ -283,6 +288,7 @@ def _upsert_listing(conn: sqlite3.Connection, row: dict[str, Any], *, seen_at: s
                 detail_error = :detail_error,
                 status = :status,
                 archived_at = :archived_at,
+                manual_overrides_json = :manual_overrides_json,
                 last_seen_at = :last_seen_at,
                 last_run_id = :last_run_id,
                 updated_at = :updated_at
@@ -563,6 +569,10 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         "first_seen_at": row["first_seen_at"] if "first_seen_at" in keys else None,
         "last_seen_at": row["last_seen_at"] if "last_seen_at" in keys else None,
         "last_run_id": row["last_run_id"] if "last_run_id" in keys else None,
+        "updated_at": row["updated_at"] if "updated_at" in keys else None,
+        "manual_overrides": parse_manual_overrides(
+            row["manual_overrides_json"] if "manual_overrides_json" in keys else None
+        ),
     }
     listing = localize_listing(listing)
     photos = listing.get("photo_urls") or []
@@ -586,6 +596,7 @@ def fetch_listings(
     listing_status: str = "active",
     older_than_3_only: bool = False,
     lite: bool = False,
+    catalog_filter: bool = True,
 ) -> list[dict[str, Any]]:
     if not db_path.is_file():
         return []
@@ -598,6 +609,8 @@ def fetch_listings(
         clauses.append("(status IS NULL OR status = 'active')")
     elif listing_status == "archived":
         clauses.append("status = 'archived'")
+    elif listing_status != "all":
+        clauses.append("(status IS NULL OR status = 'active')")
     if min_price is not None:
         clauses.append("price_eur IS NOT NULL AND price_eur >= ?")
         params.append(min_price)
@@ -662,7 +675,8 @@ def fetch_listings(
         listings = [item for item in listings if is_passable_age(item)]
     if older_than_3_only:
         listings = [item for item in listings if is_older_than_years(item, years=3)]
-    listings = [item for item in listings if is_catalog_visible(item)]
+    if catalog_filter:
+        listings = [item for item in listings if is_catalog_visible(item)]
     return listings
 
 
@@ -755,6 +769,109 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
                 listing_id,
             ),
         )
+
+
+def _optional_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        return int(text)
+    return int(value)
+
+
+def _normalize_admin_patch(patch: dict[str, Any]) -> dict[str, Any]:
+    normalized: dict[str, Any] = {}
+    for key, value in patch.items():
+        if key not in ADMIN_EDITABLE_FIELDS:
+            continue
+        if key in {"price_eur", "price_net_eur", "price_gross_eur", "mileage_km"}:
+            normalized[key] = _optional_int(value)
+        elif key in {"has_vin_badge", "detail_scraped"}:
+            normalized[key] = 1 if value in {True, 1, "1", "on", "true", "yes"} else 0
+        elif key == "status":
+            status = str(value or LISTING_STATUS_ACTIVE).strip().lower()
+            normalized[key] = (
+                LISTING_STATUS_ARCHIVED if status == LISTING_STATUS_ARCHIVED else LISTING_STATUS_ACTIVE
+            )
+        elif key == "archived_at":
+            text = str(value or "").strip()
+            normalized[key] = text or None
+        elif key == "photo_urls_json":
+            if isinstance(value, list):
+                urls = normalize_photo_list(value)
+            else:
+                urls = normalize_photo_list(
+                    [line.strip() for line in str(value or "").splitlines() if line.strip()]
+                )
+            normalized[key] = json.dumps(urls, ensure_ascii=False)
+            normalized["photo_url"] = urls[0] if urls else None
+        elif key == "parameters_json":
+            if isinstance(value, dict):
+                normalized[key] = json.dumps(value, ensure_ascii=False)
+            else:
+                text = str(value or "").strip()
+                if not text:
+                    normalized[key] = json.dumps({}, ensure_ascii=False)
+                else:
+                    try:
+                        parsed = json.loads(text)
+                    except json.JSONDecodeError as exc:
+                        raise ValueError("parameters_json must be valid JSON") from exc
+                    if not isinstance(parsed, dict):
+                        raise ValueError("parameters_json must be a JSON object")
+                    normalized[key] = json.dumps(parsed, ensure_ascii=False)
+        elif isinstance(value, str):
+            text = value.strip()
+            normalized[key] = text or None
+        else:
+            normalized[key] = value
+    return normalized
+
+
+def update_listing_admin(
+    db_path: Path,
+    listing_id: int,
+    patch: dict[str, Any],
+    *,
+    clear_overrides: bool = False,
+) -> dict[str, Any] | None:
+    """Apply manual admin edits and lock touched fields from scraper overwrite."""
+    init_db(db_path)
+    normalized = _normalize_admin_patch(patch)
+    if not normalized and not clear_overrides:
+        return fetch_listing(db_path, listing_id)
+
+    with connect(db_path) as conn:
+        existing = conn.execute(
+            "SELECT manual_overrides_json FROM listings WHERE autoplius_id = ?",
+            (listing_id,),
+        ).fetchone()
+        if existing is None:
+            return None
+
+        locked = set() if clear_overrides else parse_manual_overrides(existing["manual_overrides_json"])
+        locked.update(key for key in normalized if key in ADMIN_EDITABLE_FIELDS)
+        normalized["manual_overrides_json"] = encode_manual_overrides(locked)
+
+        if normalized.get("status") == LISTING_STATUS_ARCHIVED and not normalized.get("archived_at"):
+            normalized["archived_at"] = _utc_now()
+        if normalized.get("status") == LISTING_STATUS_ACTIVE:
+            normalized["archived_at"] = None
+
+        assignments = []
+        params: dict[str, Any] = {"autoplius_id": listing_id, "updated_at": _utc_now()}
+        for key, value in normalized.items():
+            assignments.append(f"{key} = :{key}")
+            params[key] = value
+        assignments.append("updated_at = :updated_at")
+        conn.execute(
+            f"UPDATE listings SET {', '.join(assignments)} WHERE autoplius_id = :autoplius_id",
+            params,
+        )
+    return fetch_listing(db_path, listing_id)
 
 
 def db_stats(db_path: Path) -> dict[str, Any]:

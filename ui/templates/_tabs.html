@@ -15,4 +15,8 @@
     href="{{ url_for('analytics') }}"
     class="tab{% if active_tab == 'analytics' %} active{% endif %}"
   >Аналитика</a>
+  <a
+    href="{{ url_for('admin_listings') }}"
+    class="tab{% if active_tab == 'admin' %} active{% endif %}"
+  >Админка</a>
 </nav>

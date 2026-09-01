@@ -1,9 +1,40 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 LISTING_STATUS_ACTIVE = "active"
 LISTING_STATUS_ARCHIVED = "archived"
+
+ADMIN_EDITABLE_FIELDS = frozenset(
+    {
+        "url",
+        "title",
+        "year",
+        "body_type",
+        "price_eur",
+        "price_net_eur",
+        "price_gross_eur",
+        "price_vat_note",
+        "fuel",
+        "transmission",
+        "engine",
+        "mileage_km",
+        "city",
+        "photo_url",
+        "photo_urls_json",
+        "has_vin_badge",
+        "description",
+        "description_ru",
+        "phone",
+        "vin_masked",
+        "parameters_json",
+        "status",
+        "archived_at",
+        "detail_scraped",
+        "detail_error",
+    }
+)
 
 # Never overwrite these on update (same idea as av.by vin / vin_fetched_at).
 PRESERVE_ON_UPDATE_FIELDS = frozenset(
@@ -68,6 +99,31 @@ def _has_value(value: Any) -> bool:
     return True
 
 
+def parse_manual_overrides(raw: Any) -> set[str]:
+    if not raw:
+        return set()
+    if isinstance(raw, (set, frozenset)):
+        return {str(item) for item in raw if str(item) in ADMIN_EDITABLE_FIELDS}
+    if isinstance(raw, list):
+        return {str(item) for item in raw if str(item) in ADMIN_EDITABLE_FIELDS}
+    if isinstance(raw, dict):
+        return {str(key) for key, enabled in raw.items() if enabled and str(key) in ADMIN_EDITABLE_FIELDS}
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return set()
+        return parse_manual_overrides(parsed)
+    return set()
+
+
+def encode_manual_overrides(fields: set[str]) -> str | None:
+    locked = sorted(field for field in fields if field in ADMIN_EDITABLE_FIELDS)
+    if not locked:
+        return None
+    return json.dumps(locked, ensure_ascii=False)
+
+
 def merge_listing_row(
     existing: dict[str, Any],
     incoming: dict[str, Any],
@@ -76,10 +132,21 @@ def merge_listing_row(
 ) -> dict[str, Any]:
     """Field-level merge for an existing listing (av.by-style, not full replace)."""
     merged = dict(incoming)
-    merged["status"] = LISTING_STATUS_ACTIVE
-    merged["archived_at"] = None
+    overrides = parse_manual_overrides(existing.get("manual_overrides_json"))
+    merged["manual_overrides_json"] = existing.get("manual_overrides_json")
+
+    if "status" in overrides:
+        merged["status"] = existing.get("status") or LISTING_STATUS_ACTIVE
+        merged["archived_at"] = existing.get("archived_at")
+    else:
+        merged["status"] = LISTING_STATUS_ACTIVE
+        merged["archived_at"] = None
 
     for field in MERGE_FIELDS:
+        if field in overrides:
+            merged[field] = existing.get(field)
+            continue
+
         if field in PRESERVE_ON_UPDATE_FIELDS:
             if _has_value(existing.get(field)):
                 merged[field] = existing[field]
@@ -99,8 +166,9 @@ def merge_listing_row(
             if new_value is None and old_value is not None:
                 merged[field] = old_value
 
-    if keep_detail:
+    if keep_detail or "detail_scraped" in overrides:
         merged["detail_scraped"] = existing.get("detail_scraped")
+    if keep_detail or "detail_error" in overrides:
         merged["detail_error"] = existing.get("detail_error")
 
     return merged

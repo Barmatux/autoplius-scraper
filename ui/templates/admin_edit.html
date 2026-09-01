@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Редактирование #{{ item.autoplius_id }} · Autoplius Scraper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <p class="brand-name">Редактирование #{{ item.autoplius_id }}</p>
+      <p class="brand-sub">
+        <a href="{{ url_for('admin_listings') }}">← к списку админки</a>
+        · <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">карточка</a>
+      </p>
+    </div>
+    <div class="meta">
+      {% if item.manual_overrides %}
+      <div class="pill accent">Защита от парсера: {{ item.manual_overrides|length }} пол.</div>
+      {% endif %}
+      {% if item.status == 'archived' %}<div class="pill">Архив</div>{% endif %}
+    </div>
+  </header>
+
+  <main>
+    {% include "_tabs.html" %}
+
+    {% if saved %}
+    <p class="notice success">Сохранено. Изменённые поля защищены от перезаписи парсером.</p>
+    {% endif %}
+    {% if error %}
+    <p class="notice error">{{ error }}</p>
+    {% endif %}
+
+    <form class="admin-form" method="post">
+      <section class="admin-grid">
+        <label>
+          URL
+          <input type="url" name="url" value="{{ item.url or '' }}">
+        </label>
+        <label>
+          Заголовок
+          <input type="text" name="title" value="{{ item.title or '' }}">
+        </label>
+        <label>
+          Год
+          <input type="text" name="year" value="{{ item.year or '' }}">
+        </label>
+        <label>
+          Кузов
+          <input type="text" name="body_type" value="{{ item.body_type or '' }}">
+        </label>
+        <label>
+          Цена EUR
+          <input type="number" name="price_eur" value="{{ item.price_eur if item.price_eur is not none else '' }}" min="0" step="1">
+        </label>
+        <label>
+          Цена net EUR
+          <input type="number" name="price_net_eur" value="{{ item.price_net_eur if item.price_net_eur is not none else '' }}" min="0" step="1">
+        </label>
+        <label>
+          Цена gross EUR
+          <input type="number" name="price_gross_eur" value="{{ item.price_gross_eur if item.price_gross_eur is not none else '' }}" min="0" step="1">
+        </label>
+        <label>
+          VAT note
+          <input type="text" name="price_vat_note" value="{{ item.price_vat_note or '' }}">
+        </label>
+        <label>
+          Топливо
+          <input type="text" name="fuel" value="{{ item.fuel or '' }}">
+        </label>
+        <label>
+          КПП
+          <input type="text" name="transmission" value="{{ item.transmission or '' }}">
+        </label>
+        <label>
+          Двигатель
+          <input type="text" name="engine" value="{{ item.engine or '' }}">
+        </label>
+        <label>
+          Пробег km
+          <input type="number" name="mileage_km" value="{{ item.mileage_km if item.mileage_km is not none else '' }}" min="0" step="1">
+        </label>
+        <label>
+          Город
+          <input type="text" name="city" value="{{ item.city or '' }}">
+        </label>
+        <label>
+          Телефон
+          <input type="text" name="phone" value="{{ item.phone or '' }}">
+        </label>
+        <label>
+          VIN
+          <input type="text" name="vin_masked" value="{{ item.vin_masked or '' }}">
+        </label>
+        <label>
+          Статус
+          <select name="status">
+            <option value="active" {% if item.status != 'archived' %}selected{% endif %}>active</option>
+            <option value="archived" {% if item.status == 'archived' %}selected{% endif %}>archived</option>
+          </select>
+        </label>
+        <label>
+          archived_at
+          <input type="text" name="archived_at" value="{{ item.archived_at or '' }}" placeholder="ISO datetime или пусто">
+        </label>
+        <label class="check admin-check">
+          <span>VIN badge</span>
+          <input type="checkbox" name="has_vin_badge" value="1" {% if item.has_vin_badge %}checked{% endif %}>
+        </label>
+        <label class="check admin-check">
+          <span>detail_scraped</span>
+          <input type="checkbox" name="detail_scraped" value="1" {% if item.detail_scraped %}checked{% endif %}>
+        </label>
+      </section>
+
+      <label>
+        Главное фото (URL)
+        <input type="text" name="photo_url" value="{{ item.photo_url or '' }}">
+      </label>
+
+      <label>
+        Все фото (по одному URL на строку)
+        <textarea name="photo_urls" rows="6">{{ photo_urls_text }}</textarea>
+      </label>
+
+      <label>
+        Описание (оригинал)
+        <textarea name="description" rows="6">{{ item.description or '' }}</textarea>
+      </label>
+
+      <label>
+        Описание (RU)
+        <textarea name="description_ru" rows="6">{{ item.description_ru or '' }}</textarea>
+      </label>
+
+      <label>
+        parameters_json
+        <textarea name="parameters_json" rows="10">{{ parameters_json }}</textarea>
+      </label>
+
+      <label>
+        detail_error
+        <input type="text" name="detail_error" value="{{ item.detail_error or '' }}">
+      </label>
+
+      <div class="admin-meta muted">
+        <p>first_seen_at: {{ item.first_seen_at or '—' }}</p>
+        <p>last_seen_at: {{ item.last_seen_at or '—' }}</p>
+        <p>updated_at: {{ item.updated_at or '—' }}</p>
+        {% if item.manual_overrides %}
+        <p>Защищённые поля: {{ item.manual_overrides|join(', ') }}</p>
+        {% endif %}
+      </div>
+
+      <label class="check admin-check">
+        <span>Снять защиту полей (снова разрешить парсеру перезаписывать)</span>
+        <input type="checkbox" name="clear_overrides" value="1">
+      </label>
+
+      <div class="admin-actions">
+        <button type="submit">Сохранить</button>
+        <a class="button-link secondary" href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">Отмена</a>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

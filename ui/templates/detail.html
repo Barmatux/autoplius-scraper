@@ -22,6 +22,7 @@
       {% if item.vin_masked %}<div class="pill mono">{{ item.vin_masked }}</div>{% endif %}
       {% if item.status == 'archived' %}<div class="pill">Архив</div>{% endif %}
       <a class="pill" href="{{ item.url }}" target="_blank" rel="noopener">Открыть на autoplius</a>
+      <a class="pill" href="{{ url_for('admin_edit_listing', listing_id=item.autoplius_id) }}">Редактировать</a>
     </div>
   </header>
 
