@@ -30,7 +30,7 @@ from autoplius.cities_lt import distance_from_vilnius_label, google_maps_url
 from autoplius.translate import is_translation_error
 from autoplius.engine_volume import engine_volume_from_listing
 from autoplius.photo_urls import listing_photo_sets, normalize_photo_list, thumb_photo_url
-from autoplius.price_display import price_lt_lines
+from autoplius.price_display import catalog_price_lines, price_lt_lines
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
 
@@ -132,6 +132,24 @@ def engine_volume(item: dict[str, Any]) -> str:
     return engine_volume_from_listing(item) or "—"
 
 
+@app.template_filter("engine_kpp_lines")
+def engine_kpp_lines(item: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    volume = engine_volume_from_listing(item)
+    if volume:
+        lines.append(volume.replace(" л", ""))
+    fuel = (item.get("fuel") or "").strip()
+    if fuel:
+        lines.append(fuel)
+    transmission = (item.get("transmission") or "").strip()
+    if transmission:
+        lines.append(transmission)
+    mileage_km = item.get("mileage_km")
+    if mileage_km is not None:
+        lines.append(f"{int(mileage_km):,}".replace(",", " ") + " km")
+    return lines
+
+
 @app.template_filter("price_rb")
 def price_rb(item: dict[str, Any]):
     return estimate_price_rb(item)
@@ -145,6 +163,11 @@ def photo_src(url: str | None) -> str:
 @app.template_filter("photo_srcs")
 def photo_srcs(urls: list[str] | None) -> list[str]:
     return photo_display_urls(urls)
+
+
+@app.template_filter("catalog_price_lines")
+def catalog_price_lines_filter(item: dict[str, Any]):
+    return catalog_price_lines(item)
 
 
 @app.template_filter("price_lt_lines")
@@ -263,6 +286,20 @@ def _split_make_model(headline: str) -> tuple[str, str]:
 @app.template_filter("listing_make_model")
 def listing_make_model(item: dict[str, Any]) -> tuple[str, str]:
     return _split_make_model(listing_headline(item))
+
+
+@app.template_filter("body_type_lines")
+def body_type_lines(body_type: str | None) -> list[str]:
+    text = (body_type or "").strip()
+    if not text:
+        return []
+    if " / " in text:
+        left, right = text.split(" / ", 1)
+        left = left.strip()
+        right = right.strip()
+        if left and right:
+            return [left, right]
+    return [text]
 
 
 def _admin_credentials() -> tuple[str, str]:

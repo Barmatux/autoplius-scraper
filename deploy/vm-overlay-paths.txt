@@ -18,7 +18,6 @@ autoplius/parse_search.py
 autoplius/price_display.py
 autoplius/price_rb.py
 
-ui/app.py
 ui/templates/index.html
 ui/templates/catalog.html
 ui/templates/detail.html
