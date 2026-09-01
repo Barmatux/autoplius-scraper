@@ -6,7 +6,6 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from urllib.request import Request, urlopen
 
 from botocore.exceptions import BotoCoreError, ClientError
 from flask import Flask, abort, jsonify, redirect, render_template, request, Response, session, url_for
