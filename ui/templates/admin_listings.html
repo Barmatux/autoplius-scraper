@@ -27,6 +27,12 @@
     {% if saved %}
     <p class="notice success">Изменения сохранены.</p>
     {% endif %}
+    {% if archived_msg %}
+    <p class="notice success">Объявление отправлено в архив и скрыто из выдачи.</p>
+    {% endif %}
+    {% if restored_msg %}
+    <p class="notice success">Объявление возвращено в активную выдачу.</p>
+    {% endif %}
 
     <form class="filters admin-filters" method="get">
       <label>
@@ -67,7 +73,7 @@
             <th>Город</th>
             <th>Статус</th>
             <th>Детали</th>
-            <th></th>
+            <th>Действия</th>
           </tr>
         </thead>
         <tbody>
@@ -86,7 +92,18 @@
               {% if item.status == 'archived' %}Архив{% else %}Активно{% endif %}
             </td>
             <td>{% if item.detail_scraped %}✓{% else %}—{% endif %}</td>
-            <td><a class="button-link" href="{{ url_for('admin_edit_listing', listing_id=item.autoplius_id) }}">Редактировать</a></td>
+            <td class="admin-actions-cell">
+              <a class="button-link" href="{{ url_for('admin_edit_listing', listing_id=item.autoplius_id) }}">Редактировать</a>
+              {% if item.status == 'archived' %}
+              <form class="admin-inline-form" method="post" action="{{ url_for('admin_restore_listing', listing_id=item.autoplius_id) }}">
+                <button type="submit" class="button-link secondary">Вернуть</button>
+              </form>
+              {% else %}
+              <form class="admin-inline-form" method="post" action="{{ url_for('admin_archive_listing', listing_id=item.autoplius_id) }}">
+                <button type="submit" class="button-link danger">В архив</button>
+              </form>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>

@@ -163,6 +163,15 @@
       <div class="admin-actions">
         <button type="submit">Сохранить</button>
         <a class="button-link secondary" href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">Отмена</a>
+        {% if item.status == 'archived' %}
+        <form class="admin-inline-form" method="post" action="{{ url_for('admin_restore_listing', listing_id=item.autoplius_id) }}">
+          <button type="submit" class="button-link secondary">Вернуть в выдачу</button>
+        </form>
+        {% else %}
+        <form class="admin-inline-form" method="post" action="{{ url_for('admin_archive_listing', listing_id=item.autoplius_id) }}">
+          <button type="submit" class="button-link danger">Скрыть из выдачи</button>
+        </form>
+        {% endif %}
       </div>
     </form>
   </main>

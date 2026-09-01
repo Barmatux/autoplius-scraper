@@ -1034,6 +1034,29 @@ body.lightbox-open {
   color: var(--muted);
 }
 
+.button-link.danger {
+  color: #8a2f1f;
+  border-color: #f0c4bc;
+  background: #fdecea;
+}
+
+.admin-actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.admin-inline-form {
+  display: inline;
+  margin: 0;
+}
+
+.admin-inline-form button {
+  cursor: pointer;
+  font: inherit;
+}
+
 .button-link:hover,
 .admin-actions button:hover {
   border-color: #b7dccb;

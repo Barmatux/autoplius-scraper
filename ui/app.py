@@ -22,6 +22,7 @@ from scraper.db import (
     init_db,
     scrape_runs_analytics,
     update_listing_admin,
+    set_listing_archived,
 )
 from scraper.s3_storage import get_s3_client
 from ui.photo_urls import is_external_photo_url, photo_display_url, photo_display_urls
@@ -260,23 +261,36 @@ def listing_make_model(item: dict[str, Any]) -> tuple[str, str]:
     return _split_make_model(listing_headline(item))
 
 
-def _check_basic_auth() -> bool:
-    user = (os.environ.get("UI_USER") or "").strip()
-    password = (os.environ.get("UI_PASSWORD") or "").strip()
+def _admin_credentials() -> tuple[str, str]:
+    user = (os.environ.get("ADMIN_USER") or os.environ.get("UI_USER") or "").strip()
+    password = (os.environ.get("ADMIN_PASSWORD") or os.environ.get("UI_PASSWORD") or "").strip()
+    return user, password
+
+
+def _check_admin_auth() -> bool:
+    user, password = _admin_credentials()
     if not user:
-        return True
+        return False
     auth = request.authorization
     return bool(auth and auth.username == user and auth.password == password)
 
 
 @app.before_request
-def require_auth():
-    if _check_basic_auth():
+def require_admin_auth():
+    if not request.path.startswith("/admin"):
+        return None
+    user, _password = _admin_credentials()
+    if not user:
+        abort(
+            503,
+            "Admin auth is not configured. Set ADMIN_USER and ADMIN_PASSWORD in .env",
+        )
+    if _check_admin_auth():
         return None
     return Response(
-        "Authentication required",
+        "Admin authentication required",
         401,
-        {"WWW-Authenticate": 'Basic realm="Autoplius Scraper"'},
+        {"WWW-Authenticate": 'Basic realm="Autoplius Admin"'},
     )
 
 
@@ -659,6 +673,8 @@ def admin_listings():
         active_tab=TAB_ADMIN,
         no_volume_count=len(fetch_listings(path, engine_volume_missing=True, catalog_filter=False)),
         saved=request.args.get("saved") == "1",
+        archived_msg=request.args.get("archived") == "1",
+        restored_msg=request.args.get("restored") == "1",
     )
 
 
@@ -703,6 +719,28 @@ def admin_edit_listing(listing_id: int):
         archived_count=int(db_stats(path).get("archived_listings") or 0),
         no_volume_count=len(fetch_listings(path, engine_volume_missing=True, catalog_filter=False)),
     )
+
+
+def _admin_listing_redirect(**params: str):
+    return redirect(url_for("admin_listings", **params))
+
+
+@app.post("/admin/listings/<int:listing_id>/archive")
+def admin_archive_listing(listing_id: int):
+    path = require_db()
+    if fetch_listing(path, listing_id) is None:
+        abort(404, "listing not found in database")
+    set_listing_archived(path, listing_id, archived=True)
+    return _admin_listing_redirect(archived=1)
+
+
+@app.post("/admin/listings/<int:listing_id>/restore")
+def admin_restore_listing(listing_id: int):
+    path = require_db()
+    if fetch_listing(path, listing_id) is None:
+        abort(404, "listing not found in database")
+    set_listing_archived(path, listing_id, archived=False)
+    return _admin_listing_redirect(restored=1)
 
 
 @app.get("/api/listings")

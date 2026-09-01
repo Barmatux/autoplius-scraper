@@ -874,6 +874,17 @@ def update_listing_admin(
     return fetch_listing(db_path, listing_id)
 
 
+def set_listing_archived(
+    db_path: Path,
+    listing_id: int,
+    *,
+    archived: bool,
+) -> dict[str, Any] | None:
+    """Hide listing from public index or bring it back (locks status from scraper)."""
+    status = LISTING_STATUS_ARCHIVED if archived else LISTING_STATUS_ACTIVE
+    return update_listing_admin(db_path, listing_id, {"status": status})
+
+
 def db_stats(db_path: Path) -> dict[str, Any]:
     if not db_path.is_file():
         return {"exists": False}
