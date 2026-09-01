@@ -10,7 +10,15 @@ EnvironmentFile=-/opt/autoplius-scraper/.env
 Environment=DATA_DIR=/var/lib/autoplius-scraper/data
 Environment=UI_HOST=0.0.0.0
 Environment=UI_PORT=8080
-ExecStart=/opt/autoplius-scraper/.venv/bin/python -m ui.app
+# gthread: one worker avoids SQLite write races; threads handle concurrent /media/* S3 I/O.
+ExecStart=/opt/autoplius-scraper/.venv/bin/gunicorn \
+    --bind 0.0.0.0:8080 \
+    --workers 1 \
+    --worker-class gthread \
+    --threads 16 \
+    --timeout 120 \
+    --access-logfile - \
+    ui.app:app
 User=autoplius
 Group=autoplius
 Restart=on-failure

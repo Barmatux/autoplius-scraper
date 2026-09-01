@@ -1054,7 +1054,7 @@ def api_runs():
 def main() -> None:
     host = os.environ.get("UI_HOST", "0.0.0.0")
     port = int(os.environ.get("UI_PORT", "8080"))
-    app.run(host=host, port=port, debug=False)
+    app.run(host=host, port=port, debug=False, threaded=True)
 
 
 if __name__ == "__main__":
