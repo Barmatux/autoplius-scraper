@@ -84,13 +84,18 @@ def main() -> int:
         )
 
     if "def update_listing_admin(" not in merged:
-        admin_block = extract_block(git_db, "def _optional_int(", "def db_stats(")
-        merged = merged.replace("def db_stats(", admin_block + "def db_stats(", 1)
+        admin_block = extract_block(git_db, "def _optional_int(", "def set_listing_archived(")
+        archive_block = extract_block(git_db, "def set_listing_archived(", "def db_stats(")
+        merged = merged.replace("def db_stats(", admin_block + archive_block + "def db_stats(", 1)
+    elif "def set_listing_archived(" not in merged:
+        archive_block = extract_block(git_db, "def set_listing_archived(", "def db_stats(")
+        merged = merged.replace("def db_stats(", archive_block + "def db_stats(", 1)
 
     DB.write_text(merged, encoding="utf-8")
     print("OK merged db", DB)
     print("fetch_engine_catalog", "def fetch_engine_catalog(" in merged)
     print("update_listing_admin", "def update_listing_admin(" in merged)
+    print("set_listing_archived", "def set_listing_archived(" in merged)
     return 0
 
 
