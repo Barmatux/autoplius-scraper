@@ -1048,6 +1048,33 @@ def update_listing_admin(
     return fetch_listing(db_path, listing_id)
 
 
+def set_listing_engine_volume(
+    db_path: Path,
+    listing_id: int,
+    liters: float,
+) -> dict[str, Any] | None:
+    """Store manual engine volume on a listing (admin no-volume tab)."""
+    from autoplius.engine_volume import engine_volume_storage_text
+
+    updated = update_listing_admin(
+        db_path,
+        listing_id,
+        {"engine": engine_volume_storage_text(liters)},
+    )
+    if updated is None:
+        return None
+    with connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE listings
+            SET engine_liters = ?, updated_at = ?
+            WHERE autoplius_id = ?
+            """,
+            (liters, _utc_now(), listing_id),
+        )
+    return fetch_listing(db_path, listing_id)
+
+
 def set_listing_archived(
     db_path: Path,
     listing_id: int,

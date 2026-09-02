@@ -25,6 +25,7 @@ from scraper.db import (
     scrape_runs_analytics,
     update_listing_admin,
     set_listing_archived,
+    set_listing_engine_volume,
     update_engine_catalog_entry,
 )
 from scraper.listing_filter_options import fetch_listing_filter_options
@@ -43,7 +44,10 @@ from autoplius.engine_catalog import (
     split_catalog_entries,
 )
 from autoplius.translate import is_translation_error
-from autoplius.engine_volume import engine_volume_from_listing
+from autoplius.engine_volume import (
+    engine_volume_from_listing,
+    parse_manual_volume_input,
+)
 from autoplius.photo_urls import listing_photo_sets, normalize_photo_list, thumb_photo_url
 from autoplius.listing_display import clean_listing_title, listing_headline as display_listing_headline
 from autoplius.listing_display import listing_make_model as parse_listing_make_model
@@ -862,6 +866,28 @@ def api_catalog_update(entry_id: int):
 
     invalidate_catalog_cache()
     return jsonify({"ok": True, "id": entry_id, "customs_cm3": customs_cm3, "is_new": customs_cm3 is None})
+
+
+@app.post("/api/listings/<int:listing_id>/engine-volume")
+def api_listing_engine_volume(listing_id: int):
+    if not _is_admin():
+        return jsonify({"ok": False, "error": "admin required"}), 403
+    path = require_db()
+    if fetch_listing(path, listing_id) is None:
+        return jsonify({"ok": False, "error": "not found"}), 404
+
+    payload = request.get_json(silent=True) or {}
+    raw = payload.get("liters", payload.get("volume", request.form.get("liters")))
+    liters = parse_manual_volume_input(str(raw) if raw is not None else None)
+    if liters is None:
+        return jsonify({"ok": False, "error": "invalid volume"}), 400
+
+    updated = set_listing_engine_volume(path, listing_id, liters)
+    if updated is None:
+        return jsonify({"ok": False, "error": "not found"}), 404
+
+    invalidate_catalog_cache()
+    return jsonify({"ok": True, "id": listing_id, "liters": liters})
 
 
 @app.get("/listing/<int:listing_id>")
