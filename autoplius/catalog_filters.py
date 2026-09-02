@@ -6,6 +6,7 @@ from autoplius.passable_age import parse_registration_date
 
 MIN_CATALOG_YEAR = 2008
 HIDDEN_MAKES = frozenset({"skoda"})
+PICKUP_BODY_TYPES = frozenset({"pikapas", "pikap", "pickup", "пикап"})
 
 
 def listing_make(item: dict[str, Any]) -> str | None:
@@ -31,11 +32,6 @@ def listing_year(item: dict[str, Any]) -> int | None:
     return parsed[0] if parsed else None
 
 
-MIN_CATALOG_YEAR = 2008
-HIDDEN_MAKES = frozenset({"skoda"})
-PICKUP_BODY_TYPES = frozenset({"pikapas", "pikap", "pickup", "пикап"})
-
-
 def is_pickup_body_type(body_type: str | None) -> bool:
     text = (body_type or "").strip().casefold()
     if not text:
@@ -57,6 +53,11 @@ def is_pickup_listing(item: dict[str, Any]) -> bool:
 
 def is_catalog_visible(item: dict[str, Any]) -> bool:
     if is_pickup_listing(item):
+        return False
+
+    from autoplius.make_model_filters import is_blocked_listing
+
+    if is_blocked_listing(item):
         return False
 
     make = listing_make(item)

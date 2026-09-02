@@ -11,6 +11,7 @@ from autoplius.engine_volume import engine_volume_liters
 from autoplius.listing_titles import is_invalid_listing_title, resolve_listing_title
 from autoplius.passable_age import is_older_than_years, is_passable_age
 from autoplius.catalog_filters import is_catalog_visible, is_pickup_body_type, is_pickup_listing
+from autoplius.make_model_filters import BLOCKED_MAKES, is_blocked_listing
 from autoplius.localize import localize_listing
 from autoplius.photo_urls import normalize_photo_list
 from scraper.listing_sync import (
@@ -405,7 +406,7 @@ def upsert_listing_item(
     seen_at: str | None = None,
 ) -> None:
     """Upsert one listing row (used for incremental target-scrape checkpoints)."""
-    if is_pickup_listing(item):
+    if is_pickup_listing(item) or is_blocked_listing(item):
         return
     init_db(db_path)
     when = seen_at or _utc_now()
@@ -472,7 +473,7 @@ def save_payload_to_db(
         for item in payload.get("listings") or []:
             if item.get("autoplius_id") is None:
                 continue
-            if is_pickup_listing(item):
+            if is_pickup_listing(item) or is_blocked_listing(item):
                 continue
             row = _listing_row(item, run_id=run_id, seen_at=finished_at)
             _upsert_listing(conn, row, seen_at=finished_at)
@@ -1052,6 +1053,34 @@ def set_listing_archived(
     return update_listing_admin(db_path, listing_id, {"status": status})
 
 
+def purge_blocked_makes(db_path: Path) -> dict[str, int]:
+    """Archive active listings and drop engine-catalog rows for blocked makes."""
+    init_db(db_path)
+    catalog_removed = 0
+    with connect(db_path) as conn:
+        for blocked in BLOCKED_MAKES:
+            cur = conn.execute(
+                "DELETE FROM engine_catalog WHERE lower(make) = lower(?)",
+                (blocked,),
+            )
+            catalog_removed += int(cur.rowcount or 0)
+
+    archived = 0
+    listings = fetch_listings(
+        db_path,
+        passable_only=False,
+        catalog_filter=False,
+        listing_status="active",
+        lite=True,
+    )
+    for item in listings:
+        if not is_blocked_listing(item):
+            continue
+        if set_listing_archived(db_path, item["autoplius_id"], archived=True):
+            archived += 1
+    return {"archived_listings": archived, "catalog_removed": catalog_removed}
+
+
 def repair_invalid_listing_titles(db_path: Path) -> int:
     """Replace Autoplius error-page titles with labels recovered from listing URLs."""
     if not db_path.is_file():
@@ -1063,7 +1092,7 @@ def repair_invalid_listing_titles(db_path: Path) -> int:
             """
             SELECT autoplius_id, title, url, year, body_type, engine
             FROM listings
-            WHERE title LIKE '%╨╜╨╡ ╤Б╤Г╤Й╨╡╤Б╤В╨▓╤Г╨╡╤В%'
+            WHERE title LIKE '%не существует%'
                OR title LIKE '%neegzistuoja%'
                OR title LIKE '%does not exist%'
             """
