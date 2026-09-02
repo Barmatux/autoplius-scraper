@@ -1,4 +1,5 @@
 # Deploy origin/main to the production VM after every push to main.
+# Pipeline smoke: keep this file as the deploy trigger surface.
 #
 # Required repository secrets:
 #   VM_HOST              — public IP or hostname (e.g. 84.252.139.137)
