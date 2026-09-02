@@ -3027,6 +3027,51 @@ body.lightbox-open {
   padding: 2rem 1rem 3rem;
 }
 
+.cabinet-section-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.cabinet-rb-panel {
+  margin-top: 1rem;
+}
+
+.cabinet-rb-form {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.cabinet-rb-field {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.cabinet-rb-field input {
+  width: 100%;
+  max-width: 16rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: #fff;
+  font: inherit;
+}
+
+.cabinet-rb-save {
+  justify-self: start;
+  border: 1px solid var(--line);
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.cabinet-rb-save:hover {
+  text-decoration: none;
+  border-color: #b7dccb;
+}
+
 .cabinet-favorites {
   margin-top: 2rem;
 }

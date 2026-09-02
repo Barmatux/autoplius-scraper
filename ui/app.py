@@ -29,6 +29,7 @@ from scraper.db import (
     scrape_runs_analytics,
     toggle_user_favorite,
     update_listing_admin,
+    update_user_rb_extras,
     set_listing_archived,
     set_listing_engine_volume,
     set_listing_manual_electric,
@@ -232,7 +233,8 @@ def engine_kpp_lines(item: dict[str, Any]) -> list[str]:
 
 @app.template_filter("price_rb")
 def price_rb(item: dict[str, Any]):
-    return estimate_price_rb(item)
+    privilege, delivery = _user_rb_extras()
+    return estimate_price_rb(item, privilege_usd=privilege, delivery_usd=delivery)
 
 
 @app.template_filter("photo_src")
@@ -247,7 +249,8 @@ def photo_srcs(urls: list[str] | None) -> list[str]:
 
 @app.template_filter("catalog_price_lines")
 def catalog_price_lines_filter(item: dict[str, Any]):
-    return catalog_price_lines(item)
+    privilege, delivery = _user_rb_extras()
+    return catalog_price_lines(item, privilege_usd=privilege, delivery_usd=delivery)
 
 
 @app.template_filter("price_lt_lines")
@@ -257,9 +260,10 @@ def price_lt_lines_filter(item: dict[str, Any]) -> list[tuple[str, str]]:
 
 @app.template_filter("price_rb_usd")
 def price_rb_usd(item: dict[str, Any]) -> str:
-    breakdown = estimate_price_rb(item)
+    privilege, delivery = _user_rb_extras()
+    breakdown = estimate_price_rb(item, privilege_usd=privilege, delivery_usd=delivery)
     if breakdown is None:
-        return "тАФ"
+        return "—"
     return breakdown.total_formatted
 
 
@@ -344,6 +348,34 @@ def _current_user() -> dict[str, Any] | None:
         session.pop("username", None)
         return None
     return user
+
+
+def _user_rb_extras(user: dict[str, Any] | None = None) -> tuple[float, float]:
+    current = user if user is not None else _current_user()
+    if current is None:
+        return 0.0, 0.0
+    try:
+        privilege = float(current.get("rb_privilege_usd") or 0)
+    except (TypeError, ValueError):
+        privilege = 0.0
+    try:
+        delivery = float(current.get("rb_delivery_usd") or 0)
+    except (TypeError, ValueError):
+        delivery = 0.0
+    return max(0.0, privilege), max(0.0, delivery)
+
+
+def _parse_usd_input(raw: str | None) -> float:
+    text = (raw or "").strip().replace(",", ".").replace(" ", "")
+    if not text:
+        return 0.0
+    try:
+        value = float(text)
+    except ValueError as exc:
+        raise ValueError("invalid usd amount") from exc
+    if value < 0:
+        raise ValueError("usd amount must be >= 0")
+    return round(value, 2)
 
 
 @app.before_request
@@ -581,7 +613,31 @@ def cabinet():
         favorites=favorites,
         favorites_count=len(favorites),
         tab=TAB_ALL,
+        rb_saved=request.args.get("saved") == "1",
+        rb_error=request.args.get("error"),
     )
+
+
+@app.post("/cabinet/rb-extras")
+def cabinet_rb_extras():
+    user = _current_user()
+    if user is None:
+        return redirect(url_for("login", next=url_for("cabinet")))
+    path = require_db()
+    try:
+        privilege = _parse_usd_input(request.form.get("rb_privilege_usd"))
+        delivery = _parse_usd_input(request.form.get("rb_delivery_usd"))
+    except ValueError:
+        return redirect(url_for("cabinet", error="invalid"))
+    updated = update_user_rb_extras(
+        path,
+        int(user["id"]),
+        privilege_usd=privilege,
+        delivery_usd=delivery,
+    )
+    if updated is None:
+        return redirect(url_for("cabinet", error="save"))
+    return redirect(url_for("cabinet", saved=1))
 
 
 @app.post("/favorites/<int:listing_id>")

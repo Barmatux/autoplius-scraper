@@ -116,6 +116,8 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL COLLATE NOCASE UNIQUE,
     password_hash TEXT NOT NULL,
     display_name TEXT,
+    rb_privilege_usd REAL NOT NULL DEFAULT 0,
+    rb_delivery_usd REAL NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     last_login_at TEXT
 );
@@ -271,6 +273,17 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id, created_at DESC)"
     )
+
+    user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+    if user_cols:
+        if "rb_privilege_usd" not in user_cols:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN rb_privilege_usd REAL NOT NULL DEFAULT 0"
+            )
+        if "rb_delivery_usd" not in user_cols:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN rb_delivery_usd REAL NOT NULL DEFAULT 0"
+            )
 
     conn.execute(
         """
@@ -1727,10 +1740,23 @@ def archive_pickup_listings(db_path: Path) -> int:
 def _user_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     username = str(row["username"])
     display_name = (row["display_name"] or "").strip()
+    keys = set(row.keys())
+    privilege = row["rb_privilege_usd"] if "rb_privilege_usd" in keys else 0
+    delivery = row["rb_delivery_usd"] if "rb_delivery_usd" in keys else 0
+    try:
+        privilege_usd = float(privilege or 0)
+    except (TypeError, ValueError):
+        privilege_usd = 0.0
+    try:
+        delivery_usd = float(delivery or 0)
+    except (TypeError, ValueError):
+        delivery_usd = 0.0
     return {
         "id": int(row["id"]),
         "username": username,
         "display_name": display_name or username,
+        "rb_privilege_usd": privilege_usd,
+        "rb_delivery_usd": delivery_usd,
         "created_at": row["created_at"],
         "last_login_at": row["last_login_at"],
     }
@@ -1820,6 +1846,30 @@ def verify_user_password(
     user = _user_row_to_dict(row)
     user["last_login_at"] = now
     return user
+
+
+def update_user_rb_extras(
+    db_path: Path,
+    user_id: int,
+    *,
+    privilege_usd: float,
+    delivery_usd: float,
+) -> dict[str, Any] | None:
+    """Persist personal RB price extras (льгота / доставка) for a user."""
+    init_db(db_path)
+    privilege = max(0.0, float(privilege_usd))
+    delivery = max(0.0, float(delivery_usd))
+    with connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE users
+            SET rb_privilege_usd = ?, rb_delivery_usd = ?
+            WHERE id = ?
+            """,
+            (privilege, delivery, int(user_id)),
+        )
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (int(user_id),)).fetchone()
+    return _user_row_to_dict(row) if row else None
 
 
 def fetch_user_favorite_ids(db_path: Path, user_id: int) -> list[int]:

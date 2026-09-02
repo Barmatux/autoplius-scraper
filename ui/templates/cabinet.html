@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Личный кабинет · Autoplius Scraper</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260902e">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260902f">
 </head>
 <body>
   <header class="top">
@@ -43,6 +43,44 @@
       {% if user.last_login_at %}
       <p class="cabinet-meta">Последний вход: {{ user.last_login_at|format_datetime }}</p>
       {% endif %}
+    </section>
+
+    <section class="auth-panel cabinet-panel cabinet-rb-panel">
+      <h2 class="cabinet-section-title">Параметры цены в РБ</h2>
+      <p class="auth-lead">Эти суммы добавляются в конец расчёта «Цены в РБ» по всем объявлениям.</p>
+
+      {% if rb_saved %}
+      <p class="notice success">Сохранено. Цены в РБ пересчитаны с учётом введённых сумм.</p>
+      {% endif %}
+      {% if rb_error %}
+      <p class="notice error">Не удалось сохранить суммы. Проверьте, что значения — числа ≥ 0.</p>
+      {% endif %}
+
+      <form class="cabinet-rb-form" method="post" action="{{ url_for('cabinet_rb_extras') }}">
+        <label class="cabinet-rb-field">
+          <span>льгота, $</span>
+          <input
+            type="number"
+            name="rb_privilege_usd"
+            inputmode="decimal"
+            min="0"
+            step="0.01"
+            value="{{ '%.2f'|format(user.rb_privilege_usd or 0) }}"
+          >
+        </label>
+        <label class="cabinet-rb-field">
+          <span>доставка, $</span>
+          <input
+            type="number"
+            name="rb_delivery_usd"
+            inputmode="decimal"
+            min="0"
+            step="0.01"
+            value="{{ '%.2f'|format(user.rb_delivery_usd or 0) }}"
+          >
+        </label>
+        <button type="submit" class="admin-enter-link cabinet-rb-save">Сохранить</button>
+      </form>
     </section>
 
     <section class="cabinet-favorites">

@@ -48,14 +48,24 @@ def _vat_price_pairs(item: dict[str, Any]) -> list[tuple[str, int]] | None:
     return None
 
 
-def catalog_price_lines(item: dict[str, Any]) -> list[CatalogPriceLine]:
+def catalog_price_lines(
+    item: dict[str, Any],
+    *,
+    privilege_usd: float | int | None = None,
+    delivery_usd: float | int | None = None,
+) -> list[CatalogPriceLine]:
     pairs = _vat_price_pairs(item)
     if pairs:
         return [
             CatalogPriceLine(
                 label=label,
                 lt_formatted=format_eur(price_eur),
-                rb=estimate_price_rb(item, price_eur=price_eur),
+                rb=estimate_price_rb(
+                    item,
+                    price_eur=price_eur,
+                    privilege_usd=privilege_usd,
+                    delivery_usd=delivery_usd,
+                ),
             )
             for label, price_eur in pairs
         ]
@@ -66,7 +76,11 @@ def catalog_price_lines(item: dict[str, Any]) -> list[CatalogPriceLine]:
             CatalogPriceLine(
                 label=None,
                 lt_formatted=format_eur(int(main)),
-                rb=estimate_price_rb(item),
+                rb=estimate_price_rb(
+                    item,
+                    privilege_usd=privilege_usd,
+                    delivery_usd=delivery_usd,
+                ),
             )
         ]
 

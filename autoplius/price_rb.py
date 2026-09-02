@@ -36,6 +36,16 @@ def _fmt_money(value: float, decimals: int = 0) -> str:
     return f"{value:,.{decimals}f}".replace(",", " ").replace(".", ",")
 
 
+def _nonneg_usd(value: float | int | None) -> float:
+    if value is None:
+        return 0.0
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return amount if amount > 0 else 0.0
+
+
 @dataclass(frozen=True)
 class PriceRbBreakdown:
     total_usd: int
@@ -56,13 +66,15 @@ class PriceRbBreakdown:
     customs_fee_byn: float = CUSTOMS_FEE_BYN
     declarant_byn: float = DECLARANT_FEE_BYN
     epts_byn: float = EPTS_FEE_BYN
+    privilege_usd: float = 0.0
+    delivery_usd: float = 0.0
 
     @property
     def total_formatted(self) -> str:
         return f"{_fmt_money(self.total_usd)}\u00a0$"
 
     def tooltip_lines(self) -> list[str]:
-        return [
+        lines = [
             f"Цена в LT: {_fmt_money(self.price_eur)} €",
             f"Объём двигателя: {_fmt_money(self.engine_cm3)} см³",
             f"Возраст для ставки: {self.age_band_label}",
@@ -81,11 +93,22 @@ class PriceRbBreakdown:
                 f"Сборы: {_fmt_money(self.fees_byn, 2)} Br ÷ {self.usd_byn:.4f} "
                 f"= {_fmt_money(self.fees_usd)} $"
             ),
-            f"Итого в РБ: {_fmt_money(self.total_usd)} $",
         ]
+        if self.privilege_usd > 0:
+            lines.append(f"Льгота: {_fmt_money(self.privilege_usd)} $")
+        if self.delivery_usd > 0:
+            lines.append(f"Доставка: {_fmt_money(self.delivery_usd)} $")
+        lines.append(f"Итого в РБ: {_fmt_money(self.total_usd)} $")
+        return lines
 
 
-def estimate_price_rb(item: dict[str, Any], *, price_eur: int | None = None) -> PriceRbBreakdown | None:
+def estimate_price_rb(
+    item: dict[str, Any],
+    *,
+    price_eur: int | None = None,
+    privilege_usd: float | int | None = None,
+    delivery_usd: float | int | None = None,
+) -> PriceRbBreakdown | None:
     base_price = price_eur if price_eur is not None else item.get("price_eur")
     if base_price is None:
         return None
@@ -114,7 +137,13 @@ def estimate_price_rb(item: dict[str, Any], *, price_eur: int | None = None) -> 
     usd_byn = usd_byn_rate()
     car_plus_duty_usd = car_plus_duty_eur * eur_usd
     fees_usd = FIXED_FEES_BYN / usd_byn
-    total_usd = int(round(car_plus_duty_usd + fees_usd))
+    privilege = _nonneg_usd(
+        privilege_usd if privilege_usd is not None else item.get("rb_privilege_usd")
+    )
+    delivery = _nonneg_usd(
+        delivery_usd if delivery_usd is not None else item.get("rb_delivery_usd")
+    )
+    total_usd = int(round(car_plus_duty_usd + fees_usd + privilege + delivery))
 
     return PriceRbBreakdown(
         total_usd=total_usd,
@@ -131,6 +160,8 @@ def estimate_price_rb(item: dict[str, Any], *, price_eur: int | None = None) -> 
         fees_byn=FIXED_FEES_BYN,
         fees_usd=fees_usd,
         usd_byn=usd_byn,
+        privilege_usd=privilege,
+        delivery_usd=delivery,
     )
 
 
