@@ -8,10 +8,8 @@
 </head>
 <body>
   <header class="top">
-    <div class="brand">
-      <p class="brand-name">Autoplius Scraper</p>
-      <p class="brand-sub">История прогонов парсера</p>
-    </div>
+    {% set brand_sub = "История прогонов парсера" %}
+    {% include "_brand.html" %}
     <div class="meta">
       <div class="pill accent">{{ analytics.totals.runs or 0 }} прогонов</div>
       {% if analytics.recent.runs %}

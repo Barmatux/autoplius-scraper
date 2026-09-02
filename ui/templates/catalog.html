@@ -59,10 +59,8 @@
 {% endmacro %}
 <body>
   <header class="top">
-    <div class="brand">
-      <p class="brand-name">Autoplius Scraper</p>
-      <p class="brand-sub">Справочник объёмов для расчёта растаможки</p>
-    </div>
+    {% set brand_sub = "Справочник объёмов для расчёта растаможки" %}
+    {% include "_brand.html" %}
     <div class="meta">
       {% include "_admin_bar.html" %}
       <div class="pill accent">{{ catalog_summary.total }} модификаций</div>

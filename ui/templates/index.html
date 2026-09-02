@@ -48,10 +48,8 @@
 <body>
   {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
   <header class="top">
-    <div class="brand">
-      <p class="brand-name">Autoplius Scraper</p>
-      <p class="brand-sub">Все объявления из SQLite</p>
-    </div>
+    {% set brand_sub = "Все объявления из SQLite" %}
+    {% include "_brand.html" %}
     <div class="meta">
       {% include "_admin_bar.html" %}
     </div>
