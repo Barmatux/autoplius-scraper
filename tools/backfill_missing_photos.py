@@ -54,7 +54,9 @@ def main() -> None:
         *[str(listing_id) for listing_id in listing_ids],
         "--sync-photos",
     ]
-    subprocess.run(cmd, check=True)
+    result = subprocess.run(cmd, check=False)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
 
 
 if __name__ == "__main__":

@@ -72,14 +72,19 @@ def main() -> None:
                 if idx > 1 and args.delay > 0:
                     time.sleep(args.delay)
 
-                goto_and_wait(
-                    page,
-                    url,
-                    timeout_sec=settings.timeout_sec,
-                    auto_captcha=settings.auto_captcha,
-                    captcha_api_key=captcha_api_key,
-                    interceptor=interceptor,
-                )
+                try:
+                    goto_and_wait(
+                        page,
+                        url,
+                        timeout_sec=settings.timeout_sec,
+                        auto_captcha=settings.auto_captcha,
+                        captcha_api_key=captcha_api_key,
+                        interceptor=interceptor,
+                    )
+                except Exception as exc:
+                    logger.warning("  skip: %s", exc)
+                    continue
+
                 detail = parse_listing_html(page.content(), url)
                 update_listing_detail(settings.db_path, listing_id, detail.to_dict())
                 logger.info(
