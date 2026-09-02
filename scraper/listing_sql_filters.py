@@ -126,6 +126,9 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
 
     if filters.engine_volume_missing:
         clauses.append("engine_liters IS NULL")
+        year_expr = _reg_year_expr()
+        clauses.append(f"({year_expr} IS NULL OR {year_expr} >= ?)")
+        params.append(MIN_CATALOG_YEAR)
     elif filters.engine_upto_liters is not None:
         clauses.append("engine_liters IS NOT NULL AND engine_liters <= ?")
         params.append(filters.engine_upto_liters)
