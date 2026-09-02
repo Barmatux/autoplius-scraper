@@ -18,30 +18,34 @@ fi
 cd "$APP"
 
 echo "=== fetch $REMOTE/$BRANCH ==="
-sudo -u autoplius git fetch "$REMOTE" "$BRANCH"
+if [[ "${SKIP_GIT_PULL:-}" == "1" ]]; then
+  echo "=== skip git pull (code synced by CI) ==="
+else
+  sudo -u autoplius git fetch "$REMOTE" "$BRANCH"
 
-# deploy/*.sh line-ending normalization can leave harmless local diffs; reset before pull.
-if sudo -u autoplius git status --porcelain deploy/ | grep -q .; then
-  if sudo -u autoplius git diff -- deploy/ | grep -q .; then
-    echo "=== reset deploy/ content drift ==="
-    sudo -u autoplius git checkout -- deploy/
+  # deploy/*.sh line-ending normalization can leave harmless local diffs; reset before pull.
+  if sudo -u autoplius git status --porcelain deploy/ | grep -q .; then
+    if sudo -u autoplius git diff -- deploy/ | grep -q .; then
+      echo "=== reset deploy/ content drift ==="
+      sudo -u autoplius git checkout -- deploy/
+    fi
+    chmod +x "$APP"/deploy/*.sh
   fi
-  chmod +x "$APP"/deploy/*.sh
-fi
 
-if sudo -u autoplius git status --porcelain | grep -q .; then
-  echo "=== stash leftover VM changes (tracked + untracked) ==="
-  sudo -u autoplius git stash push -u -m "deploy-autostash-$(date +%Y%m%d-%H%M%S)" || true
-fi
+  if sudo -u autoplius git status --porcelain | grep -q .; then
+    echo "=== stash leftover VM changes (tracked + untracked) ==="
+    sudo -u autoplius git stash push -u -m "deploy-autostash-$(date +%Y%m%d-%H%M%S)" || true
+  fi
 
-if sudo -u autoplius git status --porcelain | grep -q .; then
-  echo "ERROR: VM working tree is still dirty after stash" >&2
-  sudo -u autoplius git status -sb >&2 || true
-  exit 1
-fi
+  if sudo -u autoplius git status --porcelain | grep -q .; then
+    echo "ERROR: VM working tree is still dirty after stash" >&2
+    sudo -u autoplius git status -sb >&2 || true
+    exit 1
+  fi
 
-echo "=== pull --ff-only $REMOTE/$BRANCH ==="
-sudo -u autoplius git pull --ff-only "$REMOTE" "$BRANCH"
+  echo "=== pull --ff-only $REMOTE/$BRANCH ==="
+  sudo -u autoplius git pull --ff-only "$REMOTE" "$BRANCH"
+fi
 
 echo "=== pip install ==="
 sudo -u autoplius "$PIP" install -q -r requirements.txt

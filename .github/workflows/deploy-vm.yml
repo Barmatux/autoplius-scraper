@@ -5,8 +5,8 @@
 #   VM_USER              — SSH user with passwordless sudo (e.g. romanshleg)
 #   VM_SSH_PRIVATE_KEY   — private key for VM_USER (OpenSSH format, full PEM)
 #
-# The VM checkout at /opt/autoplius-scraper must already track origin/main and
-# be able to `git pull` as the autoplius user (deploy key or HTTPS token on VM).
+# Code is synced from the Actions checkout (rsync) because HTTPS git fetch on the
+# VM is unreliable without a deploy key or PAT.
 
 name: Deploy to VM
 
@@ -43,6 +43,32 @@ jobs:
           chmod 700 ~/.ssh
           ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
 
+      - name: Sync code to VM
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          set -euo pipefail
+          SYNC_DIR="/tmp/autoplius-sync-$$"
+          APP_DIR="/opt/autoplius-scraper"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${VM_USER}@${VM_HOST}" "rm -rf '${SYNC_DIR}' && mkdir -p '${SYNC_DIR}'"
+          tar czf - \
+            --exclude='.git' \
+            --exclude='.venv' \
+            --exclude='__pycache__' \
+            --exclude='.browser-profile' \
+            -C . . \
+            | ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              "${VM_USER}@${VM_HOST}" "tar xzf - -C '${SYNC_DIR}'"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${VM_USER}@${VM_HOST}" <<REMOTE
+          set -euo pipefail
+          sudo rsync -a --delete "${SYNC_DIR}/" "${APP_DIR}/"
+          sudo chown -R autoplius:autoplius "${APP_DIR}"
+          rm -rf "${SYNC_DIR}"
+          REMOTE
+
       - name: Run deploy-from-git.sh on VM
         env:
           VM_HOST: ${{ secrets.VM_HOST }}
@@ -50,7 +76,7 @@ jobs:
         run: |
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "${VM_USER}@${VM_HOST}" \
-            'sudo bash /opt/autoplius-scraper/deploy/deploy-from-git.sh'
+            'sudo env SKIP_GIT_PULL=1 bash /opt/autoplius-scraper/deploy/deploy-from-git.sh'
 
       - name: Smoke test (Flask UI)
         env:

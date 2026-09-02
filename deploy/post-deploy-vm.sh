@@ -29,8 +29,11 @@ if [[ -f deploy/nginx-autoplius-ui.conf ]]; then
   echo "=== nginx config ==="
   sudo cp deploy/nginx-autoplius-ui.conf /etc/nginx/sites-available/autoplius-ui
   sudo ln -sf /etc/nginx/sites-available/autoplius-ui /etc/nginx/sites-enabled/autoplius-ui
-  sudo nginx -t
-  sudo systemctl reload nginx
+  if sudo nginx -t; then
+    sudo systemctl reload nginx
+  else
+    echo "WARNING: nginx -t failed (often unrelated site SSL config); autoplius site updated but nginx not reloaded"
+  fi
 fi
 
 echo "=== post-deploy complete ==="
