@@ -25,6 +25,7 @@ from scraper.db import (
     scrape_runs_analytics,
     update_listing_admin,
     set_listing_archived,
+    set_listing_engine_volume,
     update_engine_catalog_entry,
 )
 from scraper.listing_filter_options import fetch_listing_filter_options
@@ -43,7 +44,10 @@ from autoplius.engine_catalog import (
     split_catalog_entries,
 )
 from autoplius.translate import is_translation_error
-from autoplius.engine_volume import engine_volume_from_listing
+from autoplius.engine_volume import (
+    engine_volume_from_listing,
+    parse_manual_volume_input,
+)
 from autoplius.photo_urls import listing_photo_sets, normalize_photo_list, thumb_photo_url
 from autoplius.listing_display import clean_listing_title, listing_headline as display_listing_headline
 from autoplius.listing_display import listing_make_model as parse_listing_make_model
@@ -84,6 +88,7 @@ TAB_ALL = "all"
 TAB_NO_VOLUME = "no_volume"
 TAB_ARCHIVED = "archived"
 TAB_ADMIN = "admin"
+DEFAULT_LIST_SORT = "added_desc"
 ADMIN_PAGE_SIZE = 50
 
 app = Flask(__name__)
@@ -308,6 +313,14 @@ def require_admin_auth():
 
 
 @app.context_processor
+def inject_nav_helpers():
+    return {
+        "nav_sort": request.args.get("sort", DEFAULT_LIST_SORT),
+        "request_path": _current_request_path(),
+    }
+
+
+@app.context_processor
 def inject_admin():
     return {"is_admin": _is_admin()}
 
@@ -316,7 +329,16 @@ def _safe_redirect_target(raw: str | None) -> str:
     target = (raw or "").strip()
     if target.startswith("/") and not target.startswith("//"):
         return target
-    return url_for("index")
+    return url_for("index", sort=DEFAULT_LIST_SORT)
+
+
+def _current_request_path() -> str:
+    qs = request.query_string.decode()
+    return request.path + (f"?{qs}" if qs else "")
+
+
+def _wants_json_response() -> bool:
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
 
 @app.get("/admin/enter")
@@ -561,7 +583,7 @@ def detail_error_public(item: dict[str, Any]) -> str | None:
 def index():
     path = require_db()
     q = request.args.get("q", "")
-    sort = request.args.get("sort", "price_asc")
+    sort = request.args.get("sort", DEFAULT_LIST_SORT)
     upto_19l = _upto_19l_enabled()
     passable = _passable_enabled()
     over_3y = _over_3y_enabled()
@@ -864,6 +886,28 @@ def api_catalog_update(entry_id: int):
     return jsonify({"ok": True, "id": entry_id, "customs_cm3": customs_cm3, "is_new": customs_cm3 is None})
 
 
+@app.post("/api/listings/<int:listing_id>/engine-volume")
+def api_listing_engine_volume(listing_id: int):
+    if not _is_admin():
+        return jsonify({"ok": False, "error": "admin required"}), 403
+    path = require_db()
+    if fetch_listing(path, listing_id) is None:
+        return jsonify({"ok": False, "error": "not found"}), 404
+
+    payload = request.get_json(silent=True) or {}
+    raw = payload.get("liters", payload.get("volume", request.form.get("liters")))
+    liters = parse_manual_volume_input(str(raw) if raw is not None else None)
+    if liters is None:
+        return jsonify({"ok": False, "error": "invalid volume"}), 400
+
+    updated = set_listing_engine_volume(path, listing_id, liters)
+    if updated is None:
+        return jsonify({"ok": False, "error": "not found"}), 404
+
+    invalidate_catalog_cache()
+    return jsonify({"ok": True, "id": listing_id, "liters": liters})
+
+
 @app.get("/listing/<int:listing_id>")
 def listing_detail(listing_id: int):
     item = fetch_listing(require_db(), listing_id)
@@ -875,6 +919,7 @@ def listing_detail(listing_id: int):
         item=item,
         photos=photos,
         display_description=display_description,
+        back_url=_safe_redirect_target(request.args.get("next")),
     )
 
 
@@ -941,8 +986,12 @@ def _admin_listing_redirect(**params: str):
 def admin_archive_listing(listing_id: int):
     path = require_db()
     if fetch_listing(path, listing_id) is None:
+        if _wants_json_response():
+            return jsonify({"ok": False, "error": "not found"}), 404
         abort(404, "listing not found in database")
     set_listing_archived(path, listing_id, archived=True)
+    if _wants_json_response():
+        return jsonify({"ok": True, "id": listing_id, "archived": True})
     return _admin_listing_redirect(archived=1)
 
 
@@ -950,8 +999,12 @@ def admin_archive_listing(listing_id: int):
 def admin_restore_listing(listing_id: int):
     path = require_db()
     if fetch_listing(path, listing_id) is None:
+        if _wants_json_response():
+            return jsonify({"ok": False, "error": "not found"}), 404
         abort(404, "listing not found in database")
     set_listing_archived(path, listing_id, archived=False)
+    if _wants_json_response():
+        return jsonify({"ok": True, "id": listing_id, "archived": False})
     return _admin_listing_redirect(restored=1)
 
 
@@ -959,7 +1012,7 @@ def admin_restore_listing(listing_id: int):
 def api_listings():
     path = require_db()
     q = request.args.get("q", "")
-    sort = request.args.get("sort", "price_asc")
+    sort = request.args.get("sort", DEFAULT_LIST_SORT)
     upto_19l = _upto_19l_enabled()
     passable = _passable_enabled()
     over_3y = _over_3y_enabled()

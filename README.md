@@ -107,6 +107,12 @@ sudo bash /opt/autoplius-scraper/deploy/deploy-from-git.sh
 
 Скрипт делает `git fetch` + `git pull --ff-only origin main`, `pip install`, обновляет systemd unit-файлы и перезапускает UI. Scraper-таймер подхватит новый код на следующем запуске.
 
+После деплоя, чтобы убрать уже сохранённые Ligier/Microcar из базы:
+
+```bash
+sudo -u autoplius /opt/autoplius-scraper/.venv/bin/python tools/purge_blocked_makes.py
+```
+
 Если `pull --ff-only` не проходит (локальные правки на VM) — разберите drift вручную; не делайте `reset --hard` без необходимости.
 
 ## Хранение

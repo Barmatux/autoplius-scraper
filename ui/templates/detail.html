@@ -12,7 +12,7 @@
     <div class="brand">
       <p class="brand-name">{{ item|listing_headline }}</p>
       <p class="brand-sub">
-        <a href="{{ url_for('index') }}">← к списку</a>
+        <a href="{{ back_url }}" data-back-to-list>← к списку</a>
         · #{{ item.autoplius_id }} · SQLite
       </p>
     </div>
@@ -128,5 +128,6 @@
   </div>
   <script src="{{ url_for('static', filename='gallery.js') }}" defer></script>
   {% endif %}
+  <script src="{{ url_for('static', filename='tab_preference.js') }}" defer></script>
 </body>
 </html>

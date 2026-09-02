@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 
 from autoplius.models import SearchListingPreview
 from autoplius.parse_price import parse_listing_prices, parse_price_amount
+from autoplius.photo_urls import best_photo_url
 from autoplius.urls import extract_listing_id, normalize_listing_url
 from autoplius.listing_titles import is_invalid_listing_title, resolve_listing_title
 
@@ -117,10 +118,15 @@ def parse_search_html(html: str) -> list[SearchListingPreview]:
         photo_el = item.select_one(".announcement-photo img")
         photo_url = None
         if photo_el:
-            photo_url = photo_el.get("src") or photo_el.get("data-src")
+            for attr in ("src", "data-src", "data-original", "data-lazy"):
+                raw = photo_el.get(attr)
+                if raw and raw.strip() and not raw.strip().startswith("data:"):
+                    photo_url = best_photo_url(raw.strip()) or raw.strip()
+                    break
             if not photo_url:
-                srcset = photo_el.get("srcset") or ""
-                photo_url = srcset.split()[0] if srcset else None
+                srcset = photo_el.get("srcset") or photo_el.get("data-srcset") or ""
+                if srcset:
+                    photo_url = best_photo_url(srcset.split()[0]) or srcset.split()[0]
 
         badges_text = item.select_one(".announcement-badges")
         has_vin = bool(badges_text and "vin" in badges_text.get_text(" ", strip=True).lower())

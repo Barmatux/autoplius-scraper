@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 from autoplius.models import ListingDetail
 from autoplius.parse_price import parse_listing_prices, parse_price_amount
-from autoplius.photo_urls import best_photo_url, normalize_photo_list, photo_asset_key
+from autoplius.photo_urls import best_photo_url, is_autoplius_cdn_url, normalize_photo_list, photo_asset_key
 from autoplius.urls import extract_listing_id, normalize_listing_url
 from autoplius.listing_titles import is_invalid_listing_title, resolve_listing_title
 from typing import Any
@@ -87,15 +87,23 @@ def _parse_vin_masked(soup: BeautifulSoup) -> str | None:
 def _photo_from_attrs(element) -> str | None:
     for attr in ("data-big", "data-src", "src", "content"):
         raw = element.get(attr)
-        if not raw or "autoplius-img" not in raw:
+        if not raw:
             continue
-        return best_photo_url(raw.split()[0])
+        clean = raw.strip().split()[0]
+        if clean.startswith("data:"):
+            continue
+        if "autoplius-img" in clean or is_autoplius_cdn_url(clean):
+            return best_photo_url(clean)
     if element.name == "source":
         for attr in ("data-big", "data-srcset", "srcset"):
             raw = element.get(attr)
-            if not raw or "autoplius-img" not in raw:
+            if not raw:
                 continue
-            return best_photo_url(raw.split()[0])
+            clean = raw.strip().split()[0]
+            if clean.startswith("data:"):
+                continue
+            if "autoplius-img" in clean or is_autoplius_cdn_url(clean):
+                return best_photo_url(clean)
     return None
 
 

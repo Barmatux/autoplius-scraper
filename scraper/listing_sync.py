@@ -101,6 +101,29 @@ def _has_value(value: Any) -> bool:
     return True
 
 
+def _photo_urls_json_empty(raw: Any) -> bool:
+    if raw is None:
+        return True
+    if isinstance(raw, str):
+        text = raw.strip()
+        if not text or text == "[]":
+            return True
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            return False
+        return not parsed
+    if isinstance(raw, list):
+        return len(raw) == 0
+    return False
+
+
+def _photo_field_has_data(field: str, value: Any) -> bool:
+    if field == "photo_urls_json":
+        return not _photo_urls_json_empty(value)
+    return _has_value(value)
+
+
 def parse_manual_overrides(raw: Any) -> set[str]:
     if not raw:
         return set()
@@ -160,6 +183,10 @@ def merge_listing_row(
 
         new_value = incoming.get(field)
         old_value = existing.get(field)
+        if field in {"photo_url", "photo_urls_json"}:
+            if not _photo_field_has_data(field, new_value) and _photo_field_has_data(field, old_value):
+                merged[field] = old_value
+                continue
         if field == "title":
             merged[field] = resolve_listing_title(
                 title=new_value if _has_value(new_value) else old_value,

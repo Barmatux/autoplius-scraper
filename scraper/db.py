@@ -10,7 +10,8 @@ from typing import Any, Iterator
 from autoplius.engine_volume import engine_volume_liters
 from autoplius.listing_titles import is_invalid_listing_title, resolve_listing_title
 from autoplius.passable_age import is_older_than_years, is_passable_age
-from autoplius.catalog_filters import is_catalog_visible, is_pickup_body_type, is_pickup_listing
+from autoplius.catalog_filters import is_catalog_visible, is_pickup_body_type, is_pickup_listing, listing_year, MIN_CATALOG_YEAR
+from autoplius.make_model_filters import BLOCKED_MAKES, is_blocked_listing
 from autoplius.localize import localize_listing
 from autoplius.photo_urls import normalize_photo_list
 from scraper.listing_sync import (
@@ -405,7 +406,7 @@ def upsert_listing_item(
     seen_at: str | None = None,
 ) -> None:
     """Upsert one listing row (used for incremental target-scrape checkpoints)."""
-    if is_pickup_listing(item):
+    if is_pickup_listing(item) or is_blocked_listing(item):
         return
     init_db(db_path)
     when = seen_at or _utc_now()
@@ -472,7 +473,7 @@ def save_payload_to_db(
         for item in payload.get("listings") or []:
             if item.get("autoplius_id") is None:
                 continue
-            if is_pickup_listing(item):
+            if is_pickup_listing(item) or is_blocked_listing(item):
                 continue
             row = _listing_row(item, run_id=run_id, seen_at=finished_at)
             _upsert_listing(conn, row, seen_at=finished_at)
@@ -746,6 +747,12 @@ def _listing_python_filters(
         listings = [
             item for item in listings if engine_volume_liters(item) is None
         ]
+        if not catalog_filter:
+            listings = [
+                item
+                for item in listings
+                if (year := listing_year(item)) is None or year >= MIN_CATALOG_YEAR
+            ]
     elif engine_upto_liters is not None:
         listings = [
             item
@@ -897,6 +904,18 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
     photo_urls = normalize_photo_list(detail.get("photo_urls") or [])
     init_db(db_path)
     with connect(db_path) as conn:
+        existing = conn.execute(
+            "SELECT photo_url, photo_urls_json FROM listings WHERE autoplius_id = ?",
+            (listing_id,),
+        ).fetchone()
+        if not photo_urls and existing is not None:
+            existing_urls = normalize_photo_list(json.loads(existing["photo_urls_json"] or "[]"))
+            if not existing_urls and existing["photo_url"]:
+                existing_urls = normalize_photo_list([existing["photo_url"]])
+            if existing_urls:
+                photo_urls = existing_urls
+
+        photo_url = photo_urls[0] if photo_urls else (existing["photo_url"] if existing else None)
         conn.execute(
             """
             UPDATE listings SET
@@ -930,7 +949,7 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
                 json.dumps(detail.get("parameters") or {}, ensure_ascii=False)
                 if detail.get("parameters")
                 else None,
-                photo_urls[0] if photo_urls else None,
+                photo_url,
                 json.dumps(photo_urls, ensure_ascii=False),
                 _utc_now(),
                 listing_id,
@@ -1041,6 +1060,33 @@ def update_listing_admin(
     return fetch_listing(db_path, listing_id)
 
 
+def set_listing_engine_volume(
+    db_path: Path,
+    listing_id: int,
+    liters: float,
+) -> dict[str, Any] | None:
+    """Store manual engine volume on a listing (admin no-volume tab)."""
+    from autoplius.engine_volume import engine_volume_storage_text
+
+    updated = update_listing_admin(
+        db_path,
+        listing_id,
+        {"engine": engine_volume_storage_text(liters)},
+    )
+    if updated is None:
+        return None
+    with connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE listings
+            SET engine_liters = ?, updated_at = ?
+            WHERE autoplius_id = ?
+            """,
+            (liters, _utc_now(), listing_id),
+        )
+    return fetch_listing(db_path, listing_id)
+
+
 def set_listing_archived(
     db_path: Path,
     listing_id: int,
@@ -1050,6 +1096,34 @@ def set_listing_archived(
     """Hide listing from public index or bring it back (locks status from scraper)."""
     status = LISTING_STATUS_ARCHIVED if archived else LISTING_STATUS_ACTIVE
     return update_listing_admin(db_path, listing_id, {"status": status})
+
+
+def purge_blocked_makes(db_path: Path) -> dict[str, int]:
+    """Archive active listings and drop engine-catalog rows for blocked makes."""
+    init_db(db_path)
+    catalog_removed = 0
+    with connect(db_path) as conn:
+        for blocked in BLOCKED_MAKES:
+            cur = conn.execute(
+                "DELETE FROM engine_catalog WHERE lower(make) = lower(?)",
+                (blocked,),
+            )
+            catalog_removed += int(cur.rowcount or 0)
+
+    archived = 0
+    listings = fetch_listings(
+        db_path,
+        passable_only=False,
+        catalog_filter=False,
+        listing_status="active",
+        lite=True,
+    )
+    for item in listings:
+        if not is_blocked_listing(item):
+            continue
+        if set_listing_archived(db_path, item["autoplius_id"], archived=True):
+            archived += 1
+    return {"archived_listings": archived, "catalog_removed": catalog_removed}
 
 
 def repair_invalid_listing_titles(db_path: Path) -> int:
@@ -1063,7 +1137,7 @@ def repair_invalid_listing_titles(db_path: Path) -> int:
             """
             SELECT autoplius_id, title, url, year, body_type, engine
             FROM listings
-            WHERE title LIKE '%╨╜╨╡ ╤Б╤Г╤Й╨╡╤Б╤В╨▓╤Г╨╡╤В%'
+            WHERE title LIKE '%не существует%'
                OR title LIKE '%neegzistuoja%'
                OR title LIKE '%does not exist%'
             """
