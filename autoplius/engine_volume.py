@@ -5,8 +5,8 @@ from typing import Any
 
 from autoplius.listing_display import listing_make_model
 
-ENGINE_LITERS_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*l(?:\b|\.)", re.I)
-ENGINE_CM3_RE = re.compile(r"(\d{3,5})\s*cm(?:³|3)", re.I)
+ENGINE_LITERS_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*(?:l|л)(?:\b|\.)", re.I)
+ENGINE_CM3_RE = re.compile(r"(\d{3,5})\s*(?:cm|см)(?:³|3|\u00b3)?", re.I)
 ENGINE_BEFORE_CODE_RE = re.compile(
     r"(\d+(?:[.,]\d+)?)\s+(?:l\b|TDI|TFSI|TSI|HDI|CDI|Twin|Turbo|varikli)",
     re.I,
@@ -41,6 +41,27 @@ PETROL_MARKERS = (
     "mpi",
     "gdi",
     "ecoboost",
+)
+
+VOLUME_PARAM_KEYS = (
+    "Variklis",
+    "Двигатель",
+    "Darbinis tūris",
+    "Darbinis tūris, cm³",
+    "Рабочий объем",
+    "Рабочий объём, см³",
+    "Объём двигателя, см³",
+)
+VOLUME_PARAM_KEY_MARKERS = (
+    "variklis",
+    "двигатель",
+    "engine",
+    "tūris",
+    "turis",
+    "объем",
+    "объём",
+    "volume",
+    "displacement",
 )
 
 
@@ -91,10 +112,47 @@ def _parse_volume_liters_from_text(text: str) -> float | None:
 
 
 def engine_volume_liters(item: dict[str, Any]) -> float | None:
+    stored = item.get("engine_liters")
+    if stored is not None:
+        try:
+            liters = float(stored)
+        except (TypeError, ValueError):
+            liters = None
+        else:
+            if 0.5 <= liters <= 10.0:
+                return round(liters, 1)
     cm3 = engine_volume_cm3(item)
     if cm3 is None:
         return None
     return cm3 / 1000
+
+
+def _is_volume_param_key(key: str) -> bool:
+    folded = key.casefold()
+    return any(marker in folded for marker in VOLUME_PARAM_KEY_MARKERS)
+
+
+def _iter_volume_param_values(params: dict[str, Any]) -> list[str]:
+    values: list[str] = []
+    seen: set[str] = set()
+    for param_key in VOLUME_PARAM_KEYS:
+        value = params.get(param_key)
+        if not value:
+            continue
+        text = str(value).strip()
+        if text and text not in seen:
+            seen.add(text)
+            values.append(text)
+    for param_key, value in params.items():
+        if not value or param_key in VOLUME_PARAM_KEYS:
+            continue
+        if not _is_volume_param_key(str(param_key)):
+            continue
+        text = str(value).strip()
+        if text and text not in seen:
+            seen.add(text)
+            values.append(text)
+    return values
 
 
 def engine_volume_cm3(item: dict[str, Any]) -> int | None:
@@ -107,12 +165,8 @@ def engine_volume_cm3(item: dict[str, Any]) -> int | None:
         if cm3 is not None:
             return cm3
 
-    params = item.get("parameters") or {}
-    for param_key in ("Variklis", "Двигатель", "Darbinis tūris", "Рабочий объем"):
-        value = params.get(param_key)
-        if not value:
-            continue
-        cm3 = _parse_volume_cm3_from_text(str(value))
+    for value in _iter_volume_param_values(item.get("parameters") or {}):
+        cm3 = _parse_volume_cm3_from_text(value)
         if cm3 is not None:
             return cm3
     return None
