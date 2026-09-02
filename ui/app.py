@@ -199,7 +199,7 @@ def format_duration(value: float | int | None) -> str:
 
 @app.template_filter("engine_volume")
 def engine_volume(item: dict[str, Any]) -> str:
-    return engine_volume_from_listing(item) or "тАФ"
+    return engine_volume_from_listing(item) or "—"
 
 
 @app.template_filter("engine_kpp_lines")

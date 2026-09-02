@@ -3,6 +3,7 @@
   {% set photos = item|listing_photos %}
   {% set list_photos = photos.thumb if photos.thumb else photos.full %}
   {% set make, model = item|listing_make_model %}
+  {% set vol = item|engine_volume %}
   {% set detail_href = url_for('listing_detail', listing_id=item.autoplius_id, next=request_path) %}
 
   {% if list_photos %}
@@ -37,13 +38,17 @@
     <a href="{{ detail_href }}" data-save-return>
       <span class="listing-make">{{ make }}</span>
       {% if model %}<span class="listing-model">{{ model }}</span>{% endif %}
+      {% if item.year %}<span class="listing-card-year"> · {{ item.year }}</span>{% endif %}
     </a>
   </h3>
 
-  <p class="listing-card-meta">
-    {% if item.year %}<strong>{{ item.year }}</strong>{% endif %}
-    {% if item.body_type %} · {{ item.body_type }}{% endif %}
-  </p>
+  {% if item.body_type %}
+  <p class="listing-card-meta">{{ item.body_type }}</p>
+  {% endif %}
+
+  {% if vol and vol not in ('—', 'тАФ') and ('l' in vol.lower() or 'л' in vol.lower()) %}
+  <p class="listing-card-meta"><strong>Объём:</strong> {{ vol }}</p>
+  {% endif %}
 
   {% if item.mileage_km is not none %}
   <p class="listing-card-meta"><strong>Пробег:</strong> {{ "{:,}".format(item.mileage_km|int).replace(",", " ") }} км</p>
@@ -58,11 +63,8 @@
   {% endif %}
 
   <div class="listing-spec-tags">
-    {% set vol = item|engine_volume %}
-    {% if vol and 'л' in vol.lower() %}<span>{{ vol }}</span>{% endif %}
     {% if item.fuel %}<span>{{ item.fuel }}</span>{% endif %}
     {% if item.transmission %}<span>{{ item.transmission }}</span>{% endif %}
-    {% if item.body_type %}<span>{{ item.body_type }}</span>{% endif %}
     {% if item.has_vin_badge %}<span>VIN указан</span>{% endif %}
   </div>
 

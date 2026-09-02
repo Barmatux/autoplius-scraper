@@ -168,19 +168,36 @@
         {% endif %}
         (стр. {{ page }}/{{ pages }}, по фильтру {{ total_filtered }} из {{ total_in_db }} в БД)
       </p>
-      <div class="listings-view-toggle" role="group" aria-label="Вид списка объявлений">
-        <button
-          type="button"
-          class="listings-view-btn{% if listings_view != 'cards' %} is-active{% endif %}"
-          data-listings-view-btn="table"
-          aria-pressed="{{ 'true' if listings_view != 'cards' else 'false' }}"
-        >Вид 1</button>
-        <button
-          type="button"
-          class="listings-view-btn{% if listings_view == 'cards' %} is-active{% endif %}"
-          data-listings-view-btn="cards"
-          aria-pressed="{{ 'true' if listings_view == 'cards' else 'false' }}"
-        >Вид 2</button>
+      <div class="listings-toolbar">
+        {% if listings_view == 'cards' %}
+        <label class="cards-sort">
+          <span class="cards-sort-label">Сортировка</span>
+          <select
+            class="cards-sort-select"
+            data-cards-sort
+            aria-label="Сортировка объявлений"
+          >
+            <option value="added_desc" {% if sort == 'added_desc' or sort not in ('added_asc', 'price_asc', 'price_desc') %}selected{% endif %}>По дате размещения ↓</option>
+            <option value="added_asc" {% if sort == 'added_asc' %}selected{% endif %}>По дате размещения ↑</option>
+            <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>По цене ↑</option>
+            <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>По цене ↓</option>
+          </select>
+        </label>
+        {% endif %}
+        <div class="listings-view-toggle" role="group" aria-label="Вид списка объявлений">
+          <button
+            type="button"
+            class="listings-view-btn{% if listings_view != 'cards' %} is-active{% endif %}"
+            data-listings-view-btn="table"
+            aria-pressed="{{ 'true' if listings_view != 'cards' else 'false' }}"
+          >Вид 1</button>
+          <button
+            type="button"
+            class="listings-view-btn{% if listings_view == 'cards' %} is-active{% endif %}"
+            data-listings-view-btn="cards"
+            aria-pressed="{{ 'true' if listings_view == 'cards' else 'false' }}"
+          >Вид 2</button>
+        </div>
       </div>
     </section>
 
