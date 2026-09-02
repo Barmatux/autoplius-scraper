@@ -12,6 +12,8 @@ from typing import Any
 from bs4 import BeautifulSoup
 
 _CACHE: dict[str, Any] = {}
+_FILE_CACHE: dict[str, Any] | None = None
+_FILE_CACHE_MTIME: float | None = None
 _CACHE_TTL = timedelta(minutes=30)
 _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -50,19 +52,33 @@ def _parse_rate_text(text: str) -> float:
     return rate
 
 
-def _load_file_cache() -> dict[str, Any]:
+def _load_file_cache(*, force: bool = False) -> dict[str, Any]:
+    global _FILE_CACHE, _FILE_CACHE_MTIME
     path = _cache_file_path()
     if not path.is_file():
+        _FILE_CACHE = {}
+        _FILE_CACHE_MTIME = None
         return {}
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return _FILE_CACHE or {}
+    if not force and _FILE_CACHE is not None and _FILE_CACHE_MTIME == mtime:
+        return _FILE_CACHE
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError, TypeError):
+        _FILE_CACHE = {}
+        _FILE_CACHE_MTIME = mtime
         return {}
     pairs = payload.get("pairs")
-    return pairs if isinstance(pairs, dict) else {}
+    _FILE_CACHE = pairs if isinstance(pairs, dict) else {}
+    _FILE_CACHE_MTIME = mtime
+    return _FILE_CACHE
 
 
 def _save_file_cache(pairs: dict[str, Any]) -> None:
+    global _FILE_CACHE, _FILE_CACHE_MTIME
     path = _cache_file_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -72,6 +88,11 @@ def _save_file_cache(pairs: dict[str, Any]) -> None:
     tmp = path.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(path)
+    _FILE_CACHE = pairs
+    try:
+        _FILE_CACHE_MTIME = path.stat().st_mtime
+    except OSError:
+        _FILE_CACHE_MTIME = None
 
 
 def _fetch_html(url: str) -> str:
@@ -154,32 +175,29 @@ def myfin_best_buy_rate(pair: str) -> float:
 
     file_entry = _load_file_cache().get(pair) or {}
     file_rate = file_entry.get("rate")
-    file_fetched_at = file_entry.get("fetched_at")
-    file_dt = None
-    if file_fetched_at:
-        try:
-            file_dt = datetime.fromisoformat(str(file_fetched_at).replace("Z", "+00:00"))
-        except ValueError:
-            file_dt = None
-    if file_rate is not None and file_dt:
-        use_file = not cached_at or file_dt >= cached_at
-        if use_file and now - file_dt < _CACHE_TTL:
-            rate = float(file_rate)
-            _CACHE[pair] = {"fetched_at": file_dt, "rate": rate}
-            return rate
+    if file_rate is not None:
+        rate = float(file_rate)
+        fetched_at = now
+        file_fetched_at = file_entry.get("fetched_at")
+        if file_fetched_at:
+            try:
+                fetched_at = datetime.fromisoformat(str(file_fetched_at).replace("Z", "+00:00"))
+            except ValueError:
+                fetched_at = now
+        _CACHE[pair] = {"fetched_at": fetched_at, "rate": rate}
+        return rate
 
     try:
         rate = _parse_best_buy_rate(_fetch_html(MYFIN_URLS[pair]))
     except (urllib.error.URLError, TimeoutError, ValueError, TypeError):
         if cached_rate is not None:
             return float(cached_rate)
-        if file_rate is not None:
-            return float(file_rate)
         return _FALLBACK[pair]
 
-    file_pairs = _load_file_cache()
+    file_pairs = _load_file_cache(force=True)
     file_pairs[pair] = {"fetched_at": now.isoformat(), "rate": rate}
     _save_file_cache(file_pairs)
+    _load_file_cache(force=True)
     _CACHE[pair] = {"fetched_at": now, "rate": rate}
     return rate
 

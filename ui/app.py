@@ -91,6 +91,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
 PAGE_SIZE = 50
 RUNS_PAGE_SIZE = 30
+LISTINGS_VIEW_TABLE = "table"
+LISTINGS_VIEW_CARDS = "cards"
 SETTINGS = Settings.from_env()
 TAB_ALL = "all"
 TAB_NO_VOLUME = "no_volume"
@@ -475,6 +477,9 @@ def _current_tab() -> str:
     return tab if tab in {TAB_ALL, TAB_NO_VOLUME, TAB_ARCHIVED} else TAB_ALL
 
 
+def _current_listings_view() -> str:
+    view = (request.args.get("view") or LISTINGS_VIEW_TABLE).strip()
+    return view if view in {LISTINGS_VIEW_TABLE, LISTINGS_VIEW_CARDS} else LISTINGS_VIEW_TABLE
 
 
 def _listing_filters_for_tab(
@@ -600,6 +605,7 @@ def index():
     passable = _passable_enabled()
     over_3y = _over_3y_enabled()
     tab = _current_tab()
+    listings_view = _current_listings_view()
     page = max(1, int(request.args.get("page", "1") or "1"))
     min_price_raw = request.args.get("min_price", "").strip()
     max_price_raw = request.args.get("max_price", "").strip()
@@ -740,6 +746,7 @@ def index():
         page=page,
         pages=pages,
         page_size=PAGE_SIZE,
+        listings_view=listings_view,
         thumb_url=thumb_url,
     )
 

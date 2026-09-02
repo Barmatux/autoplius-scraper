@@ -617,18 +617,6 @@ main {
   background: rgba(255, 253, 248, 0.8);
 }
 
-html:not([data-listings-view="cards"]) [data-listings-view-panel="cards"] {
-  display: none !important;
-}
-
-html[data-listings-view="cards"] [data-listings-view-panel="table"] {
-  display: none !important;
-}
-
-html[data-listings-view="cards"] .table-layout-controls {
-  display: none;
-}
-
 .catalog.listings-feed {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

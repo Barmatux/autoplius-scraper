@@ -5,16 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Autoplius Scraper</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script>
-    (function () {
-      try {
-        if (localStorage.getItem("listings-view-v1") === "cards") {
-          document.documentElement.dataset.listingsView = "cards";
-        }
-      } catch (_err) { /* ignore */ }
-    })();
-  </script>
 </head>
+{% macro view_qs() -%}
+{%- if listings_view == 'cards' -%}&view=cards{%- endif -%}
+{%- endmacro %}
 {% macro city_qs() -%}
 {%- for c in selected_cities -%}&city={{ c|urlencode }}{%- endfor -%}
 {%- endmacro %}
@@ -34,7 +28,7 @@
 {%- if volume_to -%}&volume_to={{ volume_to|urlencode }}{%- endif -%}
 {%- endmacro %}
 {% macro filter_qs() -%}
-{{ vehicle_qs() }}{{ city_qs() }}{{ spec_qs() }}
+{{ vehicle_qs() }}{{ city_qs() }}{{ spec_qs() }}{{ view_qs() }}
 {%- endmacro %}
 {% macro sort_th(label, asc, desc, default, col_class='') %}
 {% if sort == desc %}
@@ -71,6 +65,9 @@
     <form class="filters" method="get">
       <input type="hidden" name="tab" value="{{ tab }}">
       <input type="hidden" name="sort" value="{{ sort }}">
+      {% if listings_view == 'cards' %}
+      <input type="hidden" name="view" value="cards">
+      {% endif %}
       <div
         class="vehicle-hierarchy-filters make-model-filters"
         data-make-model-filter
@@ -172,15 +169,15 @@
       <div class="listings-view-toggle" role="group" aria-label="Вид списка объявлений">
         <button
           type="button"
-          class="listings-view-btn is-active"
+          class="listings-view-btn{% if listings_view != 'cards' %} is-active{% endif %}"
           data-listings-view-btn="table"
-          aria-pressed="true"
+          aria-pressed="{{ 'true' if listings_view != 'cards' else 'false' }}"
         >Вид 1</button>
         <button
           type="button"
-          class="listings-view-btn"
+          class="listings-view-btn{% if listings_view == 'cards' %} is-active{% endif %}"
           data-listings-view-btn="cards"
-          aria-pressed="false"
+          aria-pressed="{{ 'true' if listings_view == 'cards' else 'false' }}"
         >Вид 2</button>
       </div>
     </section>
@@ -188,7 +185,13 @@
     {% if not listings %}
     <p class="empty">Нет объявлений в базе по фильтру.</p>
     {% else %}
-    <div class="listings-view-panel" data-listings-view-panel="table">
+    {% if listings_view == 'cards' %}
+    <div class="catalog listings-feed">
+      {% for item in listings %}
+      {% include "_listing_card.html" %}
+      {% endfor %}
+    </div>
+    {% else %}
     {% if is_admin %}
     <div class="table-layout-controls" data-table-layout-controls>
       <span class="table-layout-hint">Потяните границу столбца в заголовке таблицы, чтобы изменить ширину.</span>
@@ -234,6 +237,9 @@
               >
                 <input type="hidden" name="tab" value="{{ tab }}">
                 <input type="hidden" name="sort" value="{{ sort }}">
+                {% if listings_view == 'cards' %}
+                <input type="hidden" name="view" value="cards">
+                {% endif %}
                 <input type="hidden" name="q" value="{{ q }}">
                 <input type="hidden" name="min_price" value="{{ min_price }}">
                 <input type="hidden" name="max_price" value="{{ max_price }}">
@@ -365,13 +371,7 @@
         </tbody>
       </table>
     </div>
-    </div>
-
-    <div class="listings-view-panel catalog listings-feed" data-listings-view-panel="cards" hidden>
-      {% for item in listings %}
-      {% include "_listing_card.html" %}
-      {% endfor %}
-    </div>
+    {% endif %}
 
     {% if pages > 1 %}
     <nav class="pager">

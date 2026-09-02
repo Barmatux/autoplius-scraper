@@ -1,49 +1,40 @@
 (function () {
   const STORAGE_KEY = "listings-view-v1";
-  const ROOT = document.documentElement;
+  const url = new URL(window.location.href);
 
-  function getSavedView() {
+  if (!url.searchParams.has("view")) {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === "cards" || saved === "table") {
-        return saved;
+      if (saved === "cards") {
+        url.searchParams.set("view", "cards");
+        window.location.replace(url.toString());
+        return;
       }
     } catch (_err) {
       /* ignore */
     }
-    return "table";
   }
 
-  function applyView(view) {
-    const mode = view === "cards" ? "cards" : "table";
-    ROOT.dataset.listingsView = mode;
-    document.querySelectorAll("[data-listings-view-btn]").forEach((btn) => {
-      const active = btn.getAttribute("data-listings-view-btn") === mode;
-      btn.classList.toggle("is-active", active);
-      btn.setAttribute("aria-pressed", active ? "true" : "false");
-    });
-    document.querySelectorAll("[data-listings-view-panel]").forEach((panel) => {
-      const show = panel.getAttribute("data-listings-view-panel") === mode;
-      panel.hidden = !show;
-    });
-  }
-
-  function saveView(view) {
-    try {
-      localStorage.setItem(STORAGE_KEY, view);
-    } catch (_err) {
-      /* ignore */
-    }
-  }
-
-  applyView(getSavedView());
+  const current = url.searchParams.get("view") === "cards" ? "cards" : "table";
 
   document.querySelectorAll("[data-listings-view-btn]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const view = btn.getAttribute("data-listings-view-btn");
-      if (!view) return;
-      applyView(view);
-      saveView(view);
+      if (!view || view === current) {
+        return;
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, view);
+      } catch (_err) {
+        /* ignore */
+      }
+      const next = new URL(window.location.href);
+      if (view === "cards") {
+        next.searchParams.set("view", "cards");
+      } else {
+        next.searchParams.delete("view");
+      }
+      window.location.href = next.toString();
     });
   });
 })();
