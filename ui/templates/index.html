@@ -65,7 +65,22 @@
     {% set active_tab = tab %}
     {% include "_tabs.html" %}
 
-    <form class="filters" method="get">
+    <section class="filters-panel{% if filters_active_count %} is-open{% endif %}" data-filters-panel>
+      <div class="filters-panel-head">
+        <button
+          type="button"
+          class="filters-panel-toggle"
+          data-filters-toggle
+          aria-expanded="{{ 'true' if filters_active_count else 'false' }}"
+          aria-controls="index-filters"
+        >
+          <span class="filters-panel-toggle-label">Фильтры</span>
+          {% if filters_active_count %}
+          <span class="filters-panel-badge" data-filters-badge>{{ filters_active_count }}</span>
+          {% endif %}
+        </button>
+      </div>
+      <form id="index-filters" class="filters filters-panel-body" method="get" data-filters-body>
       <input type="hidden" name="tab" value="{{ tab }}">
       <input type="hidden" name="sort" value="{{ sort }}">
       {% if listings_view == 'cards' %}
@@ -159,6 +174,7 @@
       {% endfor %}
       <button type="submit">Показать</button>
     </form>
+    </section>
 
     <section class="summary">
       <p>
@@ -425,6 +441,7 @@
   <script src="{{ url_for('static', filename='tab_preference.js') }}" defer></script>
   <script src="{{ url_for('static', filename='sort_preference.js') }}" defer></script>
   <script src="{{ url_for('static', filename='view_preference.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='mobile_filters.js') }}" defer></script>
   <script src="{{ url_for('static', filename='column_resize.js') }}" defer></script>
   {% if current_user %}
   <script src="{{ url_for('static', filename='favorite_toggle.js') }}" defer></script>

@@ -869,6 +869,55 @@ def detail_error_public(item: dict[str, Any]) -> str | None:
     return error or None
 
 
+def _active_filter_count(
+    *,
+    q: str,
+    min_price: str,
+    max_price: str,
+    vehicle_rows: list[dict[str, str]],
+    year_from: str,
+    year_to: str,
+    selected_body_types: list[str],
+    selected_fuels: list[str],
+    selected_transmissions: list[str],
+    volume_from: str,
+    volume_to: str,
+    selected_cities: list[str],
+    upto_19l: bool,
+    passable: bool,
+    over_3y: bool,
+    tab: str,
+) -> int:
+    count = 0
+    if (q or "").strip():
+        count += 1
+    if (min_price or "").strip():
+        count += 1
+    if (max_price or "").strip():
+        count += 1
+    if any((row.get("make") or row.get("model")) for row in vehicle_rows):
+        count += 1
+    if (year_from or "").strip() or (year_to or "").strip():
+        count += 1
+    if selected_body_types:
+        count += 1
+    if selected_fuels:
+        count += 1
+    if selected_transmissions:
+        count += 1
+    if (volume_from or "").strip() or (volume_to or "").strip():
+        count += 1
+    if selected_cities:
+        count += 1
+    if passable:
+        count += 1
+    if not over_3y:
+        count += 1
+    if tab not in {TAB_NO_VOLUME, TAB_ELECTRIC} and not upto_19l:
+        count += 1
+    return count
+
+
 @app.get("/")
 def index():
     path = require_db()
@@ -1023,6 +1072,24 @@ def index():
         page_size=PAGE_SIZE,
         listings_view=listings_view,
         thumb_url=thumb_url,
+        filters_active_count=_active_filter_count(
+            q=q,
+            min_price=min_price_raw,
+            max_price=max_price_raw,
+            vehicle_rows=vehicle_rows,
+            year_from=year_from if year_from is not None else "",
+            year_to=year_to if year_to is not None else "",
+            selected_body_types=selected_body_types,
+            selected_fuels=selected_fuels,
+            selected_transmissions=selected_transmissions,
+            volume_from=volume_from_str,
+            volume_to=volume_to_str,
+            selected_cities=selected_cities,
+            upto_19l=upto_19l,
+            passable=passable,
+            over_3y=over_3y,
+            tab=tab,
+        ),
     )
 
 

@@ -1,16 +1,27 @@
 (function () {
   const STORAGE_KEY = "listings-view-v1";
-  const MOBILE_MAX = 700;
+  const MOBILE_MQL = window.matchMedia("(max-width: 768px)");
   const url = new URL(window.location.href);
-  const isMobile = window.matchMedia(`(max-width: ${MOBILE_MAX}px)`).matches;
+
+  function isMobileViewport() {
+    return MOBILE_MQL.matches;
+  }
+
+  function ensureCardsView() {
+    if (url.searchParams.get("view") === "cards") {
+      return false;
+    }
+    url.searchParams.set("view", "cards");
+    window.location.replace(url.toString());
+    return true;
+  }
 
   if (!url.searchParams.has("view")) {
+    if (isMobileViewport()) {
+      ensureCardsView();
+      return;
+    }
     try {
-      if (isMobile) {
-        url.searchParams.set("view", "cards");
-        window.location.replace(url.toString());
-        return;
-      }
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved === "cards") {
         url.searchParams.set("view", "cards");
@@ -20,9 +31,8 @@
     } catch (_err) {
       /* ignore */
     }
-  } else if (isMobile && url.searchParams.get("view") !== "cards") {
-    url.searchParams.set("view", "cards");
-    window.location.replace(url.toString());
+  } else if (isMobileViewport() && url.searchParams.get("view") !== "cards") {
+    ensureCardsView();
     return;
   }
 
@@ -34,7 +44,7 @@
       if (!view || view === current) {
         return;
       }
-      if (isMobile && view !== "cards") {
+      if (isMobileViewport() && view === "table") {
         return;
       }
       try {
