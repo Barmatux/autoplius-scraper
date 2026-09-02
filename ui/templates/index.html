@@ -272,7 +272,7 @@
             </td>
             <td class="col-auto">
               {% set make, model = item|listing_make_model %}
-              <a class="listing-name" href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">
+              <a class="listing-name" href="{{ url_for('listing_detail', listing_id=item.autoplius_id, next=request_path) }}" data-save-return>
                 <span class="listing-make">{{ make }}</span>
                 {% if model %}<span class="listing-model">{{ model }}</span>{% endif %}
               </a>
@@ -366,6 +366,7 @@
   <script src="{{ url_for('static', filename='price_rb_tooltip.js') }}" defer></script>
   <script src="{{ url_for('static', filename='list_photos.js') }}" defer></script>
   <script src="{{ url_for('static', filename='city_filter.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='tab_preference.js') }}" defer></script>
   <script src="{{ url_for('static', filename='sort_preference.js') }}" defer></script>
   <script src="{{ url_for('static', filename='column_resize.js') }}" defer></script>
 </body>

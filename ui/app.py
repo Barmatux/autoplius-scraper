@@ -88,6 +88,7 @@ TAB_ALL = "all"
 TAB_NO_VOLUME = "no_volume"
 TAB_ARCHIVED = "archived"
 TAB_ADMIN = "admin"
+DEFAULT_LIST_SORT = "added_desc"
 ADMIN_PAGE_SIZE = 50
 
 app = Flask(__name__)
@@ -312,6 +313,14 @@ def require_admin_auth():
 
 
 @app.context_processor
+def inject_nav_helpers():
+    return {
+        "nav_sort": request.args.get("sort", DEFAULT_LIST_SORT),
+        "request_path": _current_request_path(),
+    }
+
+
+@app.context_processor
 def inject_admin():
     return {"is_admin": _is_admin()}
 
@@ -320,7 +329,12 @@ def _safe_redirect_target(raw: str | None) -> str:
     target = (raw or "").strip()
     if target.startswith("/") and not target.startswith("//"):
         return target
-    return url_for("index")
+    return url_for("index", sort=DEFAULT_LIST_SORT)
+
+
+def _current_request_path() -> str:
+    qs = request.query_string.decode()
+    return request.path + (f"?{qs}" if qs else "")
 
 
 @app.get("/admin/enter")
@@ -565,7 +579,7 @@ def detail_error_public(item: dict[str, Any]) -> str | None:
 def index():
     path = require_db()
     q = request.args.get("q", "")
-    sort = request.args.get("sort", "price_asc")
+    sort = request.args.get("sort", DEFAULT_LIST_SORT)
     upto_19l = _upto_19l_enabled()
     passable = _passable_enabled()
     over_3y = _over_3y_enabled()
@@ -901,6 +915,7 @@ def listing_detail(listing_id: int):
         item=item,
         photos=photos,
         display_description=display_description,
+        back_url=_safe_redirect_target(request.args.get("next")),
     )
 
 
@@ -985,7 +1000,7 @@ def admin_restore_listing(listing_id: int):
 def api_listings():
     path = require_db()
     q = request.args.get("q", "")
-    sort = request.args.get("sort", "price_asc")
+    sort = request.args.get("sort", DEFAULT_LIST_SORT)
     upto_19l = _upto_19l_enabled()
     passable = _passable_enabled()
     over_3y = _over_3y_enabled()

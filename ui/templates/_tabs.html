@@ -1,15 +1,15 @@
 <nav class="tabs">
   <a
-    href="{{ url_for('index', tab='all') }}"
+    href="{{ url_for('index', tab='all', sort=nav_sort) }}"
     class="tab{% if active_tab == 'all' %} active{% endif %}"
   >Объявления</a>
   <a
-    href="{{ url_for('index', tab='no_volume') }}"
+    href="{{ url_for('index', tab='no_volume', sort=nav_sort) }}"
     class="tab{% if active_tab == 'no_volume' %} active{% endif %}"
   >Без объема{% if no_volume_count is not none %} <span class="tab-count">{{ no_volume_count }}</span>{% endif %}</a>
   {% if is_admin %}
   <a
-    href="{{ url_for('index', tab='archived') }}"
+    href="{{ url_for('index', tab='archived', sort=nav_sort) }}"
     class="tab{% if active_tab == 'archived' %} active{% endif %}"
   >Архив{% if archived_count is defined %} <span class="tab-count">{{ archived_count }}</span>{% endif %}</a>
   <a

@@ -1,5 +1,5 @@
 (function () {
-  const STORAGE_KEY = "listings-sort-v1";
+  const STORAGE_KEY = "listings-sort-v2";
   const url = new URL(window.location.href);
 
   if (!url.searchParams.has("sort")) {
