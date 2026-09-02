@@ -22,8 +22,11 @@ sudo -u autoplius git fetch "$REMOTE" "$BRANCH"
 
 # deploy/*.sh line-ending normalization can leave harmless local diffs; reset before pull.
 if sudo -u autoplius git status --porcelain deploy/ | grep -q .; then
-  echo "=== reset deploy/ script drift ==="
-  sudo -u autoplius git checkout -- deploy/
+  if sudo -u autoplius git diff -- deploy/ | grep -q .; then
+    echo "=== reset deploy/ content drift ==="
+    sudo -u autoplius git checkout -- deploy/
+  fi
+  chmod +x "$APP"/deploy/*.sh
 fi
 
 if sudo -u autoplius git status --porcelain | grep -q .; then
@@ -43,13 +46,12 @@ sudo -u autoplius git pull --ff-only "$REMOTE" "$BRANCH"
 echo "=== pip install ==="
 sudo -u autoplius "$PIP" install -q -r requirements.txt
 
-echo "=== normalize deploy scripts (LF) ==="
+echo "=== normalize deploy scripts (LF + executable) ==="
 for f in "$APP"/deploy/*.sh; do
   sed -i 's/\r$//' "$f"
   chmod +x "$f"
 done
-# Keep the checkout clean so the next pipeline run is not blocked by CRLF drift.
-sudo -u autoplius git checkout -- deploy/ || true
+# Do not git checkout deploy/ here: that resets the +x bit and breaks systemd ExecStart.
 
 echo "=== systemd units ==="
 sudo cp "$APP/deploy/autoplius-scraper.service" "$APP/deploy/autoplius-scraper.timer" /etc/systemd/system/
