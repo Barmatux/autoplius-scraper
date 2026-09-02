@@ -15,12 +15,13 @@
     </div>
   </header>
 
-  <main class="auth-page">
+  <main class="cabinet-page">
     <section class="auth-panel cabinet-panel">
       <h1 class="auth-title">Здравствуйте, {{ user.display_name }}</h1>
       <p class="auth-lead">Вы вошли как <strong>{{ user.username }}</strong>.</p>
 
       <div class="cabinet-stats">
+        <div class="pill accent">Избранное: {{ favorites_count }}</div>
         {% if stats.exists %}
         <div class="pill">Объявлений в базе: {{ stats.listings or 0 }}</div>
         <div class="pill">Активных: {{ stats.active_listings or 0 }}</div>
@@ -37,6 +38,27 @@
 
       {% if user.last_login_at %}
       <p class="cabinet-meta">Последний вход: {{ user.last_login_at|format_datetime }}</p>
+      {% endif %}
+    </section>
+
+    <section class="cabinet-favorites">
+      <div class="cabinet-favorites-head">
+        <h2 class="cabinet-favorites-title">Избранные объявления</h2>
+        {% if favorites_count %}
+        <p class="cabinet-favorites-count muted">{{ favorites_count }} шт.</p>
+        {% endif %}
+      </div>
+
+      {% if favorites %}
+      <div class="catalog listings-feed cabinet-favorites-grid">
+        {% for item in favorites %}
+        {% include "_listing_card.html" %}
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty cabinet-favorites-empty">
+        Пока ничего нет. Откройте объявление в каталоге и нажмите ☆, чтобы добавить его сюда.
+      </p>
       {% endif %}
     </section>
   </main>

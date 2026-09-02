@@ -13,6 +13,7 @@ from flask import Flask, abort, jsonify, redirect, render_template, request, Res
 from scraper.config import Settings
 from scraper.db import (
     count_scrape_runs,
+    create_user,
     db_stats,
     default_db_path,
     fetch_engine_catalog,
@@ -20,12 +21,13 @@ from scraper.db import (
     fetch_listings,
     fetch_listings_by_ids,
     fetch_scrape_runs,
-    create_user,
+    fetch_user_favorite_ids,
     get_user_by_id,
     init_db,
     engine_catalog_missing_count,
     engine_catalog_new_count,
     scrape_runs_analytics,
+    toggle_user_favorite,
     update_listing_admin,
     set_listing_archived,
     set_listing_engine_volume,
@@ -390,6 +392,25 @@ def inject_user():
     return {"current_user": _current_user()}
 
 
+@app.context_processor
+def inject_favorites():
+    user = _current_user()
+    if user is None:
+        return {"favorite_listing_ids": set()}
+    path = db_path()
+    if not path.is_file():
+        return {"favorite_listing_ids": set()}
+    try:
+        init_db(path)
+        return {
+            "favorite_listing_ids": set(
+                fetch_user_favorite_ids(path, int(user["id"]))
+            ),
+        }
+    except Exception:
+        return {"favorite_listing_ids": set()}
+
+
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_-]{3,32}$")
 _MIN_REGISTRATION_PASSWORD_LEN = 6
 
@@ -549,8 +570,33 @@ def cabinet():
     user = _current_user()
     if user is None:
         return redirect(url_for("login", next=url_for("cabinet")))
-    stats = db_stats(require_db())
-    return render_template("cabinet.html", user=user, stats=stats)
+    path = require_db()
+    stats = db_stats(path)
+    favorite_ids = fetch_user_favorite_ids(path, int(user["id"]))
+    favorites = fetch_listings_by_ids(path, favorite_ids, lite=False)
+    return render_template(
+        "cabinet.html",
+        user=user,
+        stats=stats,
+        favorites=favorites,
+        favorites_count=len(favorites),
+        tab=TAB_ALL,
+    )
+
+
+@app.post("/favorites/<int:listing_id>")
+def toggle_favorite(listing_id: int):
+    user = _current_user()
+    if user is None:
+        return redirect(url_for("login", next=_current_request_path()))
+    path = require_db()
+    if fetch_listing(path, listing_id) is None:
+        abort(404, "listing not found in database")
+    toggle_user_favorite(path, int(user["id"]), listing_id)
+    next_url = _safe_redirect_target(
+        request.form.get("next") or request.args.get("next")
+    )
+    return redirect(next_url)
 
 
 @app.context_processor

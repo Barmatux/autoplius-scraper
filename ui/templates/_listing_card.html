@@ -8,6 +8,10 @@
   {% set kpp = item.transmission|transmission_short %}
   {% set detail_href = url_for('listing_detail', listing_id=item.autoplius_id, next=request_path) %}
 
+  <div class="listing-card-top">
+    {% include "_listing_favorite_button.html" %}
+  </div>
+
   {% if list_photos %}
   <div class="listings-feed-gallery" data-list-gallery data-photos='{{ list_photos|tojson }}'>
     <a class="card-cover-link" href="{{ detail_href }}" data-save-return aria-label="Открыть {{ make }} {{ model }}">

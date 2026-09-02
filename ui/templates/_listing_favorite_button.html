@@ -1,0 +1,19 @@
+{% if current_user %}
+{% set is_favorite = item.autoplius_id in favorite_listing_ids %}
+<form
+  class="favorite-form"
+  method="post"
+  action="{{ url_for('toggle_favorite', listing_id=item.autoplius_id) }}"
+>
+  <input type="hidden" name="next" value="{{ request.full_path if request.full_path != '?' else request.path }}">
+  <button
+    type="submit"
+    class="favorite-btn{% if is_favorite %} is-active{% endif %}"
+    aria-pressed="{{ 'true' if is_favorite else 'false' }}"
+    aria-label="{{ 'Убрать из избранного' if is_favorite else 'Добавить в избранное' }}"
+    title="{{ 'Убрать из избранного' if is_favorite else 'В избранное' }}"
+  >
+    <span class="favorite-icon" aria-hidden="true">{{ '★' if is_favorite else '☆' }}</span>
+  </button>
+</form>
+{% endif %}

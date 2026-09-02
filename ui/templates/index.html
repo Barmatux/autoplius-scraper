@@ -318,6 +318,9 @@
               {% endif %}
             </td>
             <td class="col-auto">
+              <div class="listing-auto-row">
+                {% include "_listing_favorite_button.html" %}
+                <div class="listing-auto-main">
               {% set make, model = item|listing_make_model %}
               <a class="listing-name" href="{{ url_for('listing_detail', listing_id=item.autoplius_id, next=request_path) }}" data-save-return>
                 <span class="listing-make">{{ make }}</span>
@@ -328,6 +331,8 @@
               <div class="muted body-type-line">{{ line }}</div>
               {% endfor %}
               {% endif %}
+                </div>
+              </div>
             </td>
             <td class="col-engine">
               <div class="spec-year-line">{{ item.year or '—' }}</div>

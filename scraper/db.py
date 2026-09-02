@@ -119,6 +119,17 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT NOT NULL,
     last_login_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS user_favorites (
+    user_id INTEGER NOT NULL,
+    autoplius_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, autoplius_id),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(autoplius_id) REFERENCES listings(autoplius_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id, created_at DESC);
 """
 
 
@@ -234,6 +245,22 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
             WHERE customs_cm3 IS NULL AND is_manual = 0
             """
         )
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_favorites (
+            user_id INTEGER NOT NULL,
+            autoplius_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, autoplius_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(autoplius_id) REFERENCES listings(autoplius_id) ON DELETE CASCADE
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id, created_at DESC)"
+    )
 
 
 def _is_minio_photo_url(url: str | None) -> bool:
@@ -1768,4 +1795,86 @@ def verify_user_password(
     user = _user_row_to_dict(row)
     user["last_login_at"] = now
     return user
+
+
+def fetch_user_favorite_ids(db_path: Path, user_id: int) -> list[int]:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT autoplius_id
+            FROM user_favorites
+            WHERE user_id = ?
+            ORDER BY created_at DESC, autoplius_id DESC
+            """,
+            (user_id,),
+        ).fetchall()
+    return [int(row["autoplius_id"]) for row in rows]
+
+
+def count_user_favorites(db_path: Path, user_id: int) -> int:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM user_favorites WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+    return int(row[0] if row else 0)
+
+
+def is_listing_favorited(db_path: Path, user_id: int, listing_id: int) -> bool:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT 1
+            FROM user_favorites
+            WHERE user_id = ? AND autoplius_id = ?
+            """,
+            (user_id, listing_id),
+        ).fetchone()
+    return row is not None
+
+
+def add_user_favorite(db_path: Path, user_id: int, listing_id: int) -> bool:
+    init_db(db_path)
+    now = _utc_now()
+    with connect(db_path) as conn:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO user_favorites (user_id, autoplius_id, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (user_id, listing_id, now),
+        )
+        row = conn.execute(
+            """
+            SELECT 1
+            FROM user_favorites
+            WHERE user_id = ? AND autoplius_id = ?
+            """,
+            (user_id, listing_id),
+        ).fetchone()
+    return row is not None
+
+
+def remove_user_favorite(db_path: Path, user_id: int, listing_id: int) -> bool:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        cur = conn.execute(
+            """
+            DELETE FROM user_favorites
+            WHERE user_id = ? AND autoplius_id = ?
+            """,
+            (user_id, listing_id),
+        )
+    return cur.rowcount > 0
+
+
+def toggle_user_favorite(db_path: Path, user_id: int, listing_id: int) -> bool:
+    if is_listing_favorited(db_path, user_id, listing_id):
+        remove_user_favorite(db_path, user_id, listing_id)
+        return False
+    add_user_favorite(db_path, user_id, listing_id)
+    return True
 
