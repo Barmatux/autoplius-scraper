@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  {% from "_price_lt.html" import render_price_lt %}
+  {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
   <header class="top">
     {% set brand_sub_html %}
       <a href="{{ back_url }}" data-back-to-list>← к списку</a>
@@ -66,6 +66,14 @@
     <section class="detail-info">
       <dl class="kv">
         <div><dt>Цена в LT</dt><dd>{{ render_price_lt(item) }}</dd></div>
+        <div><dt>Цена в BY</dt><dd>
+          {% set price_lines = item|catalog_price_lines %}
+          {% if price_lines and price_lines[0].label %}
+          {{ render_price_rb_vat(item) }}
+          {% else %}
+          {{ render_price_rb(item) }}
+          {% endif %}
+        </dd></div>
         {% for row in item|detail_spec_rows %}
         <div>
           <dt>{{ row.label }}</dt>
@@ -127,5 +135,6 @@
   <script src="{{ url_for('static', filename='gallery.js') }}" defer></script>
   {% endif %}
   <script src="{{ url_for('static', filename='tab_preference.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='price_rb_tooltip.js') }}" defer></script>
 </body>
 </html>
