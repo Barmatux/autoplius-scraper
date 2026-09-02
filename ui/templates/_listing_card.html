@@ -1,0 +1,109 @@
+{% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
+<article class="listing-card" data-listing-card="{{ item.autoplius_id }}">
+  {% set photos = item|listing_photos %}
+  {% set list_photos = photos.thumb if photos.thumb else photos.full %}
+  {% set make, model = item|listing_make_model %}
+  {% set detail_href = url_for('listing_detail', listing_id=item.autoplius_id, next=request_path) %}
+
+  {% if list_photos %}
+  <div class="listings-feed-gallery" data-list-gallery data-photos='{{ list_photos|tojson }}'>
+    <a class="card-cover-link" href="{{ detail_href }}" data-save-return aria-label="Открыть {{ make }} {{ model }}">
+      <img
+        class="catalog-cover listings-feed-gallery-photo"
+        data-list-photo
+        src="{{ list_photos[0] }}"
+        alt="{{ make }} {{ model }}"
+        loading="lazy"
+        decoding="async"
+      >
+    </a>
+    {% if list_photos|length > 1 %}
+    <button type="button" class="listings-feed-gallery-nav listings-feed-gallery-prev" data-list-photo-prev aria-label="Предыдущее фото">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5 9 12l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button type="button" class="listings-feed-gallery-nav listings-feed-gallery-next" data-list-photo-next aria-label="Следующее фото">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="list-photo-counter listings-feed-gallery-counter" data-list-photo-counter>1/{{ list_photos|length }}</div>
+    {% endif %}
+  </div>
+  {% else %}
+  <a class="card-cover-link card-cover-empty" href="{{ detail_href }}" data-save-return aria-label="Открыть {{ make }} {{ model }}">
+    <span class="card-cover-placeholder">Нет фото</span>
+  </a>
+  {% endif %}
+
+  <h3 class="listing-card-title">
+    <a href="{{ detail_href }}" data-save-return>
+      <span class="listing-make">{{ make }}</span>
+      {% if model %}<span class="listing-model">{{ model }}</span>{% endif %}
+    </a>
+  </h3>
+
+  <p class="listing-card-meta">
+    {% if item.year %}<strong>{{ item.year }}</strong>{% endif %}
+    {% if item.body_type %} · {{ item.body_type }}{% endif %}
+  </p>
+
+  {% if item.mileage_km is not none %}
+  <p class="listing-card-meta"><strong>Пробег:</strong> {{ "{:,}".format(item.mileage_km|int).replace(",", " ") }} км</p>
+  {% endif %}
+
+  {% if item.city %}
+  <p class="listing-card-meta">
+    <strong>Город:</strong> {{ item.city }}
+    {% set dist = item.city|city_distance %}
+    {% if dist %}<span class="muted"> · {{ dist }}</span>{% endif %}
+  </p>
+  {% endif %}
+
+  <div class="listing-spec-tags">
+    {% set vol = item|engine_volume %}
+    {% if vol and 'л' in vol.lower() %}<span>{{ vol }}</span>{% endif %}
+    {% if item.fuel %}<span>{{ item.fuel }}</span>{% endif %}
+    {% if item.transmission %}<span>{{ item.transmission }}</span>{% endif %}
+    {% if item.body_type %}<span>{{ item.body_type }}</span>{% endif %}
+    {% if item.has_vin_badge %}<span>VIN указан</span>{% endif %}
+  </div>
+
+  {% set desc = item|listing_description %}
+  {% if desc %}
+  <p class="listing-card-desc muted" title="{{ desc }}">{{ desc[:180] }}{% if desc|length > 180 %}…{% endif %}</p>
+  {% endif %}
+
+  {% if is_admin and tab == 'no_volume' %}
+  <div class="listing-card-no-volume">{% include "_no_volume_editor.html" %}</div>
+  {% endif %}
+
+  {% if item.first_seen_at %}
+  <p class="listing-card-date muted">{{ item.first_seen_at|format_date }} · {{ item.first_seen_at|format_time }}</p>
+  {% endif %}
+
+  {% set price_lines = item|catalog_price_lines %}
+  <div class="listings-feed-price">
+    <div class="card-price-bar{% if price_lines and price_lines[0].label %} card-price-vat{% endif %}">
+      <div class="card-price-lt">
+        <span class="card-price-label">LT, €</span>
+        <span class="card-price-value">
+          {% if price_lines and price_lines[0].label %}
+          {{ render_price_lt_vat(item) }}
+          {% else %}
+          {{ render_price_lt(item) }}
+          {% endif %}
+        </span>
+        {% include "_listing_admin_actions.html" %}
+      </div>
+      <div class="card-price-rb">
+        <span class="card-price-label">РБ, $</span>
+        <span class="card-price-value">
+          {% if price_lines and price_lines[0].label %}
+          {{ render_price_rb_vat(item) }}
+          {% else %}
+          {{ render_price_rb(item) }}
+          {% endif %}
+        </span>
+        {% include "_listing_admin_actions_rb.html" %}
+      </div>
+    </div>
+  </div>
+</article>

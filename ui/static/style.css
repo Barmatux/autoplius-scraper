@@ -571,6 +571,314 @@ main {
 .summary {
   margin: 1rem 0;
   color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.summary p {
+  margin: 0;
+}
+
+.listings-view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.listings-view-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.listings-view-btn + .listings-view-btn {
+  border-left: 1px solid var(--line);
+}
+
+.listings-view-btn.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.listings-view-btn:hover:not(.is-active) {
+  color: var(--ink);
+  background: rgba(255, 253, 248, 0.8);
+}
+
+html:not([data-listings-view="cards"]) [data-listings-view-panel="cards"] {
+  display: none !important;
+}
+
+html[data-listings-view="cards"] [data-listings-view-panel="table"] {
+  display: none !important;
+}
+
+html[data-listings-view="cards"] .table-layout-controls {
+  display: none;
+}
+
+.catalog.listings-feed {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 0.5rem;
+}
+
+.listing-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.listing-card:hover {
+  transform: translateY(-2px);
+  border-color: #b7dccb;
+  box-shadow: 0 14px 32px rgba(15, 106, 79, 0.12);
+}
+
+.card-cover-link {
+  display: block;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+  text-decoration: none;
+  aspect-ratio: 4 / 3;
+  background: #eef2f0;
+}
+
+.card-cover-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-cover-placeholder {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.catalog-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  transition: transform 0.15s ease;
+}
+
+.card-cover-link:hover .catalog-cover {
+  transform: scale(1.03);
+}
+
+.listings-feed-gallery {
+  position: relative;
+  margin-bottom: 6px;
+}
+
+.listings-feed-gallery .card-cover-link {
+  margin-bottom: 0;
+}
+
+.listings-feed-gallery-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 36px;
+  border: 0;
+  padding: 0;
+  background: rgba(15, 23, 42, 0.42);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.listings-feed-gallery-nav svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0 auto;
+}
+
+.listings-feed-gallery-nav:hover,
+.listings-feed-gallery-nav:focus-visible {
+  background: rgba(15, 23, 42, 0.62);
+  opacity: 1;
+  outline: none;
+}
+
+.listings-feed-gallery-prev {
+  left: 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.listings-feed-gallery-next {
+  right: 0;
+  border-radius: 8px 0 0 8px;
+}
+
+.listings-feed-gallery:hover .listings-feed-gallery-nav {
+  opacity: 0.92;
+}
+
+.listings-feed-gallery-counter {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  background: rgba(15, 23, 42, 0.55);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.72rem;
+}
+
+.listings-feed .listing-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.listing-card-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.listing-card-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.listing-card-title a:hover {
+  color: var(--accent);
+}
+
+.listing-card-meta {
+  margin: 2px 0;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.listing-card-desc {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.listing-card-date {
+  margin: 4px 0 0;
+  font-size: 11px;
+}
+
+.listing-card-no-volume {
+  margin-top: 6px;
+}
+
+.listing-spec-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.listing-spec-tags span {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid #c8e6da;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.listings-feed .listings-feed-price {
+  margin-top: auto;
+  padding-top: 10px;
+  margin-left: -10px;
+  margin-right: -10px;
+  margin-bottom: -10px;
+  width: calc(100% + 20px);
+}
+
+.card-price-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 13px 13px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f8fbf9 0%, #edf5f1 100%);
+}
+
+.card-price-lt,
+.card-price-rb {
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.card-price-rb {
+  border-left: 1px solid var(--line);
+}
+
+.card-price-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.card-price-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.2;
+}
+
+.card-price-rb .card-price-value {
+  color: var(--ink);
+}
+
+.card-price-bar .price-rb-value {
+  font-weight: 700;
+}
+
+.card-price-bar .price-vat-slot + .price-vat-slot {
+  margin-top: 4px;
+}
+
+.card-price-bar .price-vat-label-text {
+  font-size: 10px;
+}
+
+.listings-feed .listing-card:has(.price-rb:focus-within),
+.listings-feed .listing-card:has(.price-rb:hover) {
+  position: relative;
+  z-index: 25;
 }
 
 .table-wrap {
@@ -2062,9 +2370,26 @@ body.lightbox-open {
   .detail-layout {
     grid-template-columns: 1fr;
   }
+
+  .catalog.listings-feed {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 700px) {
   .top { padding: 1rem; }
   main { padding: 1rem; }
+
+  .catalog.listings-feed {
+    grid-template-columns: 1fr;
+  }
+
+  .card-price-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .card-price-rb {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
 }

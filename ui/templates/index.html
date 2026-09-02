@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Autoplius Scraper</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem("listings-view-v1") === "cards") {
+          document.documentElement.dataset.listingsView = "cards";
+        }
+      } catch (_err) { /* ignore */ }
+    })();
+  </script>
 </head>
 {% macro city_qs() -%}
 {%- for c in selected_cities -%}&city={{ c|urlencode }}{%- endfor -%}
@@ -160,11 +169,26 @@
         {% endif %}
         (стр. {{ page }}/{{ pages }}, по фильтру {{ total_filtered }} из {{ total_in_db }} в БД)
       </p>
+      <div class="listings-view-toggle" role="group" aria-label="Вид списка объявлений">
+        <button
+          type="button"
+          class="listings-view-btn is-active"
+          data-listings-view-btn="table"
+          aria-pressed="true"
+        >Вид 1</button>
+        <button
+          type="button"
+          class="listings-view-btn"
+          data-listings-view-btn="cards"
+          aria-pressed="false"
+        >Вид 2</button>
+      </div>
     </section>
 
     {% if not listings %}
     <p class="empty">Нет объявлений в базе по фильтру.</p>
     {% else %}
+    <div class="listings-view-panel" data-listings-view-panel="table">
     {% if is_admin %}
     <div class="table-layout-controls" data-table-layout-controls>
       <span class="table-layout-hint">Потяните границу столбца в заголовке таблицы, чтобы изменить ширину.</span>
@@ -341,6 +365,13 @@
         </tbody>
       </table>
     </div>
+    </div>
+
+    <div class="listings-view-panel catalog listings-feed" data-listings-view-panel="cards" hidden>
+      {% for item in listings %}
+      {% include "_listing_card.html" %}
+      {% endfor %}
+    </div>
 
     {% if pages > 1 %}
     <nav class="pager">
@@ -366,6 +397,7 @@
   <script src="{{ url_for('static', filename='city_filter.js') }}" defer></script>
   <script src="{{ url_for('static', filename='tab_preference.js') }}" defer></script>
   <script src="{{ url_for('static', filename='sort_preference.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='view_preference.js') }}" defer></script>
   <script src="{{ url_for('static', filename='column_resize.js') }}" defer></script>
 </body>
 </html>
