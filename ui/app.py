@@ -43,7 +43,7 @@ from autoplius.engine_catalog import (
     refresh_engine_catalog,
     split_catalog_entries,
 )
-from autoplius.translate import is_translation_error
+from autoplius.detail_display import detail_spec_rows
 from autoplius.engine_volume import (
     engine_volume_from_listing,
     parse_manual_volume_input,
@@ -553,14 +553,12 @@ def media_proxy():
 
 def display_description(item: dict[str, Any]) -> tuple[str | None, str | None]:
     """Return (primary_text, original_text) for description block."""
-    original = item.get("description")
-    translated = item.get("description_ru")
-    if is_translation_error(translated):
-        translated = None
-    if translated:
-        show_original = original if original and original != translated else None
-        return translated, show_original
-    return original, None
+    return seller_description(item)
+
+
+@app.template_filter("detail_spec_rows")
+def detail_spec_rows_filter(item: dict[str, Any]) -> list[dict[str, str]]:
+    return detail_spec_rows(item)
 
 
 @app.template_filter("listing_description")

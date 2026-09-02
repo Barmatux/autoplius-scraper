@@ -66,18 +66,20 @@
     {% endif %}
 
     <section class="detail-info">
-      <h2>Кратко</h2>
       <dl class="kv">
         <div><dt>Цена в LT</dt><dd>{{ render_price_lt(item) }}</dd></div>
-        <div><dt>Год</dt><dd>{{ item.year or '—' }}</dd></div>
-        <div><dt>Пробег</dt><dd>{% if item.mileage_km is not none %}{{ '{:,}'.format(item.mileage_km).replace(',', ' ') }} km{% else %}—{% endif %}</dd></div>
-        <div><dt>Топливо</dt><dd>{{ item.fuel or '—' }}</dd></div>
-        <div><dt>КПП</dt><dd>{{ item.transmission or '—' }}</dd></div>
-        <div><dt>Кузов</dt><dd>{{ item.body_type or '—' }}</dd></div>
-        <div><dt>Двигатель</dt><dd>{{ item.engine or '—' }}</dd></div>
-        <div><dt>Город</dt><dd>{{ item.city or '—' }}</dd></div>
-        <div><dt>VIN</dt><dd class="mono">{{ item.vin_masked or '—' }}</dd></div>
-        <div><dt>Телефон</dt><dd>{% if item.phone %}<a href="tel:{{ item.phone|replace(' ', '') }}">{{ item.phone }}</a>{% else %}—{% endif %}</dd></div>
+        {% for row in item|detail_spec_rows %}
+        <div>
+          <dt>{{ row.label }}</dt>
+          <dd{% if row.kind == 'mono' %} class="mono"{% endif %}>
+            {% if row.kind == 'phone' %}
+            <a href="tel:{{ row.value|replace(' ', '') }}">{{ row.value }}</a>
+            {% else %}
+            {{ row.value }}
+            {% endif %}
+          </dd>
+        </div>
+        {% endfor %}
         <div><dt>Фото</dt><dd>{{ photos.full|length if photos.full else 0 }}</dd></div>
         <div><dt>В БД с</dt><dd>{{ item.first_seen_at or '—' }}</dd></div>
         <div><dt>Обновлено</dt><dd>{{ item.last_seen_at or '—' }}</dd></div>
@@ -91,15 +93,6 @@
       {% if desc_original %}
       <p class="muted description-original">Оригинал: {{ desc_original }}</p>
       {% endif %}
-      {% endif %}
-
-      {% if item.parameters %}
-      <h2>Все параметры ({{ item.parameters|length }})</h2>
-      <dl class="kv">
-        {% for key, value in item.parameters.items() %}
-        <div><dt>{{ key }}</dt><dd>{{ value }}</dd></div>
-        {% endfor %}
-      </dl>
       {% endif %}
 
       {% if item|detail_scrape_pending %}

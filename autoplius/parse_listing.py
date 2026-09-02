@@ -227,15 +227,16 @@ def _parse_description(soup: BeautifulSoup) -> str | None:
         if not node:
             continue
         text = node.get_text(" ", strip=True)
-        if text and len(text) > 10:
+        if text and len(text) > 10 and _looks_like_seller_description(text):
             return text
 
-    meta_desc = soup.find("meta", attrs={"name": "description"})
-    if meta_desc and meta_desc.get("content"):
-        text = meta_desc.get("content", "").strip()
-        if text:
-            return text
     return None
+
+
+def _looks_like_seller_description(text: str) -> bool:
+    from autoplius.listing_description import is_seller_description
+
+    return is_seller_description(text)
 
 
 def parse_listing_html(html: str, url: str) -> ListingDetail:
