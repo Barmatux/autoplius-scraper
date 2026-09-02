@@ -37,16 +37,30 @@ def _spec_field_hits(text: str) -> int:
     return sum(1 for marker in _SPEC_FIELD_MARKERS if marker in lowered)
 
 
+def _is_meta_title_blurb(text: str) -> bool:
+    """Autoplius one-line title blurbs, not long seller prose starting with «Продается…»."""
+    lowered = text.casefold()
+    if not any(lowered.startswith(prefix) for prefix in _LISTING_META_PREFIXES):
+        return False
+    if len(text) >= 100 and _spec_field_hits(text) < 2:
+        return False
+    if _spec_field_hits(text) >= 2:
+        return True
+    if len(text) < 120 and text.count(",") >= 2:
+        return True
+    return len(text) < 80
+
+
 def is_seller_description(text: str | None) -> bool:
     if not text:
         return False
     clean = text.strip()
     if len(clean) < 25:
         return False
-    lowered = clean.casefold()
-    if any(lowered.startswith(prefix) for prefix in _LISTING_META_PREFIXES):
+    if _is_meta_title_blurb(clean):
         return False
 
+    lowered = clean.casefold()
     spec_hits = _spec_field_hits(clean)
     if spec_hits >= 3:
         return False
@@ -59,9 +73,8 @@ def is_seller_description(text: str | None) -> bool:
         if param_like >= 2 and param_like / len(lines) >= 0.5:
             return False
 
-    if len(lines) == 1 and clean.count(",") >= 4:
-        if spec_hits >= 2 or len(clean) < 320:
-            return False
+    if len(lines) == 1 and clean.count(",") >= 4 and spec_hits >= 2:
+        return False
 
     return True
 

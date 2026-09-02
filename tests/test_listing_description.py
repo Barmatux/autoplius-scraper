@@ -18,6 +18,15 @@ def test_accepts_real_seller_text():
     assert is_seller_description(text)
 
 
+def test_accepts_prose_starting_with_prodajetsja():
+    text = (
+        "Продается экономичный автомобиль – отлично подходит как для города, "
+        "так и для загородных поездок. Надежный, маневренный и экономичный, "
+        "расходует мало топлива, поэтому идеально подойдет для ежедневных поездок."
+    )
+    assert is_seller_description(text)
+
+
 def test_seller_description_filters_invalid_stored_text():
     item = {
         "description": "Parduodamas Ford Mondeo, 2015, diesel, 180000 km",

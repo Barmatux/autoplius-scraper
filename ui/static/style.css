@@ -1119,6 +1119,16 @@ a:hover {
   color: var(--accent);
 }
 
+.detail-city .city-distance {
+  margin-top: 0;
+  margin-left: 0.35rem;
+}
+
+.detail-city .city-map-link {
+  margin-top: 0;
+  margin-left: 0.5rem;
+}
+
 .city-filter-th {
   position: relative;
   overflow: visible;

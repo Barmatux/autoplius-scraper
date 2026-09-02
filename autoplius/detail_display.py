@@ -151,6 +151,7 @@ def detail_spec_rows(item: dict[str, Any]) -> list[dict[str, str]]:
         if not value:
             continue
         shown_values.add(_norm_value(value))
+        kind = "city" if field == "city" else kind
         rows.append({"label": label, "value": value, "kind": kind})
         if field == "mileage_km" and engine_line:
             rows.append({"label": "Двигатель", "value": engine_line, "kind": "text"})

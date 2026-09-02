@@ -54,3 +54,10 @@ def test_detail_engine_line_merges_fuel_volume_and_power():
     assert "Объём двигателя, см³" not in labels
     assert labels.count("Двигатель") == 1
     assert engine["value"] == "Дизель 1.6л (1560 см³) 111 Л.С. (82кВ)"
+
+
+def test_detail_city_row_uses_city_kind():
+    rows = detail_spec_rows({"city": "Мажейкяй"})
+    city = next(row for row in rows if row["label"] == "Город")
+    assert city["kind"] == "city"
+    assert city["value"] == "Мажейкяй"

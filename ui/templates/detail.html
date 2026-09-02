@@ -71,9 +71,15 @@
         {% for row in item|detail_spec_rows %}
         <div>
           <dt>{{ row.label }}</dt>
-          <dd{% if row.kind == 'mono' %} class="mono"{% endif %}>
+          <dd{% if row.kind == 'mono' %} class="mono"{% elif row.kind == 'city' %} class="detail-city"{% endif %}>
             {% if row.kind == 'phone' %}
             <a href="tel:{{ row.value|replace(' ', '') }}">{{ row.value }}</a>
+            {% elif row.kind == 'city' %}
+            <span class="city-name">{{ row.value }}</span>
+            {% set dist = row.value|city_distance %}
+            {% if dist %}<span class="muted city-distance">{{ dist }}</span>{% endif %}
+            {% set maps = row.value|city_maps_url %}
+            {% if maps %}<a class="city-map-link" href="{{ maps }}" target="_blank" rel="noopener">На карте</a>{% endif %}
             {% else %}
             {{ row.value }}
             {% endif %}
