@@ -423,5 +423,8 @@
   <script src="{{ url_for('static', filename='sort_preference.js') }}" defer></script>
   <script src="{{ url_for('static', filename='view_preference.js') }}" defer></script>
   <script src="{{ url_for('static', filename='column_resize.js') }}" defer></script>
+  {% if current_user %}
+  <script src="{{ url_for('static', filename='favorite_toggle.js') }}" defer></script>
+  {% endif %}
 </body>
 </html>

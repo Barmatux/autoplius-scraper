@@ -21,7 +21,7 @@
       <p class="auth-lead">Вы вошли как <strong>{{ user.username }}</strong>.</p>
 
       <div class="cabinet-stats">
-        <div class="pill accent">Избранное: {{ favorites_count }}</div>
+        <div class="pill accent">Избранное: <span data-favorites-count>{{ favorites_count }}</span></div>
         {% if stats.exists %}
         <div class="pill">Объявлений в базе: {{ stats.listings or 0 }}</div>
         <div class="pill">Активных: {{ stats.active_listings or 0 }}</div>
@@ -45,22 +45,23 @@
       <div class="cabinet-favorites-head">
         <h2 class="cabinet-favorites-title">Избранные объявления</h2>
         {% if favorites_count %}
-        <p class="cabinet-favorites-count muted">{{ favorites_count }} шт.</p>
+        <p class="cabinet-favorites-count muted"><span data-favorites-count>{{ favorites_count }}</span> шт.</p>
         {% endif %}
       </div>
 
       {% if favorites %}
-      <div class="catalog listings-feed cabinet-favorites-grid">
+      <div class="catalog listings-feed cabinet-favorites-grid" data-cabinet-favorites>
         {% for item in favorites %}
         {% include "_listing_card.html" %}
         {% endfor %}
       </div>
       {% else %}
-      <p class="empty cabinet-favorites-empty">
+      <p class="empty cabinet-favorites-empty" data-favorites-empty>
         Пока ничего нет. Откройте объявление в каталоге и нажмите ☆, чтобы добавить его сюда.
       </p>
       {% endif %}
     </section>
   </main>
+  <script src="{{ url_for('static', filename='favorite_toggle.js') }}" defer></script>
 </body>
 </html>

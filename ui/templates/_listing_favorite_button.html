@@ -4,8 +4,8 @@
   class="favorite-form"
   method="post"
   action="{{ url_for('toggle_favorite', listing_id=item.autoplius_id) }}"
+  data-favorite-form
 >
-  <input type="hidden" name="next" value="{{ request.full_path if request.full_path != '?' else request.path }}">
   <button
     type="submit"
     class="favorite-btn{% if is_favorite %} is-active{% endif %}"

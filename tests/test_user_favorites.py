@@ -85,6 +85,26 @@ def test_toggle_favorite_route_and_cabinet(tmp_path, monkeypatch):
     assert add.status_code == 302
     assert add.headers["Location"].endswith("/cabinet")
 
+    ajax_toggle = client.post(
+        "/favorites/555001",
+        headers={
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+        },
+    )
+    assert ajax_toggle.status_code == 200
+    assert ajax_toggle.get_json() == {"ok": True, "id": 555001, "favorited": False}
+
+    ajax_restore = client.post(
+        "/favorites/555001",
+        headers={
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+        },
+    )
+    assert ajax_restore.status_code == 200
+    assert ajax_restore.get_json() == {"ok": True, "id": 555001, "favorited": True}
+
     cabinet = client.get("/cabinet")
     assert cabinet.status_code == 200
     body = cabinet.get_data(as_text=True)

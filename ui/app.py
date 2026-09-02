@@ -588,11 +588,17 @@ def cabinet():
 def toggle_favorite(listing_id: int):
     user = _current_user()
     if user is None:
+        if _wants_json_response():
+            return jsonify({"ok": False, "error": "login required"}), 401
         return redirect(url_for("login", next=_current_request_path()))
     path = require_db()
     if fetch_listing(path, listing_id) is None:
+        if _wants_json_response():
+            return jsonify({"ok": False, "error": "not found"}), 404
         abort(404, "listing not found in database")
-    toggle_user_favorite(path, int(user["id"]), listing_id)
+    favorited = toggle_user_favorite(path, int(user["id"]), listing_id)
+    if _wants_json_response():
+        return jsonify({"ok": True, "id": listing_id, "favorited": favorited})
     next_url = _safe_redirect_target(
         request.form.get("next") or request.args.get("next")
     )
