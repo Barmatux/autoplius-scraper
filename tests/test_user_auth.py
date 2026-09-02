@@ -73,3 +73,37 @@ def test_login_and_cabinet_flow(tmp_path, monkeypatch):
 
     out = client.get("/logout", follow_redirects=False)
     assert out.status_code == 302
+
+
+@pytest.mark.skipif(
+    __import__("importlib").util.find_spec("flask") is None,
+    reason="Flask is not installed",
+)
+def test_admin_login_via_single_form(tmp_path, monkeypatch):
+    import ui.app as ui_app
+    from scraper.db import init_db
+
+    monkeypatch.setenv("ADMIN_USER", "admin")
+    monkeypatch.setenv("ADMIN_PASSWORD", "admin-secret")
+
+    db_path = tmp_path / "test.db"
+    ui_app.app.config["DB_PATH"] = db_path
+    ui_app.app.config["TESTING"] = True
+    init_db(db_path)
+
+    client = ui_app.app.test_client()
+    response = client.post(
+        "/login",
+        data={"username": "admin", "password": "admin-secret"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/?sort=added_desc")
+
+    with client.session_transaction() as sess:
+        assert sess.get("admin") is True
+        assert sess.get("user_id") is None
+
+    page = client.get("/")
+    assert page.status_code == 200
+    assert "Архив" in page.get_data(as_text=True)

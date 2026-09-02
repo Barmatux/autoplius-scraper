@@ -304,6 +304,13 @@ def _check_admin_auth() -> bool:
     return bool(auth and auth.username == user and auth.password == password)
 
 
+def _check_admin_form_credentials(username: str, password: str) -> bool:
+    admin_user, admin_password = _admin_credentials()
+    if not admin_user:
+        return False
+    return username == admin_user and password == admin_password
+
+
 def _is_admin() -> bool:
     return _check_admin_auth() or session.get("admin") is True
 
@@ -341,17 +348,15 @@ def require_admin_auth():
         )
     if _is_admin():
         return None
-    return Response(
-        "Admin authentication required",
-        401,
-        {"WWW-Authenticate": 'Basic realm="Autoplius Admin"'},
-    )
+    return redirect(url_for("login", next=_current_request_path()))
 
 
 @app.before_request
 def require_cabinet_auth():
     if not request.path.startswith("/cabinet"):
         return None
+    if _is_admin():
+        return redirect(url_for("index", sort=DEFAULT_LIST_SORT))
     if _current_user() is not None:
         return None
     return redirect(url_for("login", next=_current_request_path()))
@@ -393,42 +398,36 @@ def _wants_json_response() -> bool:
 
 @app.get("/admin/enter")
 def admin_enter():
-    user, _password = _admin_credentials()
-    if not user:
-        abort(
-            503,
-            "Admin auth is not configured. Set ADMIN_USER and ADMIN_PASSWORD in .env",
-        )
-    if not _check_admin_auth():
-        return Response(
-            "Admin authentication required",
-            401,
-            {"WWW-Authenticate": 'Basic realm="Autoplius Admin"'},
-        )
-    session.permanent = True
-    session["admin"] = True
-    return redirect(_safe_redirect_target(request.args.get("next")))
+    return redirect(url_for("login", next=_safe_redirect_target(request.args.get("next"))))
 
 
 @app.get("/admin/logout")
 def admin_logout():
-    session.pop("admin", None)
-    return redirect(url_for("index"))
+    return redirect(url_for("logout"))
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if _current_user() is not None:
-        return redirect(_safe_redirect_target(request.args.get("next")))
+    next_url = request.args.get("next")
+    if request.method == "GET":
+        if _is_admin():
+            return redirect(_safe_redirect_target(next_url or url_for("index", sort=DEFAULT_LIST_SORT)))
+        if _current_user() is not None:
+            return redirect(_safe_redirect_target(next_url or url_for("cabinet")))
 
     error = None
-    next_url = request.args.get("next")
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
         next_url = request.form.get("next") or next_url
         if not username or not password:
             error = "Введите логин и пароль."
+        elif _check_admin_form_credentials(username, password):
+            session.permanent = True
+            session["admin"] = True
+            session.pop("user_id", None)
+            session.pop("username", None)
+            return redirect(_safe_redirect_target(next_url or url_for("index", sort=DEFAULT_LIST_SORT)))
         else:
             try:
                 user = verify_user_password(require_db(), username, password)
@@ -440,7 +439,8 @@ def login():
                 session.permanent = True
                 session["user_id"] = user["id"]
                 session["username"] = user["username"]
-                return redirect(_safe_redirect_target(next_url))
+                session.pop("admin", None)
+                return redirect(_safe_redirect_target(next_url or url_for("cabinet")))
 
     return render_template("login.html", error=error, next=next_url)
 
@@ -449,6 +449,7 @@ def login():
 def logout():
     session.pop("user_id", None)
     session.pop("username", None)
+    session.pop("admin", None)
     return redirect(url_for("index"))
 
 
