@@ -1,4 +1,4 @@
-{% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
+{% from "_price_lt.html" import render_price_lt, render_price_rb %}
 <article class="listing-card" data-listing-card="{{ item.autoplius_id }}">
   {% set photos = item|listing_photos %}
   {% set list_photos = photos.thumb if photos.thumb else photos.full %}
@@ -76,30 +76,45 @@
   {% endif %}
 
   {% set price_lines = item|catalog_price_lines %}
+  {% set has_vat = price_lines and price_lines|length >= 2 and price_lines[0].label %}
+  {% set net_tip = "Уточните у продавца возможность покупки авто на экспорт по цене нетто (без НДС)" %}
   <div class="listings-feed-price">
-    <div class="card-price-bar{% if price_lines and price_lines[0].label %} card-price-vat{% endif %}">
-      <div class="card-price-lt">
-        <span class="card-price-label">LT, €</span>
-        <span class="card-price-value">
-          {% if price_lines and price_lines[0].label %}
-          {{ render_price_lt_vat(item) }}
-          {% else %}
-          {{ render_price_lt(item) }}
-          {% endif %}
-        </span>
-        {% include "_listing_admin_actions.html" %}
+    {% if has_vat %}
+    <div class="card-price-bar card-price-vat">
+      <div class="card-price-cell card-price-net" tabindex="0" data-tip="{{ net_tip }}">
+        <span class="card-price-label">LT, без НДС (Экспорт)</span>
+        <span class="card-price-value">{{ price_lines[0].lt_formatted }}</span>
       </div>
-      <div class="card-price-rb">
-        <span class="card-price-label">РБ, $</span>
-        <span class="card-price-value">
-          {% if price_lines and price_lines[0].label %}
-          {{ render_price_rb_vat(item) }}
-          {% else %}
-          {{ render_price_rb(item) }}
-          {% endif %}
-        </span>
-        {% include "_listing_admin_actions_rb.html" %}
+      <div class="card-price-cell">
+        <span class="card-price-label">Цена с НДС</span>
+        <span class="card-price-value">{{ price_lines[1].lt_formatted }}</span>
+      </div>
+      <div class="card-price-cell card-price-net" tabindex="0" data-tip="{{ net_tip }}">
+        <span class="card-price-label">РБ без НДС</span>
+        <span class="card-price-value">{% if price_lines[0].rb %}{{ price_lines[0].rb.total_formatted }}{% else %}—{% endif %}</span>
+      </div>
+      <div class="card-price-cell">
+        <span class="card-price-label">РБ с НДС</span>
+        <span class="card-price-value">{% if price_lines[1].rb %}{{ price_lines[1].rb.total_formatted }}{% else %}—{% endif %}</span>
       </div>
     </div>
+    {% else %}
+    <div class="card-price-bar">
+      <div class="card-price-cell card-price-lt">
+        <span class="card-price-label">LT, €</span>
+        <span class="card-price-value">{{ render_price_lt(item) }}</span>
+      </div>
+      <div class="card-price-cell card-price-rb">
+        <span class="card-price-label">РБ, $</span>
+        <span class="card-price-value">{{ render_price_rb(item) }}</span>
+      </div>
+    </div>
+    {% endif %}
+    {% if is_admin %}
+    <div class="card-price-admin">
+      {% include "_listing_admin_actions.html" %}
+      {% include "_listing_admin_actions_rb.html" %}
+    </div>
+    {% endif %}
   </div>
 </article>
