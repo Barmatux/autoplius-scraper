@@ -10,14 +10,13 @@ BRANCH="${DEPLOY_BRANCH:-main}"
 PY="$APP/.venv/bin/python"
 PIP="$APP/.venv/bin/pip"
 
-if [[ ! -d "$APP/.git" ]]; then
+if [[ "${SKIP_GIT_PULL:-}" != "1" ]] && [[ ! -d "$APP/.git" ]]; then
   echo "ERROR: $APP is not a git checkout" >&2
   exit 1
 fi
 
 cd "$APP"
 
-echo "=== fetch $REMOTE/$BRANCH ==="
 if [[ "${SKIP_GIT_PULL:-}" == "1" ]]; then
   echo "=== skip git pull (code synced by CI) ==="
 else
