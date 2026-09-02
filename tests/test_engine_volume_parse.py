@@ -35,3 +35,17 @@ def test_engine_volume_uses_stored_engine_liters():
         "parameters": {},
     }
     assert engine_volume_from_listing(item) == "1.6 L"
+
+
+def test_engine_volume_prefers_parameters_over_stored_and_oil_in_description():
+    item = {
+        "engine_liters": 0.5,
+        "title": "Audi A6, 3.0 l., Sedan",
+        "description": "Naudoja tepalus 1000km 0.5l tepalo",
+        "parameters": {
+            "Двигатель": "2995 см³, 310 Л.С. (228кВ)",
+            "Объём двигателя, см³": "3.0 л",
+        },
+    }
+    assert engine_volume_cm3(item) == 2995
+    assert engine_volume_from_listing(item) == "3.0 L"

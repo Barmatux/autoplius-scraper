@@ -43,6 +43,16 @@ PETROL_MARKERS = (
     "ecoboost",
 )
 
+OIL_CONSUMPTION_MARKERS = (
+    "tepal",
+    "смаз",
+    "oil consum",
+    "расход масла",
+    "naudoja tepal",
+    "bega antifriz",
+    "antifriz",
+    "антифриз",
+)
 VOLUME_PARAM_KEYS = (
     "Variklis",
     "Двигатель",
@@ -112,6 +122,10 @@ def _parse_volume_liters_from_text(text: str) -> float | None:
 
 
 def engine_volume_liters(item: dict[str, Any]) -> float | None:
+    cm3 = engine_volume_cm3(item)
+    if cm3 is not None:
+        return round(cm3 / 1000, 1)
+
     stored = item.get("engine_liters")
     if stored is not None:
         try:
@@ -121,10 +135,7 @@ def engine_volume_liters(item: dict[str, Any]) -> float | None:
         else:
             if 0.5 <= liters <= 10.0:
                 return round(liters, 1)
-    cm3 = engine_volume_cm3(item)
-    if cm3 is None:
-        return None
-    return cm3 / 1000
+    return None
 
 
 def _is_volume_param_key(key: str) -> bool:
@@ -155,9 +166,19 @@ def _iter_volume_param_values(params: dict[str, Any]) -> list[str]:
     return values
 
 
+def _description_mentions_oil_consumption(text: str) -> bool:
+    folded = text.casefold()
+    return any(marker in folded for marker in OIL_CONSUMPTION_MARKERS)
+
+
 def engine_volume_cm3(item: dict[str, Any]) -> int | None:
     """Exact engine displacement in cm³ when parseable."""
-    for key in ("description_ru", "description", "engine", "title"):
+    for value in _iter_volume_param_values(item.get("parameters") or {}):
+        cm3 = _parse_volume_cm3_from_text(value)
+        if cm3 is not None:
+            return cm3
+
+    for key in ("engine", "title"):
         value = item.get(key)
         if not value:
             continue
@@ -165,8 +186,14 @@ def engine_volume_cm3(item: dict[str, Any]) -> int | None:
         if cm3 is not None:
             return cm3
 
-    for value in _iter_volume_param_values(item.get("parameters") or {}):
-        cm3 = _parse_volume_cm3_from_text(value)
+    for key in ("description_ru", "description"):
+        value = item.get(key)
+        if not value:
+            continue
+        text = str(value)
+        if _description_mentions_oil_consumption(text):
+            continue
+        cm3 = _parse_volume_cm3_from_text(text)
         if cm3 is not None:
             return cm3
     return None

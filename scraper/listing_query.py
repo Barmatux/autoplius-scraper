@@ -77,7 +77,7 @@ def fetch_listings_for_options(
     return [row_to_listing(row) for row in rows]
 
 
-def backfill_engine_liters(db_path: Path, *, batch_size: int = 500) -> int:
+def backfill_engine_liters(db_path: Path, *, batch_size: int = 500, force: bool = False) -> int:
     if not db_path.is_file():
         return 0
     updated = 0
@@ -86,12 +86,13 @@ def backfill_engine_liters(db_path: Path, *, batch_size: int = 500) -> int:
         if "engine_liters" not in cols:
             return 0
         last_id = 0
+        null_clause = "" if force else "engine_liters IS NULL AND "
         while True:
             rows = conn.execute(
-                """
-                SELECT autoplius_id, title, engine, parameters_json, description, description_ru
+                f"""
+                SELECT autoplius_id, title, engine, parameters_json, description, description_ru, engine_liters
                 FROM listings
-                WHERE engine_liters IS NULL AND autoplius_id > ?
+                WHERE {null_clause} autoplius_id > ?
                 ORDER BY autoplius_id
                 LIMIT ?
                 """,
@@ -100,7 +101,11 @@ def backfill_engine_liters(db_path: Path, *, batch_size: int = 500) -> int:
             if not rows:
                 break
             for row in rows:
-                liters = engine_volume_liters(_volume_item_from_row(row))
+                item = _volume_item_from_row(row)
+                item["engine_liters"] = row["engine_liters"]
+                liters = engine_volume_liters(item)
+                if force and liters == row["engine_liters"]:
+                    continue
                 conn.execute(
                     "UPDATE listings SET engine_liters = ? WHERE autoplius_id = ?",
                     (liters, row["autoplius_id"]),
