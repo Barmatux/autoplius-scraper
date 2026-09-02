@@ -56,10 +56,11 @@ jobs:
             --exclude='.venv' \
             --exclude='__pycache__' \
             --exclude='.browser-profile' \
+            --exclude='.env' \
             -C . . \
             | ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
               "${VM_USER}@${VM_HOST}" \
-              "rm -rf '${SYNC_DIR}' && mkdir -p '${SYNC_DIR}' && tar xzf - -C '${SYNC_DIR}' && sudo rsync -a '${SYNC_DIR}/' '${APP_DIR}/' && sudo chown -R autoplius:autoplius '${APP_DIR}' && rm -rf '${SYNC_DIR}'"
+              "rm -rf '${SYNC_DIR}' && mkdir -p '${SYNC_DIR}' && tar xzf - -C '${SYNC_DIR}' && sudo rsync -a --exclude='.env' --exclude='.venv' --exclude='.browser-profile' '${SYNC_DIR}/' '${APP_DIR}/' && sudo chown -R autoplius:autoplius '${APP_DIR}' && sudo chmod 600 '${APP_DIR}/.env' 2>/dev/null || true && rm -rf '${SYNC_DIR}'"
 
       - name: Run deploy-from-git.sh on VM
         env:
