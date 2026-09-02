@@ -24,3 +24,14 @@ def test_seller_description_filters_invalid_stored_text():
         "description_ru": None,
     }
     assert seller_description(item) == (None, None)
+
+
+def test_rejects_autoplius_spec_summary_dump():
+    text = (
+        "Renault Captur, Внедорожник / Кроссовер. Первая регистрация 2018-06, "
+        "Пробег 130 000 км, Тип топлива Бензин, Тип кузова Внедорожник / Кроссовер, "
+        "Количество дверей 4/5, Коробка передач Автоматическая, Цвет Синий / голубой"
+    )
+    assert not is_seller_description(text)
+    item = {"description": text, "description_ru": text}
+    assert seller_description(item) == (None, None)

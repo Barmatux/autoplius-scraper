@@ -15,6 +15,26 @@ _LISTING_META_PREFIXES = (
     "продаётся",
     "продается",
 )
+_SPEC_FIELD_MARKERS = (
+    "первая регистрация",
+    "пробег",
+    "тип топлива",
+    "тип кузова",
+    "коробка передач",
+    "количество дверей",
+    "выброс co",
+    "vin-код",
+    "pirma registracija",
+    "rida",
+    "kuro tipas",
+    "kėbulo tipas",
+    "pavarų d",
+)
+
+
+def _spec_field_hits(text: str) -> int:
+    lowered = text.casefold()
+    return sum(1 for marker in _SPEC_FIELD_MARKERS if marker in lowered)
 
 
 def is_seller_description(text: str | None) -> bool:
@@ -26,13 +46,23 @@ def is_seller_description(text: str | None) -> bool:
     lowered = clean.casefold()
     if any(lowered.startswith(prefix) for prefix in _LISTING_META_PREFIXES):
         return False
+
+    spec_hits = _spec_field_hits(clean)
+    if spec_hits >= 3:
+        return False
+    if "регистрация" in lowered and "пробег" in lowered and clean.count(",") >= 3:
+        return False
+
     lines = [line.strip() for line in re.split(r"[\n\r]+", clean) if line.strip()]
     if len(lines) >= 2:
         param_like = sum(1 for line in lines if _PARAM_LINE_RE.match(line))
         if param_like >= 2 and param_like / len(lines) >= 0.5:
             return False
-    if len(lines) == 1 and clean.count(",") >= 4 and len(clean) < 220:
-        return False
+
+    if len(lines) == 1 and clean.count(",") >= 4:
+        if spec_hits >= 2 or len(clean) < 320:
+            return False
+
     return True
 
 
