@@ -904,6 +904,18 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
     photo_urls = normalize_photo_list(detail.get("photo_urls") or [])
     init_db(db_path)
     with connect(db_path) as conn:
+        existing = conn.execute(
+            "SELECT photo_url, photo_urls_json FROM listings WHERE autoplius_id = ?",
+            (listing_id,),
+        ).fetchone()
+        if not photo_urls and existing is not None:
+            existing_urls = normalize_photo_list(json.loads(existing["photo_urls_json"] or "[]"))
+            if not existing_urls and existing["photo_url"]:
+                existing_urls = normalize_photo_list([existing["photo_url"]])
+            if existing_urls:
+                photo_urls = existing_urls
+
+        photo_url = photo_urls[0] if photo_urls else (existing["photo_url"] if existing else None)
         conn.execute(
             """
             UPDATE listings SET
@@ -937,7 +949,7 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
                 json.dumps(detail.get("parameters") or {}, ensure_ascii=False)
                 if detail.get("parameters")
                 else None,
-                photo_urls[0] if photo_urls else None,
+                photo_url,
                 json.dumps(photo_urls, ensure_ascii=False),
                 _utc_now(),
                 listing_id,

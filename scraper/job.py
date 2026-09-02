@@ -89,10 +89,14 @@ def merge_preview_and_detail(
         row["phone"] = detail.get("phone")
         row["vin_masked"] = detail.get("vin_masked")
         row["parameters"] = detail.get("parameters") or {}
-        row["photo_urls"] = detail.get("photo_urls") or []
-        row["photo_urls"] = normalize_photo_list(row["photo_urls"])
-        if row["photo_urls"] and not row.get("photo_url"):
-            row["photo_url"] = row["photo_urls"][0]
+        detail_photos = normalize_photo_list(detail.get("photo_urls") or [])
+        if detail_photos:
+            row["photo_urls"] = detail_photos
+            row["photo_url"] = detail_photos[0]
+        elif row.get("photo_url"):
+            row["photo_urls"] = normalize_photo_list([row["photo_url"]])
+        else:
+            row["photo_urls"] = []
         params = row["parameters"]
         promote_parameters(row, params)
         original_description = row.get("description")
