@@ -10,9 +10,11 @@ from autoplius.labels import PARAMETER_TO_FIELD
 _SKIP_PARAM_LABEL_RE = re.compile(
     r"(co[\s₂2]?|выброс|emisij|"
     r"id\s*объяв|skelbimo\s*id|"
-    r"регистр|registracij|mokestis|взнос)",
+    r"регистр|registracij|mokestis|взнос|"
+    r"проверьте|истори)",
     re.I,
 )
+_SKIP_PARAM_VALUE_RE = re.compile(r"(проверьте|»|https?://|autoplius)", re.I)
 
 _CORE_FIELDS: tuple[tuple[str, str, str], ...] = (
     ("year", "Год", "text"),
@@ -31,8 +33,22 @@ def _norm_value(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip().casefold())
 
 
+def _norm_digits(value: Any) -> str:
+    return re.sub(r"\D", "", str(value or ""))
+
+
+def _values_equivalent(field: str, left: str, right: str) -> bool:
+    if field == "mileage_km":
+        return _norm_digits(left) == _norm_digits(right) and bool(_norm_digits(left))
+    return _norm_value(left) == _norm_value(right)
+
+
 def _skip_param_label(label: str) -> bool:
     return bool(_SKIP_PARAM_LABEL_RE.search(label or ""))
+
+
+def _skip_param_value(value: str) -> bool:
+    return bool(_SKIP_PARAM_VALUE_RE.search(value or ""))
 
 
 def _field_value(item: dict[str, Any], field: str) -> str | None:
@@ -63,12 +79,12 @@ def detail_spec_rows(item: dict[str, Any]) -> list[dict[str, str]]:
         if _skip_param_label(param_label):
             continue
         value = str(param_value or "").strip()
-        if not value:
+        if not value or _skip_param_value(value):
             continue
         mapped_field = PARAMETER_TO_FIELD.get(param_label)
         if mapped_field:
             existing = _field_value(item, mapped_field)
-            if existing and _norm_value(existing) == _norm_value(value):
+            if existing and _values_equivalent(mapped_field, existing, value):
                 continue
         if _norm_value(value) in shown_values:
             continue
