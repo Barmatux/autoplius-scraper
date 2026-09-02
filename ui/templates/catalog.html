@@ -60,18 +60,21 @@
 <body>
   <header class="top">
     {% set brand_sub = "Справочник объёмов для расчёта растаможки" %}
-    {% include "_brand.html" %}
-    <div class="meta">
-      {% include "_admin_bar.html" %}
-      <div class="pill accent">{{ catalog_summary.total }} модификаций</div>
-      {% if catalog_summary.new %}
-      <div class="pill warn">Новые: {{ catalog_summary.new }}</div>
-      {% endif %}
-      <div class="pill">Заполнено: {{ catalog_summary.filled }}</div>
-      <div class="pill">Вручную: {{ catalog_summary.manual }}</div>
-      {% if catalog_summary.missing %}
-      <div class="pill warn">Без объёма: {{ catalog_summary.missing }}</div>
-      {% endif %}
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+        <div class="pill accent">{{ catalog_summary.total }} модификаций</div>
+        {% if catalog_summary.new %}
+        <div class="pill warn">Новые: {{ catalog_summary.new }}</div>
+        {% endif %}
+        <div class="pill">Заполнено: {{ catalog_summary.filled }}</div>
+        <div class="pill">Вручную: {{ catalog_summary.manual }}</div>
+        {% if catalog_summary.missing %}
+        <div class="pill warn">Без объёма: {{ catalog_summary.missing }}</div>
+        {% endif %}
+      </div>
     </div>
   </header>
 

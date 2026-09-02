@@ -52,9 +52,12 @@
   {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
   <header class="top">
     {% set brand_sub = "Все объявления из SQLite" %}
-    {% include "_brand.html" %}
-    <div class="meta">
-      {% include "_admin_bar.html" %}
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+      </div>
     </div>
   </header>
 

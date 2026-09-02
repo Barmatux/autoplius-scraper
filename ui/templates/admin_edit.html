@@ -14,13 +14,16 @@
       · Редактирование #{{ item.autoplius_id }}
       · <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}">карточка</a>
     {% endset %}
-    {% include "_brand.html" %}
-    <div class="meta">
-      {% include "_admin_bar.html" %}
-      {% if item.manual_overrides %}
-      <div class="pill accent">Защита от парсера: {{ item.manual_overrides|length }} пол.</div>
-      {% endif %}
-      {% if item.status == 'archived' %}<div class="pill">Архив</div>{% endif %}
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+        {% if item.manual_overrides %}
+        <div class="pill accent">Защита от парсера: {{ item.manual_overrides|length }} пол.</div>
+        {% endif %}
+        {% if item.status == 'archived' %}<div class="pill">Архив</div>{% endif %}
+      </div>
     </div>
   </header>
 

@@ -13,25 +13,28 @@
       <a href="{{ back_url }}" data-back-to-list>← к списку</a>
       · {{ item|listing_headline }} · #{{ item.autoplius_id }} · SQLite
     {% endset %}
-    {% include "_brand.html" %}
-    <div class="meta">
-      {% include "_admin_bar.html" %}
-      <div class="pill accent">{{ render_price_lt(item) }}</div>
-      {% if item.phone %}<div class="pill">{{ item.phone }}</div>{% endif %}
-      {% if item.vin_masked %}<div class="pill mono">{{ item.vin_masked }}</div>{% endif %}
-      {% if item.status == 'archived' %}<div class="pill">Архив</div>{% endif %}
-      {% include "_listing_favorite_button.html" %}
-      {% if is_admin and item.status != 'archived' %}
-      <form
-        class="detail-archive-form admin-inline-form"
-        method="post"
-        action="{{ url_for('admin_archive_listing', listing_id=item.autoplius_id) }}"
-        onsubmit="return confirm('Переместить объявление в архив?');"
-      >
-        <button type="submit" class="pill detail-archive-btn">В архив</button>
-      </form>
-      {% endif %}
-      <a class="pill" href="{{ item.url }}" target="_blank" rel="noopener">Открыть на autoplius</a>
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+        <div class="pill accent">{{ render_price_lt(item) }}</div>
+        {% if item.phone %}<div class="pill">{{ item.phone }}</div>{% endif %}
+        {% if item.vin_masked %}<div class="pill mono">{{ item.vin_masked }}</div>{% endif %}
+        {% if item.status == 'archived' %}<div class="pill">Архив</div>{% endif %}
+        {% include "_listing_favorite_button.html" %}
+        {% if is_admin and item.status != 'archived' %}
+        <form
+          class="detail-archive-form admin-inline-form"
+          method="post"
+          action="{{ url_for('admin_archive_listing', listing_id=item.autoplius_id) }}"
+          onsubmit="return confirm('Переместить объявление в архив?');"
+        >
+          <button type="submit" class="pill detail-archive-btn">В архив</button>
+        </form>
+        {% endif %}
+        <a class="pill" href="{{ item.url }}" target="_blank" rel="noopener">Открыть на autoplius</a>
+      </div>
     </div>
   </header>
 

@@ -25,19 +25,42 @@ def test_merge_preserves_minio_photo_when_search_update_has_no_photo():
     assert merged["photo_urls_json"] == existing["photo_urls_json"]
 
 
-def test_merge_replaces_photo_when_incoming_has_new_urls():
+def test_merge_preserves_engine_liters_when_search_update_has_none():
     existing = {
-        "autoplius_id": 102,
-        "photo_url": "/media/object?key=listings/102/old.jpg",
-        "photo_urls_json": json.dumps(["/media/object?key=listings/102/old.jpg"]),
+        "autoplius_id": 103,
+        "engine_liters": 1.6,
+        "parameters_json": json.dumps({"Двигатель": "1598 см³"}, ensure_ascii=False),
         "detail_scraped": 1,
         "manual_overrides_json": None,
     }
     incoming = {
-        "autoplius_id": 102,
-        "photo_url": "https://autoplius-img.dgn.lt/ann_2_/new.jpg",
-        "photo_urls_json": json.dumps(["https://autoplius-img.dgn.lt/ann_2_/new.jpg"]),
-        "detail_scraped": 1,
+        "autoplius_id": 103,
+        "engine_liters": None,
+        "parameters_json": "{}",
+        "detail_scraped": 0,
+        "price_eur": 5000,
     }
-    merged = merge_listing_row(existing, incoming, keep_detail=False)
-    assert "new.jpg" in merged["photo_url"]
+    merged = merge_listing_row(existing, incoming, keep_detail=True)
+    assert merged["engine_liters"] == 1.6
+    assert "1598" in merged["parameters_json"]
+
+
+def test_merge_refreshes_engine_liters_from_parameters_when_missing():
+    existing = {
+        "autoplius_id": 104,
+        "engine_liters": None,
+        "parameters_json": json.dumps(
+            {"Двигатель": "1461 см³", "Объём двигателя, см³": "1.5 л"},
+            ensure_ascii=False,
+        ),
+        "detail_scraped": 1,
+        "manual_overrides_json": None,
+    }
+    incoming = {
+        "autoplius_id": 104,
+        "engine_liters": None,
+        "parameters_json": "{}",
+        "detail_scraped": 0,
+    }
+    merged = merge_listing_row(existing, incoming, keep_detail=True)
+    assert merged["engine_liters"] == 1.5

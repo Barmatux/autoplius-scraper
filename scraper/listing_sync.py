@@ -63,6 +63,7 @@ DETAIL_FIELDS = frozenset(
         "price_net_eur",
         "price_gross_eur",
         "price_vat_note",
+        "engine_liters",
     }
 )
 
@@ -90,6 +91,7 @@ MERGE_FIELDS = (
     "photo_urls_json",
     "detail_scraped",
     "detail_error",
+    "engine_liters",
 )
 
 
@@ -200,7 +202,7 @@ def merge_listing_row(
             if not _has_value(new_value):
                 merged[field] = old_value
 
-        if field in {"price_net_eur", "price_gross_eur", "price_vat_note"}:
+        if field in {"price_net_eur", "price_gross_eur", "price_vat_note", "engine_liters"}:
             if new_value is None and old_value is not None:
                 merged[field] = old_value
 
@@ -209,4 +211,28 @@ def merge_listing_row(
     if keep_detail or "detail_error" in overrides:
         merged["detail_error"] = existing.get("detail_error")
 
+    _refresh_merged_engine_liters(merged)
     return merged
+
+
+def _refresh_merged_engine_liters(merged: dict[str, Any]) -> None:
+    """Fill engine_liters from params/engine/description when still missing."""
+    from autoplius.engine_volume import engine_volume_liters
+
+    if merged.get("engine_liters") is not None:
+        return
+    try:
+        parameters = json.loads(merged.get("parameters_json") or "{}")
+    except json.JSONDecodeError:
+        parameters = {}
+    liters = engine_volume_liters(
+        {
+            "title": merged.get("title"),
+            "engine": merged.get("engine"),
+            "description": merged.get("description"),
+            "description_ru": merged.get("description_ru"),
+            "parameters": parameters if isinstance(parameters, dict) else {},
+        }
+    )
+    if liters is not None:
+        merged["engine_liters"] = liters

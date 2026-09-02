@@ -562,7 +562,7 @@ def logout():
     session.pop("user_id", None)
     session.pop("username", None)
     session.pop("admin", None)
-    return redirect(url_for("index"))
+    return redirect(url_for("index", tab=TAB_ALL, sort=DEFAULT_LIST_SORT))
 
 
 @app.get("/cabinet")

@@ -9,9 +9,12 @@
 <body>
   <header class="top">
     {% set brand_sub = "Регистрация" %}
-    {% include "_brand.html" %}
-    <div class="meta">
-      {% include "_admin_bar.html" %}
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+      </div>
     </div>
   </header>
 

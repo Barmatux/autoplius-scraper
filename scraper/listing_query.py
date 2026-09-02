@@ -102,9 +102,16 @@ def backfill_engine_liters(db_path: Path, *, batch_size: int = 500, force: bool 
                 break
             for row in rows:
                 item = _volume_item_from_row(row)
-                item["engine_liters"] = row["engine_liters"]
+                item["engine_liters"] = None
                 liters = engine_volume_liters(item)
-                if force and liters == row["engine_liters"]:
+                if liters is None:
+                    if not force:
+                        continue
+                    if row["engine_liters"] is None:
+                        continue
+                elif not force and liters == row["engine_liters"]:
+                    continue
+                elif force and liters == row["engine_liters"]:
                     continue
                 conn.execute(
                     "UPDATE listings SET engine_liters = ? WHERE autoplius_id = ?",

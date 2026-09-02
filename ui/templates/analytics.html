@@ -9,15 +9,18 @@
 <body>
   <header class="top">
     {% set brand_sub = "История прогонов парсера" %}
-    {% include "_brand.html" %}
-    <div class="meta">
-      <div class="pill accent">{{ analytics.totals.runs or 0 }} прогонов</div>
-      {% if analytics.recent.runs %}
-      <div class="pill">Последние {{ analytics.recent_limit }}: {{ analytics.recent.runs }}</div>
-      {% endif %}
-      {% if db_stats and db_stats.last_run and db_stats.last_run.finished_at %}
-      <div class="pill">Последний: {{ db_stats.last_run.finished_at|format_datetime }}</div>
-      {% endif %}
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        <div class="pill accent">{{ analytics.totals.runs or 0 }} прогонов</div>
+        {% if analytics.recent.runs %}
+        <div class="pill">Последние {{ analytics.recent_limit }}: {{ analytics.recent.runs }}</div>
+        {% endif %}
+        {% if db_stats and db_stats.last_run and db_stats.last_run.finished_at %}
+        <div class="pill">Последний: {{ db_stats.last_run.finished_at|format_datetime }}</div>
+        {% endif %}
+      </div>
     </div>
   </header>
 
