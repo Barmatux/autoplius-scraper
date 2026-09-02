@@ -58,6 +58,7 @@ jobs:
           set -euo pipefail
           SYNC_DIR="/tmp/autoplius-sync-$$"
           APP_DIR="/opt/autoplius-scraper"
+          MYFIN_REMOTE="/tmp/autoplius-myfin-rates.json"
           tar czf - \
             --exclude='.git' \
             --exclude='.venv' \
@@ -68,12 +69,17 @@ jobs:
             | ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
               "${VM_USER}@${VM_HOST}" \
               "rm -rf '${SYNC_DIR}' && mkdir -p '${SYNC_DIR}' && tar xzf - -C '${SYNC_DIR}' && sudo rsync -a --exclude='.env' --exclude='.venv' --exclude='.browser-profile' '${SYNC_DIR}/' '${APP_DIR}/' && sudo chown -R autoplius:autoplius '${APP_DIR}' && sudo chmod 600 '${APP_DIR}/.env' 2>/dev/null || true && rm -rf '${SYNC_DIR}'"
+          sync_rc="${PIPESTATUS[1]:-0}"
+          if [[ "$sync_rc" -ne 0 ]]; then
+            echo "ERROR: remote tar/rsync/chown failed with exit ${sync_rc}" >&2
+            exit "$sync_rc"
+          fi
           scp -o BatchMode=yes -o StrictHostKeyChecking=yes \
             /tmp/autoplius-data/myfin_rates.json \
-            "${VM_USER}@${VM_HOST}:/tmp/myfin_rates.json"
+            "${VM_USER}@${VM_HOST}:${MYFIN_REMOTE}"
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "${VM_USER}@${VM_HOST}" \
-            'sudo cp /tmp/myfin_rates.json /var/lib/autoplius-scraper/data/myfin_rates.json && sudo chown autoplius:autoplius /var/lib/autoplius-scraper/data/myfin_rates.json'
+            "sudo cp '${MYFIN_REMOTE}' /var/lib/autoplius-scraper/data/myfin_rates.json && sudo chown autoplius:autoplius /var/lib/autoplius-scraper/data/myfin_rates.json && rm -f '${MYFIN_REMOTE}'"
 
       - name: Run deploy-from-git.sh on VM
         env:
