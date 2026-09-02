@@ -21,6 +21,13 @@ updated = backfill_engine_liters(Settings.from_env().db_path)
 print("backfill_engine_liters:", updated)
 PY
 
+echo "=== refresh myfin rates (best effort) ==="
+if sudo -u autoplius env PYTHONPATH="$APP" DATA_DIR=/var/lib/autoplius-scraper/data "$PY" tools/refresh_myfin_rates.py; then
+  echo "myfin rates refreshed"
+else
+  echo "WARNING: myfin refresh failed; using cached/fallback rates"
+fi
+
 echo "=== media cache dir ==="
 mkdir -p /var/lib/autoplius-scraper/media-cache
 chown autoplius:autoplius /var/lib/autoplius-scraper/media-cache
