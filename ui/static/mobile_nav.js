@@ -1,42 +1,36 @@
 (function () {
   const toggle = document.querySelector("[data-mobile-nav-toggle]");
-  const panel = document.querySelector("[data-mobile-nav-panel]");
-  if (!toggle || !panel) {
+  const shell = document.querySelector("[data-mobile-nav-shell]");
+  if (!toggle || !shell) {
     return;
   }
+
+  const backdrop = shell.querySelector("[data-mobile-nav-backdrop]");
 
   function setOpen(open) {
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
     toggle.setAttribute("aria-label", open ? "Закрыть меню" : "Открыть меню");
     toggle.classList.toggle("is-open", open);
-    panel.hidden = !open;
+    document.body.classList.toggle("mobile-nav-open", open);
+    shell.hidden = !open;
   }
 
-  toggle.addEventListener("click", () => {
-    setOpen(panel.hidden);
+  toggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setOpen(shell.hidden);
   });
 
-  document.addEventListener("click", (event) => {
-    if (panel.hidden) {
-      return;
-    }
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (target.closest("[data-mobile-nav-toggle]") || target.closest("[data-mobile-nav-panel]")) {
-      return;
-    }
-    setOpen(false);
-  });
+  if (backdrop) {
+    backdrop.addEventListener("click", () => setOpen(false));
+  }
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !panel.hidden) {
+    if (event.key === "Escape" && !shell.hidden) {
       setOpen(false);
     }
   });
 
-  document.querySelectorAll("[data-mobile-nav-group]").forEach((group) => {
+  shell.querySelectorAll("[data-mobile-nav-group]").forEach((group) => {
     const trigger = group.querySelector("[data-mobile-nav-group-trigger]");
     const submenu = group.querySelector("[data-mobile-nav-submenu]");
     if (!trigger || !submenu) {

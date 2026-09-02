@@ -66,6 +66,8 @@ body {
   background: var(--card);
   padding: 0;
   cursor: pointer;
+  position: relative;
+  z-index: 1100;
 }
 
 .mobile-nav-toggle-bars {
@@ -97,7 +99,7 @@ body {
   transform: translateY(-6px) rotate(-45deg);
 }
 
-.mobile-nav-panel {
+.mobile-nav-shell {
   display: none;
 }
 
@@ -2590,8 +2592,13 @@ body.lightbox-open {
   }
 
   .brand-sub {
-    font-size: 0.8rem;
-    overflow-wrap: anywhere;
+    display: none;
+  }
+
+  .top {
+    position: sticky;
+    top: 0;
+    z-index: 1200;
   }
 
   .top-main {
@@ -2614,21 +2621,47 @@ body.lightbox-open {
     display: none;
   }
 
+  body.mobile-nav-open {
+    overflow: hidden;
+  }
+
+  .mobile-nav-shell {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+  }
+
+  .mobile-nav-shell[hidden] {
+    display: none !important;
+  }
+
+  .mobile-nav-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: rgba(28, 26, 22, 0.48);
+    cursor: pointer;
+  }
+
   .mobile-nav-panel {
+    position: absolute;
+    top: 3.6rem;
+    left: 0.75rem;
+    right: 0.75rem;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
-    width: 100%;
-    margin-top: 0.35rem;
+    max-height: calc(100vh - 4.5rem);
+    overflow-y: auto;
+    margin: 0;
     padding: 0.55rem;
     border: 1px solid var(--line);
     border-radius: 0.9rem;
     background: var(--card);
-    box-shadow: var(--shadow);
-  }
-
-  .mobile-nav-panel[hidden] {
-    display: none !important;
+    box-shadow: 0 18px 40px rgba(28, 26, 22, 0.22);
   }
 
   .mobile-nav-link {

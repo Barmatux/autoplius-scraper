@@ -3,53 +3,60 @@
   class="mobile-nav-toggle"
   data-mobile-nav-toggle
   aria-expanded="false"
-  aria-controls="mobile-nav-panel"
+  aria-controls="mobile-nav-shell"
   aria-label="Открыть меню"
 >
   <span class="mobile-nav-toggle-bars" aria-hidden="true">
     <span></span><span></span><span></span>
   </span>
 </button>
-<nav class="mobile-nav-panel" id="mobile-nav-panel" data-mobile-nav-panel hidden>
-  <a
-    class="mobile-nav-link{% if active_tab is defined and active_tab == 'all' %} is-active{% endif %}"
-    href="{{ url_for('index', tab='all', sort=nav_sort) }}"
-  >Объявления</a>
-  <div class="mobile-nav-group" data-mobile-nav-group>
-    <button type="button" class="mobile-nav-link mobile-nav-group-trigger" data-mobile-nav-group-trigger aria-expanded="false">
-      ТОП модели для импорта
-    </button>
-    <div class="mobile-nav-submenu" data-mobile-nav-submenu hidden>
-      {% for preset in import_presets %}
-      <a href="{{ preset.href }}" class="mobile-nav-sublink">{{ preset.label }}</a>
-      {% endfor %}
+<div class="mobile-nav-shell" id="mobile-nav-shell" data-mobile-nav-shell hidden>
+  <button type="button" class="mobile-nav-backdrop" data-mobile-nav-backdrop aria-label="Закрыть меню"></button>
+  <nav class="mobile-nav-panel" data-mobile-nav-panel aria-label="Меню">
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'all' %} is-active{% endif %}"
+      href="{{ url_for('index', tab='all', sort=nav_sort) }}"
+    >Объявления</a>
+    <div class="mobile-nav-group" data-mobile-nav-group>
+      <button type="button" class="mobile-nav-link mobile-nav-group-trigger" data-mobile-nav-group-trigger aria-expanded="false">
+        ТОП модели для импорта
+      </button>
+      <div class="mobile-nav-submenu" data-mobile-nav-submenu hidden>
+        {% for preset in import_presets %}
+        <a href="{{ preset.href }}" class="mobile-nav-sublink">{{ preset.label }}</a>
+        {% endfor %}
+      </div>
     </div>
-  </div>
-  <a
-    class="mobile-nav-link{% if active_tab is defined and active_tab == 'no_volume' %} is-active{% endif %}"
-    href="{{ url_for('index', tab='no_volume', sort=nav_sort) }}"
-  >Без объема{% if no_volume_count is defined and no_volume_count is not none %} <span class="tab-count">{{ no_volume_count }}</span>{% endif %}</a>
-  <a
-    class="mobile-nav-link{% if active_tab is defined and active_tab == 'electric' %} is-active{% endif %}"
-    href="{{ url_for('index', tab='electric', sort=nav_sort) }}"
-  >Электро{% if electric_count is defined and electric_count is not none %} <span class="tab-count">{{ electric_count }}</span>{% endif %}</a>
-  <a
-    class="mobile-nav-link{% if active_tab is defined and active_tab == 'cabinet' %} is-active{% endif %}"
-    href="{{ url_for('cabinet') }}"
-  >Избранные</a>
-  {% if is_admin %}
-  <a
-    class="mobile-nav-link{% if active_tab is defined and active_tab == 'archived' %} is-active{% endif %}"
-    href="{{ url_for('index', tab='archived', sort=nav_sort) }}"
-  >Архив{% if archived_count is defined %} <span class="tab-count">{{ archived_count }}</span>{% endif %}</a>
-  <a
-    class="mobile-nav-link{% if active_tab is defined and active_tab == 'catalog' %} is-active{% endif %}"
-    href="{{ url_for('catalog') }}"
-  >Каталог{% if catalog_new_count %} <span class="tab-count">{{ catalog_new_count }}</span>{% endif %}</a>
-  <a
-    class="mobile-nav-link{% if active_tab is defined and active_tab == 'analytics' %} is-active{% endif %}"
-    href="{{ url_for('analytics') }}"
-  >Аналитика</a>
-  {% endif %}
-</nav>
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'no_volume' %} is-active{% endif %}"
+      href="{{ url_for('index', tab='no_volume', sort=nav_sort) }}"
+    >Без объема{% if no_volume_count is defined and no_volume_count is not none %} <span class="tab-count">{{ no_volume_count }}</span>{% endif %}</a>
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'electric' %} is-active{% endif %}"
+      href="{{ url_for('index', tab='electric', sort=nav_sort) }}"
+    >Электро{% if electric_count is defined and electric_count is not none %} <span class="tab-count">{{ electric_count }}</span>{% endif %}</a>
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'favorites' %} is-active{% endif %}"
+      href="{{ url_for('cabinet') }}"
+    >Избранные</a>
+    {% if is_admin %}
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'archived' %} is-active{% endif %}"
+      href="{{ url_for('index', tab='archived', sort=nav_sort) }}"
+    >Архив{% if archived_count is defined %} <span class="tab-count">{{ archived_count }}</span>{% endif %}</a>
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'catalog' %} is-active{% endif %}"
+      href="{{ url_for('catalog') }}"
+    >Каталог{% if catalog_new_count %} <span class="tab-count">{{ catalog_new_count }}</span>{% endif %}</a>
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'analytics' %} is-active{% endif %}"
+      href="{{ url_for('analytics') }}"
+    >Аналитика</a>
+    {% endif %}
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'cabinet' %} is-active{% endif %}"
+      href="{{ url_for('cabinet') }}"
+    >Личный кабинет</a>
+  </nav>
+</div>
 <script src="{{ url_for('static', filename='mobile_nav.js') }}" defer></script>
