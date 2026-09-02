@@ -150,6 +150,33 @@ def serve_s3_object(settings: Settings, key: str, width: int | None) -> Response
     )
 
 
+def serve_s3_object_from_cache(key: str, width: int | None) -> Response:
+    """Serve a previously cached S3 object when remote storage is unavailable."""
+    if width:
+        thumb_path = _cache_file("s3", key, width)
+        if thumb_path.is_file() and thumb_path.stat().st_size > 0:
+            return send_file(
+                thumb_path,
+                mimetype="image/webp",
+                max_age=604800,
+                conditional=True,
+            )
+
+    orig_path = _cache_file("s3", key, None)
+    if orig_path.is_file() and orig_path.stat().st_size > 0:
+        data = orig_path.read_bytes()
+        content_type = "application/octet-stream"
+        if width:
+            try:
+                data = _resize_webp(data, width)
+                content_type = "image/webp"
+            except (UnidentifiedImageError, OSError, ValueError):
+                abort(502, "Invalid image")
+        return _image_response(data, content_type)
+
+    abort(404, "Object not found")
+
+
 def serve_remote_photo(url: str, referer: str, width: int | None) -> Response:
     return _serve_cached_or_build(
         kind="cdn",

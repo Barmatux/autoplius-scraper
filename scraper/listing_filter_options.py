@@ -13,6 +13,7 @@ from autoplius.spec_filters import (
     transmission_filter_checked_slugs,
     transmission_filter_display_label,
 )
+from autoplius.title_sql import title_make_expr, title_model_expr
 from scraper.db import connect
 from scraper.listing_sql_filters import (
     BLOCKED_MAKES,
@@ -20,20 +21,6 @@ from scraper.listing_sql_filters import (
     _reg_year_expr,
     build_listing_where,
 )
-
-
-def _title_make_raw_expr() -> str:
-    return (
-        "trim(substr(COALESCE(title, ''), 1, "
-        "max(0, instr(COALESCE(title, '') || ',', ',') - 1)))"
-    )
-
-
-def _title_model_raw_expr() -> str:
-    rest = "substr(COALESCE(title, ''), instr(COALESCE(title, '') || ',', ',') + 1)"
-    return (
-        f"trim(substr({rest}, 1, max(0, instr({rest} || ',', ',') - 1)))"
-    )
 
 
 def _where_sql(filters: ListingFilters) -> tuple[str, list[Any]]:
@@ -80,8 +67,8 @@ def fetch_listing_filter_options(
         return ListingFilterOptions([], {"makes": [], "modelMap": {}, "makeCounts": {}}, [], [], [], [], [])
 
     where, params = _where_sql(filters)
-    make_expr = _title_make_raw_expr()
-    model_expr = _title_model_raw_expr()
+    make_expr = title_make_expr()
+    model_expr = title_model_expr()
     year_expr = _reg_year_expr()
     blocked_checks = " AND ".join(f"lower({make_expr}) NOT LIKE ?" for _ in BLOCKED_MAKES)
     blocked_params = [f"{make.casefold()}%" for make in BLOCKED_MAKES]

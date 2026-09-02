@@ -1,6 +1,28 @@
 from scraper.listing_sql_filters import ListingFilters, build_listing_where
 
 
+def test_vehicle_filter_matches_space_separated_title():
+    filters = ListingFilters(
+        vehicle_rows=[{"make": "Peugeot", "model": "3008"}],
+        catalog_filter=False,
+    )
+    where, params = build_listing_where(filters)
+    sql = " AND ".join(where)
+    assert "lower(COALESCE(title, '')) LIKE ?" in sql
+    assert "peugeot 3008%" in params
+    assert "peugeot,%3008%" in params
+
+
+def test_vehicle_filter_make_only_matches_space_or_comma():
+    filters = ListingFilters(
+        vehicle_rows=[{"make": "Volvo", "model": ""}],
+        catalog_filter=False,
+    )
+    _where, params = build_listing_where(filters)
+    assert "volvo %" in params
+    assert "volvo,%" in params
+
+
 def test_no_volume_tab_sql_excludes_skoda_and_pickups():
     filters = ListingFilters(engine_volume_missing=True, catalog_filter=False)
     where, params = build_listing_where(filters)

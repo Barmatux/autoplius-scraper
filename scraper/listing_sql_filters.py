@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from autoplius.make_model_filters import BLOCKED_MAKES
+from autoplius.title_sql import title_make_expr
 
 MIN_CATALOG_YEAR = 2008
 PICKUP_BODY_MARKERS = ("%pikap%", "%pickup%", "%пикап%")
@@ -30,7 +31,7 @@ def _age_months_expr() -> str:
 
 
 def _title_make_expr() -> str:
-    return "lower(trim(substr(COALESCE(title, ''), 1, instr(COALESCE(title, '') || ',', ',') - 1)))"
+    return f"lower({title_make_expr()})"
 
 
 def _pickup_clause() -> str:
@@ -174,14 +175,22 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
             make = (row.get("make") or "").strip()
             model = (row.get("model") or "").strip()
             if make and model:
-                row_clauses.append("lower(COALESCE(title, '')) LIKE ?")
-                params.append(f"{make.casefold()},%{model.casefold()}%")
+                space_pat = f"{make.casefold()} {model.casefold()}%"
+                comma_pat = f"{make.casefold()},%{model.casefold()}%"
+                row_clauses.append(
+                    "(lower(COALESCE(title, '')) LIKE ? OR lower(COALESCE(title, '')) LIKE ?)"
+                )
+                params.extend([space_pat, comma_pat])
             elif make:
-                row_clauses.append("lower(COALESCE(title, '')) LIKE ?")
-                params.append(f"{make.casefold()},%")
+                space_pat = f"{make.casefold()} %"
+                comma_pat = f"{make.casefold()},%"
+                row_clauses.append(
+                    "(lower(COALESCE(title, '')) LIKE ? OR lower(COALESCE(title, '')) LIKE ?)"
+                )
+                params.extend([space_pat, comma_pat])
             elif model:
                 row_clauses.append("lower(COALESCE(title, '')) LIKE ?")
-                params.append(f"%, {model.casefold()},%")
+                params.append(f"% {model.casefold()}%")
         if row_clauses:
             clauses.append("(" + " OR ".join(row_clauses) + ")")
 

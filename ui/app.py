@@ -31,7 +31,13 @@ from scraper.db import (
 from scraper.listing_filter_options import fetch_listing_filter_options
 from scraper.listing_query import count_listings, fetch_listing_ids
 from scraper.listing_sql_filters import ListingFilters
-from ui.media_serve import LIST_THUMB_WIDTH, parse_width, serve_remote_photo, serve_s3_object
+from ui.media_serve import (
+    LIST_THUMB_WIDTH,
+    parse_width,
+    serve_remote_photo,
+    serve_s3_object,
+    serve_s3_object_from_cache,
+)
 from ui.photo_urls import is_external_photo_url, photo_display_url, photo_display_urls
 from ui.table_layout import COL_KEYS, load_table_layout, save_table_layout, validate_layout
 from autoplius.cities_lt import distance_from_vilnius_label, google_maps_url
@@ -540,9 +546,10 @@ def media_object():
     key = request.args.get("key", "").strip()
     if not key or ".." in key or key.startswith("/"):
         abort(400, "Invalid object key")
-    if not SETTINGS.s3_enabled:
-        abort(503, "S3 storage is not configured")
-    return serve_s3_object(SETTINGS, key, parse_width(request.args.get("w")))
+    width = parse_width(request.args.get("w"))
+    if SETTINGS.s3_enabled:
+        return serve_s3_object(SETTINGS, key, width)
+    return serve_s3_object_from_cache(key, width)
 
 
 @app.get("/media/proxy")
