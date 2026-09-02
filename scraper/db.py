@@ -22,6 +22,7 @@ from scraper.listing_sync import (
     merge_listing_row,
     parse_manual_overrides,
 )
+from scraper.query_cache import cached_db_stats
 
 
 SCHEMA = """
@@ -1207,6 +1208,10 @@ def repair_stale_detail_errors(db_path: Path) -> int:
 
 
 def db_stats(db_path: Path) -> dict[str, Any]:
+    return cached_db_stats(db_path, _load_db_stats)
+
+
+def _load_db_stats(db_path: Path) -> dict[str, Any]:
     if not db_path.is_file():
         return {"exists": False}
     with connect(db_path) as conn:

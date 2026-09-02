@@ -21,6 +21,7 @@ from scraper.listing_sql_filters import (
     _reg_year_expr,
     build_listing_where,
 )
+from scraper.query_cache import cached_listing_filter_options
 
 
 def _where_sql(filters: ListingFilters) -> tuple[str, list[Any]]:
@@ -60,6 +61,17 @@ class ListingFilterOptions:
 
 
 def fetch_listing_filter_options(
+    db_path: Path,
+    filters: ListingFilters,
+) -> ListingFilterOptions:
+    return cached_listing_filter_options(
+        db_path,
+        filters,
+        _load_listing_filter_options,
+    )
+
+
+def _load_listing_filter_options(
     db_path: Path,
     filters: ListingFilters,
 ) -> ListingFilterOptions:

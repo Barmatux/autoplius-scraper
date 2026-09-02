@@ -26,6 +26,7 @@ from autoplius.translate import translate_to_russian
 from autoplius.urls import build_search_url, configure_base_url
 
 from scraper.config import Settings
+from scraper.query_cache import invalidate_query_cache
 from scraper.db import (
     fetch_listings_pending_detail,
     hours_since_last_full_scrape,
@@ -487,6 +488,7 @@ def scrape_search_pages(
         run_id,
         photo_sync.get("uploaded", 0),
     )
+    invalidate_query_cache()
     return ScrapeRunResult(payload=payload, snapshot_path=str(snapshot_path), diff=diff)
 
 
