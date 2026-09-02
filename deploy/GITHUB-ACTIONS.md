@@ -7,6 +7,8 @@ Triggers:
 - every push to `main`
 - manual run (**Actions → Deploy to VM → Run workflow**)
 
+Exchange rates: [`.github/workflows/refresh-myfin-rates.yml`](../.github/workflows/refresh-myfin-rates.yml) runs every 30 minutes (GitHub runners fetch myfin.by; the VM cannot).
+
 ## One-time setup
 
 ### 1. Repository secrets

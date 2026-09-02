@@ -161,10 +161,12 @@ def myfin_best_buy_rate(pair: str) -> float:
             file_dt = datetime.fromisoformat(str(file_fetched_at).replace("Z", "+00:00"))
         except ValueError:
             file_dt = None
-    if file_rate is not None and file_dt and now - file_dt < _CACHE_TTL:
-        rate = float(file_rate)
-        _CACHE[pair] = {"fetched_at": file_dt, "rate": rate}
-        return rate
+    if file_rate is not None and file_dt:
+        use_file = not cached_at or file_dt >= cached_at
+        if use_file and now - file_dt < _CACHE_TTL:
+            rate = float(file_rate)
+            _CACHE[pair] = {"fetched_at": file_dt, "rate": rate}
+            return rate
 
     try:
         rate = _parse_best_buy_rate(_fetch_html(MYFIN_URLS[pair]))

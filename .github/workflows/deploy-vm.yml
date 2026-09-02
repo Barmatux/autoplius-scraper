@@ -31,6 +31,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Refresh myfin exchange rates
+        run: |
+          mkdir -p /tmp/autoplius-data
+          pip install beautifulsoup4
+          DATA_DIR=/tmp/autoplius-data python3 tools/refresh_myfin_rates.py --force
+
       - name: Load SSH key
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -62,6 +68,12 @@ jobs:
             | ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
               "${VM_USER}@${VM_HOST}" \
               "rm -rf '${SYNC_DIR}' && mkdir -p '${SYNC_DIR}' && tar xzf - -C '${SYNC_DIR}' && sudo rsync -a --exclude='.env' --exclude='.venv' --exclude='.browser-profile' '${SYNC_DIR}/' '${APP_DIR}/' && sudo chown -R autoplius:autoplius '${APP_DIR}' && sudo chmod 600 '${APP_DIR}/.env' 2>/dev/null || true && rm -rf '${SYNC_DIR}'"
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            /tmp/autoplius-data/myfin_rates.json \
+            "${VM_USER}@${VM_HOST}:/tmp/myfin_rates.json"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${VM_USER}@${VM_HOST}" \
+            'sudo cp /tmp/myfin_rates.json /var/lib/autoplius-scraper/data/myfin_rates.json && sudo chown autoplius:autoplius /var/lib/autoplius-scraper/data/myfin_rates.json'
 
       - name: Run deploy-from-git.sh on VM
         env:

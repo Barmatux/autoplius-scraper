@@ -1,0 +1,72 @@
+# Refresh myfin.by exchange rates on the VM every 30 minutes.
+#
+# GitHub runners can reach myfin.by; the production VM gets HTTP 423, so rates
+# are fetched here and copied to /var/lib/autoplius-scraper/data/myfin_rates.json.
+#
+# Uses the same secrets as deploy-vm.yml:
+#   VM_HOST, VM_USER, VM_SSH_PRIVATE_KEY
+
+name: Refresh myfin rates
+
+on:
+  schedule:
+    - cron: "5,35 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-myfin-rates
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    name: Fetch myfin → VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install parser dependency
+        run: pip install beautifulsoup4
+
+      - name: Fetch myfin rates
+        run: |
+          mkdir -p /tmp/autoplius-data
+          DATA_DIR=/tmp/autoplius-data python3 tools/refresh_myfin_rates.py --force
+          cat /tmp/autoplius-data/myfin_rates.json
+
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+
+      - name: Trust VM host key
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload rates and restart UI
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          set -euo pipefail
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            /tmp/autoplius-data/myfin_rates.json \
+            "${VM_USER}@${VM_HOST}:/tmp/myfin_rates.json"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${VM_USER}@${VM_HOST}" <<'REMOTE'
+          set -euo pipefail
+          sudo cp /tmp/myfin_rates.json /var/lib/autoplius-scraper/data/myfin_rates.json
+          sudo chown autoplius:autoplius /var/lib/autoplius-scraper/data/myfin_rates.json
+          sudo systemctl restart autoplius-ui
+          REMOTE
