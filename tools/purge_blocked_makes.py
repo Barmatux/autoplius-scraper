@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Archive Ligier/Microcar listings and remove them from engine catalog."""
+"""Archive Skoda, Ligier/Microcar, pickups and remove them from engine catalog."""
 from __future__ import annotations
 
 import argparse
@@ -21,8 +21,10 @@ def main() -> None:
     init_db(args.db)
     result = purge_blocked_makes(args.db)
     print(
-        "Purged blocked makes: "
+        "Purged hidden listings: "
         f"archived_listings={result['archived_listings']} "
+        f"(blocked={result.get('archived_blocked_makes', 0)}, "
+        f"pickups={result.get('archived_pickups', 0)}) "
         f"catalog_removed={result['catalog_removed']}"
     )
 

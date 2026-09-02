@@ -4,9 +4,10 @@ from collections import Counter
 from typing import Any
 
 from autoplius.catalog_filters import listing_year
+from autoplius.catalog_filters import is_pickup_listing
 from autoplius.listing_display import listing_make_model
 
-BLOCKED_MAKES = frozenset({"Ligier", "Microcar"})
+BLOCKED_MAKES = frozenset({"Ligier", "Microcar", "Skoda"})
 
 
 def is_blocked_make(make: str | None) -> bool:
@@ -23,7 +24,11 @@ def is_blocked_listing(item: dict[str, Any]) -> bool:
 
 
 def exclude_blocked_makes(listings: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [item for item in listings if not is_blocked_listing(item)]
+    return [
+        item
+        for item in listings
+        if not is_blocked_listing(item) and not is_pickup_listing(item)
+    ]
 
 
 def exclude_blocked_catalog_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -6,6 +6,7 @@ from typing import Any
 
 from autoplius.listing_display import listing_make_model
 from autoplius.engine_volume import _parse_volume_cm3_from_text, engine_volume_cm3
+from autoplius.catalog_filters import is_pickup_listing
 from autoplius.make_model_filters import is_blocked_make
 
 CATALOG_UPTO_LITERS_DEFAULT = 1.9
@@ -84,6 +85,8 @@ def aggregate_catalog_groups(listings: list[dict[str, Any]]) -> list[dict[str, A
     grouped: dict[tuple[str, str, str, str], dict[str, Any]] = {}
 
     for item in listings:
+        if is_pickup_listing(item):
+            continue
         make, model, engine_label, fuel = catalog_key_from_item(item)
         if not make or is_blocked_make(make) or not engine_label or engine_label == "—":
             continue

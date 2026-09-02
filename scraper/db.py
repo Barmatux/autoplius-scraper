@@ -764,8 +764,17 @@ def _listing_python_filters(
         listings = [item for item in listings if is_passable_age(item)]
     if older_than_3_only:
         listings = [item for item in listings if is_older_than_years(item, years=3)]
+    listings = [
+        item
+        for item in listings
+        if not is_pickup_listing(item) and not is_blocked_listing(item)
+    ]
     if catalog_filter:
-        listings = [item for item in listings if is_catalog_visible(item)]
+        listings = [
+            item
+            for item in listings
+            if (year := listing_year(item)) is None or year >= MIN_CATALOG_YEAR
+        ]
     return listings
 
 
@@ -1099,7 +1108,7 @@ def set_listing_archived(
 
 
 def purge_blocked_makes(db_path: Path) -> dict[str, int]:
-    """Archive active listings and drop engine-catalog rows for blocked makes."""
+    """Archive hidden listings (blocked makes, pickups) and drop their catalog rows."""
     init_db(db_path)
     catalog_removed = 0
     with connect(db_path) as conn:
@@ -1110,20 +1119,32 @@ def purge_blocked_makes(db_path: Path) -> dict[str, int]:
             )
             catalog_removed += int(cur.rowcount or 0)
 
-    archived = 0
-    listings = fetch_listings(
-        db_path,
-        passable_only=False,
-        catalog_filter=False,
-        listing_status="active",
-        lite=True,
-    )
-    for item in listings:
-        if not is_blocked_listing(item):
+    archived_blocked = 0
+    archived_pickups = 0
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            f"""
+            SELECT {LISTING_COLUMNS_LITE}
+            FROM listings
+            WHERE status IS NULL OR status = 'active'
+            """
+        ).fetchall()
+    for row in rows:
+        item = row_to_listing(row)
+        should_archive = is_blocked_listing(item) or is_pickup_listing(item)
+        if not should_archive:
             continue
         if set_listing_archived(db_path, item["autoplius_id"], archived=True):
-            archived += 1
-    return {"archived_listings": archived, "catalog_removed": catalog_removed}
+            if is_pickup_listing(item):
+                archived_pickups += 1
+            else:
+                archived_blocked += 1
+    return {
+        "archived_listings": archived_blocked + archived_pickups,
+        "archived_blocked_makes": archived_blocked,
+        "archived_pickups": archived_pickups,
+        "catalog_removed": catalog_removed,
+    }
 
 
 def repair_invalid_listing_titles(db_path: Path) -> int:

@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from autoplius.make_model_filters import BLOCKED_MAKES
+
 MIN_CATALOG_YEAR = 2008
-HIDDEN_MAKES = frozenset({"skoda"})
-BLOCKED_MAKES = frozenset({"Ligier"})
 PICKUP_BODY_MARKERS = ("%pikap%", "%pickup%", "%пикап%")
 
 
@@ -31,6 +31,13 @@ def _age_months_expr() -> str:
 
 def _title_make_expr() -> str:
     return "lower(trim(substr(COALESCE(title, ''), 1, instr(COALESCE(title, '') || ',', ',') - 1)))"
+
+
+def _pickup_clause() -> str:
+    pickup_checks = " AND ".join(
+        f"lower(COALESCE(body_type, '')) NOT LIKE '{marker}'" for marker in PICKUP_BODY_MARKERS
+    )
+    return f"({pickup_checks})"
 
 
 @dataclass
@@ -95,26 +102,18 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
         )
         params.extend([like] * 9)
 
-    if filters.catalog_filter:
-        pickup_checks = " AND ".join(
-            f"lower(COALESCE(body_type, '')) NOT LIKE '{marker}'" for marker in PICKUP_BODY_MARKERS
-        )
-        clauses.append(f"({pickup_checks})")
-        hidden_checks = " AND ".join(
-            f"{_title_make_expr()} NOT LIKE ?" for _ in HIDDEN_MAKES
-        )
-        clauses.extend([f"({hidden_checks})"])
-        params.extend(f"{make}%" for make in HIDDEN_MAKES)
-        year_expr = _reg_year_expr()
-        clauses.append(f"({year_expr} IS NULL OR {year_expr} >= ?)")
-        params.append(MIN_CATALOG_YEAR)
-
     if filters.exclude_blocked_makes:
+        clauses.append(_pickup_clause())
         blocked_checks = " AND ".join(
             f"{_title_make_expr()} NOT LIKE ?" for _ in BLOCKED_MAKES
         )
         clauses.append(f"({blocked_checks})")
-        params.extend(f"{make}%" for make in BLOCKED_MAKES)
+        params.extend(f"{make.casefold()}%" for make in BLOCKED_MAKES)
+
+    if filters.catalog_filter:
+        year_expr = _reg_year_expr()
+        clauses.append(f"({year_expr} IS NULL OR {year_expr} >= ?)")
+        params.append(MIN_CATALOG_YEAR)
 
     age_months = _age_months_expr()
     if filters.older_than_3_only:

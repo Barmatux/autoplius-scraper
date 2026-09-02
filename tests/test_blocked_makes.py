@@ -1,11 +1,14 @@
 from autoplius.make_model_filters import BLOCKED_MAKES, is_blocked_make, is_blocked_listing
 
 
-def test_blocked_makes_include_ligier_and_microcar():
+def test_blocked_makes_include_ligier_microcar_and_skoda():
     assert "Ligier" in BLOCKED_MAKES
     assert "Microcar" in BLOCKED_MAKES
+    assert "Skoda" in BLOCKED_MAKES
     assert is_blocked_make("Ligier")
     assert is_blocked_make("microcar")
+    assert is_blocked_make("Skoda")
+    assert is_blocked_make("skoda")
     assert not is_blocked_make("Renault")
 
 

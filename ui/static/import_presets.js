@@ -13,8 +13,14 @@
   function setOpen(open) {
     root.classList.toggle("is-open", open);
     trigger.setAttribute("aria-expanded", open ? "true" : "false");
-    menu.hidden = !open;
+    if (open) {
+      menu.removeAttribute("hidden");
+    } else {
+      menu.setAttribute("hidden", "");
+    }
   }
+
+  setOpen(false);
 
   trigger.addEventListener("click", function (event) {
     event.preventDefault();
