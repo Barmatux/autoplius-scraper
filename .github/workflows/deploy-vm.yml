@@ -80,6 +80,9 @@ jobs:
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "${VM_USER}@${VM_HOST}" \
             "sudo cp '${MYFIN_REMOTE}' /var/lib/autoplius-scraper/data/myfin_rates.json && sudo chown autoplius:autoplius /var/lib/autoplius-scraper/data/myfin_rates.json && rm -f '${MYFIN_REMOTE}'"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${VM_USER}@${VM_HOST}" \
+            'sudo systemctl restart autoplius-ui.service && sleep 2 && systemctl is-active autoplius-ui.service'
 
       - name: Run deploy-from-git.sh on VM
         env:
