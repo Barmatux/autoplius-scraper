@@ -27,6 +27,7 @@ from scraper.db import (
     update_listing_admin,
     set_listing_archived,
     set_listing_engine_volume,
+    set_listing_manual_electric,
     update_engine_catalog_entry,
     verify_user_password,
 )
@@ -98,6 +99,7 @@ LISTINGS_VIEW_CARDS = "cards"
 SETTINGS = Settings.from_env()
 TAB_ALL = "all"
 TAB_NO_VOLUME = "no_volume"
+TAB_ELECTRIC = "electric"
 TAB_ARCHIVED = "archived"
 TAB_ADMIN = "admin"
 DEFAULT_LIST_SORT = "added_desc"
@@ -476,6 +478,10 @@ def inject_tab_counts():
                 path,
                 ListingFilters(engine_volume_missing=True, catalog_filter=False),
             ),
+            "electric_count": count_listings(
+                path,
+                ListingFilters(electric_only=True, catalog_filter=False),
+            ),
         }
     except Exception:
         return {}
@@ -555,7 +561,7 @@ def _filter_by_cities(
 
 def _current_tab() -> str:
     tab = (request.args.get("tab") or TAB_ALL).strip()
-    return tab if tab in {TAB_ALL, TAB_NO_VOLUME, TAB_ARCHIVED} else TAB_ALL
+    return tab if tab in {TAB_ALL, TAB_NO_VOLUME, TAB_ELECTRIC, TAB_ARCHIVED} else TAB_ALL
 
 
 def _current_listings_view() -> str:
@@ -583,8 +589,9 @@ def _listing_filters_for_tab(
         older_than_3_only=over_3y,
         passable_only=passable,
         engine_volume_missing=tab == TAB_NO_VOLUME,
-        engine_upto_liters=1.9 if upto_19l and tab != TAB_NO_VOLUME else None,
-        catalog_filter=tab != TAB_NO_VOLUME,
+        electric_only=tab == TAB_ELECTRIC,
+        engine_upto_liters=1.9 if upto_19l and tab not in {TAB_NO_VOLUME, TAB_ELECTRIC} else None,
+        catalog_filter=tab not in {TAB_NO_VOLUME, TAB_ELECTRIC},
         exclude_blocked_makes=True,
     )
 
@@ -601,30 +608,18 @@ def _fetch_index_listings(
     over_3y: bool,
     lite: bool = False,
 ) -> list[dict[str, Any]]:
-    common = dict(
+    filters = _listing_filters_for_tab(
         q=q,
         min_price=min_price,
         max_price=max_price,
         sort=sort,
-        passable_only=passable,
-        listing_status="archived" if tab == TAB_ARCHIVED else "active",
-        older_than_3_only=over_3y,
+        tab=tab,
+        upto_19l=upto_19l,
+        passable=passable,
+        over_3y=over_3y,
     )
-    if tab == TAB_NO_VOLUME:
-        listings = fetch_listings(
-            path,
-            **common,
-            engine_volume_missing=True,
-            lite=lite,
-        )
-    else:
-        listings = fetch_listings(
-            path,
-            **common,
-            engine_upto_liters=1.9 if upto_19l else None,
-            lite=lite,
-        )
-    return exclude_blocked_makes(listings)
+    ids = fetch_listing_ids(path, filters)
+    return fetch_listings_by_ids(path, ids, lite=lite)
 
 
 @app.get("/media/object")
@@ -770,10 +765,11 @@ def index():
         volume_to=volume_to_raw,
     )
 
-    no_volume_count = (
-        count_listings(path, ListingFilters(engine_volume_missing=True, catalog_filter=False))
-        if tab == TAB_NO_VOLUME
-        else None
+    no_volume_count = count_listings(
+        path, ListingFilters(engine_volume_missing=True, catalog_filter=False)
+    )
+    electric_count = count_listings(
+        path, ListingFilters(electric_only=True, catalog_filter=False)
     )
 
     total_in_db = int(stats.get("active_listings") or stats.get("listings") or 0)
@@ -824,6 +820,7 @@ def index():
         tab=tab,
         active_tab=tab,
         no_volume_count=no_volume_count,
+        electric_count=electric_count,
         page=page,
         pages=pages,
         page_size=PAGE_SIZE,
@@ -1077,7 +1074,7 @@ def admin_edit_listing(listing_id: int):
 
 def _admin_listing_redirect(**params: str):
     tab = (request.form.get("tab") or request.args.get("tab") or TAB_ALL).strip()
-    if tab not in {TAB_ALL, TAB_NO_VOLUME, TAB_ARCHIVED}:
+    if tab not in {TAB_ALL, TAB_NO_VOLUME, TAB_ELECTRIC, TAB_ARCHIVED}:
         tab = TAB_ALL
     return redirect(url_for("index", tab=tab, **params))
 
@@ -1106,6 +1103,36 @@ def admin_restore_listing(listing_id: int):
     if _wants_json_response():
         return jsonify({"ok": True, "id": listing_id, "archived": False})
     return _admin_listing_redirect(restored=1)
+
+
+@app.post("/admin/listings/<int:listing_id>/mark-electric")
+def admin_mark_electric(listing_id: int):
+    path = require_db()
+    if fetch_listing(path, listing_id) is None:
+        if _wants_json_response():
+            return jsonify({"ok": False, "error": "not found"}), 404
+        abort(404, "listing not found in database")
+    updated = set_listing_manual_electric(path, listing_id, enabled=True)
+    if updated is None:
+        if _wants_json_response():
+            return jsonify({"ok": False, "error": "not found"}), 404
+        abort(404, "listing not found in database")
+    if _wants_json_response():
+        return jsonify({"ok": True, "id": listing_id, "manual_electric": True})
+    return _admin_listing_redirect(marked_electric=1)
+
+
+@app.post("/api/listings/<int:listing_id>/mark-electric")
+def api_listing_mark_electric(listing_id: int):
+    if not _is_admin():
+        return jsonify({"ok": False, "error": "admin required"}), 403
+    path = require_db()
+    if fetch_listing(path, listing_id) is None:
+        return jsonify({"ok": False, "error": "not found"}), 404
+    updated = set_listing_manual_electric(path, listing_id, enabled=True)
+    if updated is None:
+        return jsonify({"ok": False, "error": "not found"}), 404
+    return jsonify({"ok": True, "id": listing_id, "manual_electric": True})
 
 
 @app.get("/api/listings")

@@ -177,6 +177,13 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_listings_engine_liters ON listings(engine_liters)"
         )
+    if "manual_electric" not in cols:
+        conn.execute(
+            "ALTER TABLE listings ADD COLUMN manual_electric INTEGER NOT NULL DEFAULT 0"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_listings_manual_electric ON listings(manual_electric)"
+        )
 
     cols = {row[1] for row in conn.execute("PRAGMA table_info(listings)")}
     if "status" in cols:
@@ -652,6 +659,7 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         else [],
         "detail_scraped": bool(row["detail_scraped"]) if "detail_scraped" in keys else False,
         "engine_liters": row["engine_liters"] if "engine_liters" in keys else None,
+        "manual_electric": int(row["manual_electric"] or 0) if "manual_electric" in keys else 0,
         "detail_error": row["detail_error"] if "detail_error" in keys else None,
         "status": row["status"] if "status" in keys else LISTING_STATUS_ACTIVE,
         "archived_at": row["archived_at"] if "archived_at" in keys else None,
@@ -935,6 +943,16 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
                 photo_urls = existing_urls
 
         photo_url = photo_urls[0] if photo_urls else (existing["photo_url"] if existing else None)
+        parameters = detail.get("parameters") or {}
+        volume_item = {
+            "title": detail.get("title"),
+            "engine": detail.get("engine"),
+            "fuel": detail.get("fuel"),
+            "description": detail.get("description"),
+            "description_ru": detail.get("description_ru"),
+            "parameters": parameters,
+        }
+        engine_liters = engine_volume_liters(volume_item)
         conn.execute(
             """
             UPDATE listings SET
@@ -950,6 +968,7 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
                 parameters_json = COALESCE(?, parameters_json),
                 photo_url = ?,
                 photo_urls_json = ?,
+                engine_liters = COALESCE(?, engine_liters),
                 detail_scraped = 1,
                 detail_error = NULL,
                 updated_at = ?
@@ -965,11 +984,10 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
                 detail.get("description"),
                 detail.get("phone"),
                 detail.get("vin_masked"),
-                json.dumps(detail.get("parameters") or {}, ensure_ascii=False)
-                if detail.get("parameters")
-                else None,
+                json.dumps(parameters, ensure_ascii=False) if parameters else None,
                 photo_url,
                 json.dumps(photo_urls, ensure_ascii=False),
+                engine_liters,
                 _utc_now(),
                 listing_id,
             ),
@@ -1103,6 +1121,28 @@ def set_listing_engine_volume(
             """,
             (liters, _utc_now(), listing_id),
         )
+    return fetch_listing(db_path, listing_id)
+
+
+def set_listing_manual_electric(
+    db_path: Path,
+    listing_id: int,
+    *,
+    enabled: bool = True,
+) -> dict[str, Any] | None:
+    """Mark listing as pure electric for the Электро tab (admin no-volume action)."""
+    init_db(db_path)
+    with connect(db_path) as conn:
+        cur = conn.execute(
+            """
+            UPDATE listings
+            SET manual_electric = ?, updated_at = ?
+            WHERE autoplius_id = ?
+            """,
+            (1 if enabled else 0, _utc_now(), listing_id),
+        )
+        if cur.rowcount <= 0:
+            return None
     return fetch_listing(db_path, listing_id)
 
 

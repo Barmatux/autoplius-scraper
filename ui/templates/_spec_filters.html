@@ -71,7 +71,7 @@
     <div class="catalog-multi-select-values"></div>
   </div>
 
-  {% if tab != 'no_volume' %}
+  {% if tab not in ('no_volume', 'electric') %}
   <div class="volume-range-filters{% if volume_from or volume_to %} is-active{% endif %}">
     <span class="volume-range-label">Объём, л</span>
     <div class="volume-range-inputs">

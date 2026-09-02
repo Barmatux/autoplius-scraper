@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from autoplius.electric import electric_sql_clause
 from autoplius.make_model_filters import BLOCKED_MAKES
 from autoplius.title_sql import title_make_expr
 
@@ -55,6 +56,7 @@ class ListingFilters:
     passable_only: bool = False
     engine_upto_liters: float | None = None
     engine_volume_missing: bool = False
+    electric_only: bool = False
     volume_from: float | None = None
     volume_to: float | None = None
     cities: list[str] = field(default_factory=list)
@@ -124,8 +126,14 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
         clauses.append(f"({age_months} >= ? AND {age_months} < ?)")
         params.extend([36, 72])
 
-    if filters.engine_volume_missing:
+    if filters.electric_only:
+        clauses.append(electric_sql_clause(include=True))
+        year_expr = _reg_year_expr()
+        clauses.append(f"({year_expr} IS NULL OR {year_expr} >= ?)")
+        params.append(MIN_CATALOG_YEAR)
+    elif filters.engine_volume_missing:
         clauses.append("engine_liters IS NULL")
+        clauses.append(electric_sql_clause(include=False))
         year_expr = _reg_year_expr()
         clauses.append(f"({year_expr} IS NULL OR {year_expr} >= ?)")
         params.append(MIN_CATALOG_YEAR)

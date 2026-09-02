@@ -10,6 +10,12 @@
     <input type="hidden" name="tab" value="{{ tab }}">
     <button type="submit" class="btn-archive button-link-small">В архив</button>
   </form>
+  {% if tab == 'no_volume' %}
+  <form class="admin-inline-form admin-electric-form" method="post" action="{{ url_for('admin_mark_electric', listing_id=item.autoplius_id) }}" data-admin-electric-form>
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <button type="submit" class="btn-electric button-link-small">в электро</button>
+  </form>
+  {% endif %}
   {% endif %}
 </div>
 {% endif %}

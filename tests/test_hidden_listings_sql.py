@@ -28,9 +28,19 @@ def test_no_volume_tab_sql_excludes_skoda_and_pickups():
     where, params = build_listing_where(filters)
     sql = " AND ".join(where)
     assert "engine_liters IS NULL" in sql
+    assert "manual_electric" in sql
+    assert "лектр" in sql
     assert "skoda%" in params
     assert "pikap" in sql.lower() or "pickup" in sql.lower()
 
+
+def test_electric_tab_sql_includes_manual_and_fuel():
+    filters = ListingFilters(electric_only=True, catalog_filter=False)
+    where, _params = build_listing_where(filters)
+    sql = " AND ".join(where)
+    assert "COALESCE(manual_electric, 0) = 1" in sql
+    assert "лектр" in sql
+    assert "engine_liters IS NULL" not in sql
 
 def test_skoda_hidden_when_catalog_filter_disabled():
     filters = ListingFilters(catalog_filter=False, exclude_blocked_makes=True)

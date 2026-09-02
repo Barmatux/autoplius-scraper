@@ -1046,6 +1046,18 @@ td.col-price-lt .price-vat-label-text {
   border-color: #7b241c;
 }
 
+.btn-electric {
+  color: #0b3d91;
+  background: #e8f1ff;
+  border: 2px solid #9dbcf0;
+  font-weight: 700;
+}
+
+.btn-electric:hover:not(:disabled) {
+  background: #d7e8ff;
+  border-color: #6f9de6;
+}
+
 .btn-restore {
   color: var(--accent);
   background: var(--card);
