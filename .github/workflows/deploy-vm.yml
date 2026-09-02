@@ -33,9 +33,10 @@ jobs:
 
       - name: Refresh myfin exchange rates
         run: |
-          mkdir -p /tmp/autoplius-data
+          set -euo pipefail
           pip install beautifulsoup4
-          DATA_DIR=/tmp/autoplius-data python3 tools/refresh_myfin_rates.py --force
+          python3 tools/refresh_myfin_rates.py --force --print-json > /tmp/myfin-pairs.json
+          cat /tmp/myfin-pairs.json
 
       - name: Load SSH key
         uses: webfactory/ssh-agent@v0.9.0
@@ -58,7 +59,7 @@ jobs:
           set -euo pipefail
           SYNC_DIR="/tmp/autoplius-sync-$$"
           APP_DIR="/opt/autoplius-scraper"
-          MYFIN_REMOTE="/tmp/autoplius-myfin-rates.json"
+          DB_PATH="/var/lib/autoplius-scraper/data/autoplius.db"
           tar czf - \
             --exclude='.git' \
             --exclude='.venv' \
@@ -74,12 +75,10 @@ jobs:
             echo "ERROR: remote tar/rsync/chown failed with exit ${sync_rc}" >&2
             exit "$sync_rc"
           fi
-          scp -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            /tmp/autoplius-data/myfin_rates.json \
-            "${VM_USER}@${VM_HOST}:${MYFIN_REMOTE}"
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "${VM_USER}@${VM_HOST}" \
-            "sudo cp '${MYFIN_REMOTE}' /var/lib/autoplius-scraper/data/myfin_rates.json && sudo chown autoplius:autoplius /var/lib/autoplius-scraper/data/myfin_rates.json && rm -f '${MYFIN_REMOTE}'"
+            "sudo -u autoplius env PYTHONPATH='${APP_DIR}' DB_PATH='${DB_PATH}' '${APP_DIR}/.venv/bin/python' '${APP_DIR}/tools/refresh_myfin_rates.py' --apply-json -" \
+            < /tmp/myfin-pairs.json
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "${VM_USER}@${VM_HOST}" \
             'sudo systemctl restart autoplius-ui.service && sleep 2 && systemctl is-active autoplius-ui.service'

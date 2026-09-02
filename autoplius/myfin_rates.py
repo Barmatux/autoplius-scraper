@@ -7,13 +7,16 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 
 from bs4 import BeautifulSoup
 
-_CACHE: dict[str, Any] = {}
-_FILE_CACHE: dict[str, Any] | None = None
-_FILE_CACHE_MTIME: float | None = None
+from scraper.db import (
+    default_db_path,
+    get_latest_exchange_rate,
+    save_exchange_rates,
+)
+
+_CACHE: dict[str, dict[str, object]] = {}
 _CACHE_TTL = timedelta(minutes=30)
 _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -38,8 +41,11 @@ def _data_dir() -> Path:
     return Path(__file__).resolve().parents[1] / "data"
 
 
-def _cache_file_path() -> Path:
-    return _data_dir() / "myfin_rates.json"
+def _db_path() -> Path:
+    raw = os.environ.get("DB_PATH", "").strip()
+    if raw:
+        return Path(raw)
+    return default_db_path(_data_dir())
 
 
 def _parse_rate_text(text: str) -> float:
@@ -50,49 +56,6 @@ def _parse_rate_text(text: str) -> float:
     if rate <= 0:
         raise ValueError("myfin buy rate out of range")
     return rate
-
-
-def _load_file_cache(*, force: bool = False) -> dict[str, Any]:
-    global _FILE_CACHE, _FILE_CACHE_MTIME
-    path = _cache_file_path()
-    if not path.is_file():
-        _FILE_CACHE = {}
-        _FILE_CACHE_MTIME = None
-        return {}
-    try:
-        mtime = path.stat().st_mtime
-    except OSError:
-        return _FILE_CACHE or {}
-    if not force and _FILE_CACHE is not None and _FILE_CACHE_MTIME == mtime:
-        return _FILE_CACHE
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, TypeError):
-        _FILE_CACHE = {}
-        _FILE_CACHE_MTIME = mtime
-        return {}
-    pairs = payload.get("pairs")
-    _FILE_CACHE = pairs if isinstance(pairs, dict) else {}
-    _FILE_CACHE_MTIME = mtime
-    return _FILE_CACHE
-
-
-def _save_file_cache(pairs: dict[str, Any]) -> None:
-    global _FILE_CACHE, _FILE_CACHE_MTIME
-    path = _cache_file_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-        "pairs": pairs,
-    }
-    tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(path)
-    _FILE_CACHE = pairs
-    try:
-        _FILE_CACHE_MTIME = path.stat().st_mtime
-    except OSError:
-        _FILE_CACHE_MTIME = None
 
 
 def _fetch_html(url: str) -> str:
@@ -125,35 +88,53 @@ def _parse_best_buy_rate(html: str) -> float:
     return _parse_rate_text(values[1])
 
 
-def refresh_myfin_rates(*, force: bool = False) -> dict[str, float]:
-    """Fetch current myfin rates and persist them to disk."""
-    now = datetime.now(timezone.utc)
-    file_pairs = _load_file_cache()
+def fetch_myfin_pairs(*, force: bool = False) -> dict[str, float]:
+    """Fetch current myfin rates without touching the database."""
     refreshed: dict[str, float] = {}
-
     for pair in MYFIN_URLS:
-        try:
-            rate = _parse_best_buy_rate(_fetch_html(MYFIN_URLS[pair]))
-        except (urllib.error.URLError, TimeoutError, ValueError, TypeError) as exc:
-            if force:
-                raise RuntimeError(f"failed to refresh {pair}: {exc}") from exc
-            cached_rate = (file_pairs.get(pair) or {}).get("rate")
-            if cached_rate is not None:
-                refreshed[pair] = float(cached_rate)
-            else:
-                refreshed[pair] = _FALLBACK[pair]
-            continue
-
-        file_pairs[pair] = {"fetched_at": now.isoformat(), "rate": rate}
-        _CACHE[pair] = {"fetched_at": now, "rate": rate}
+        rate = _parse_best_buy_rate(_fetch_html(MYFIN_URLS[pair]))
         refreshed[pair] = rate
-
-    if any(pair in file_pairs for pair in MYFIN_URLS):
-        _save_file_cache(file_pairs)
+    if force and len(refreshed) != len(MYFIN_URLS):
+        raise RuntimeError("failed to refresh all myfin pairs")
     return refreshed
 
 
-def myfin_best_buy_rate(pair: str) -> float:
+def refresh_myfin_rates(
+    db_path: Path | None = None,
+    *,
+    force: bool = False,
+) -> dict[str, float]:
+    """Fetch current myfin rates and append them to exchange_rates."""
+    path = db_path or _db_path()
+    pairs = fetch_myfin_pairs(force=force)
+    save_exchange_rates(path, pairs)
+    _load_cache_from_db(path, force=True)
+    return pairs
+
+
+def apply_exchange_rates(
+    pairs: dict[str, float],
+    db_path: Path | None = None,
+    *,
+    fetched_at: str | None = None,
+) -> str:
+    path = db_path or _db_path()
+    when = save_exchange_rates(path, pairs, fetched_at=fetched_at)
+    _load_cache_from_db(path, force=True)
+    return when
+
+
+def _load_cache_from_db(db_path: Path, *, force: bool = False) -> None:
+    if not force:
+        return
+    _CACHE.clear()
+    for pair in MYFIN_URLS:
+        rate = get_latest_exchange_rate(db_path, pair)
+        if rate is not None:
+            _CACHE[pair] = {"fetched_at": datetime.now(timezone.utc), "rate": rate}
+
+
+def myfin_best_buy_rate(pair: str, *, db_path: Path | None = None) -> float:
     """Best «Купить» rate from myfin.by (eurusd cross or USD/BYN)."""
     if pair not in MYFIN_URLS:
         raise ValueError(f"unsupported myfin pair: {pair}")
@@ -166,46 +147,32 @@ def myfin_best_buy_rate(pair: str) -> float:
     if override:
         return float(override)
 
+    path = db_path or _db_path()
     now = datetime.now(timezone.utc)
     cached = _CACHE.get(pair) or {}
     cached_at = cached.get("fetched_at")
     cached_rate = cached.get("rate")
-    if cached_at and cached_rate and now - cached_at < _CACHE_TTL:
+    if (
+        isinstance(cached_at, datetime)
+        and cached_rate is not None
+        and now - cached_at < _CACHE_TTL
+    ):
         return float(cached_rate)
 
-    file_entry = _load_file_cache().get(pair) or {}
-    file_rate = file_entry.get("rate")
-    if file_rate is not None:
-        rate = float(file_rate)
-        fetched_at = now
-        file_fetched_at = file_entry.get("fetched_at")
-        if file_fetched_at:
-            try:
-                fetched_at = datetime.fromisoformat(str(file_fetched_at).replace("Z", "+00:00"))
-            except ValueError:
-                fetched_at = now
-        _CACHE[pair] = {"fetched_at": fetched_at, "rate": rate}
-        return rate
+    db_rate = get_latest_exchange_rate(path, pair)
+    if db_rate is not None:
+        _CACHE[pair] = {"fetched_at": now, "rate": db_rate}
+        return db_rate
 
-    try:
-        rate = _parse_best_buy_rate(_fetch_html(MYFIN_URLS[pair]))
-    except (urllib.error.URLError, TimeoutError, ValueError, TypeError):
-        if cached_rate is not None:
-            return float(cached_rate)
-        return _FALLBACK[pair]
-
-    file_pairs = _load_file_cache(force=True)
-    file_pairs[pair] = {"fetched_at": now.isoformat(), "rate": rate}
-    _save_file_cache(file_pairs)
-    _load_file_cache(force=True)
-    _CACHE[pair] = {"fetched_at": now, "rate": rate}
-    return rate
+    if cached_rate is not None:
+        return float(cached_rate)
+    return _FALLBACK[pair]
 
 
-def eur_usd_rate() -> float:
-    return myfin_best_buy_rate("eurusd")
+def eur_usd_rate(*, db_path: Path | None = None) -> float:
+    return myfin_best_buy_rate("eurusd", db_path=db_path)
 
 
-def usd_byn_rate() -> float:
+def usd_byn_rate(*, db_path: Path | None = None) -> float:
     """BYN per 1 USD at the best buy rate."""
-    return myfin_best_buy_rate("usd")
+    return myfin_best_buy_rate("usd", db_path=db_path)

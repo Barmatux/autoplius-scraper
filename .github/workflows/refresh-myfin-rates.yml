@@ -1,7 +1,7 @@
 # Refresh myfin.by exchange rates on the VM every 30 minutes.
 #
-# GitHub runners can reach myfin.by; the production VM gets HTTP 423, so rates
-# are fetched here and copied to /var/lib/autoplius-scraper/data/myfin_rates.json.
+# GitHub runners fetch myfin.by and write rates into SQLite on the VM
+# (exchange_rates table). The production VM cannot reach myfin.by (HTTP 423).
 #
 # Uses the same secrets as deploy-vm.yml:
 #   VM_HOST, VM_USER, VM_SSH_PRIVATE_KEY
@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   refresh:
-    name: Fetch myfin → VM
+    name: Fetch myfin → VM DB
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -37,9 +37,9 @@ jobs:
 
       - name: Fetch myfin rates
         run: |
-          mkdir -p /tmp/autoplius-data
-          DATA_DIR=/tmp/autoplius-data python3 tools/refresh_myfin_rates.py --force
-          cat /tmp/autoplius-data/myfin_rates.json
+          set -euo pipefail
+          python3 tools/refresh_myfin_rates.py --force --print-json > /tmp/myfin-pairs.json
+          cat /tmp/myfin-pairs.json
 
       - name: Load SSH key
         uses: webfactory/ssh-agent@v0.9.0
@@ -54,19 +54,24 @@ jobs:
           chmod 700 ~/.ssh
           ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
 
-      - name: Upload rates and restart UI
+      - name: Save rates to VM database
         env:
           VM_HOST: ${{ secrets.VM_HOST }}
           VM_USER: ${{ secrets.VM_USER }}
         run: |
           set -euo pipefail
-          scp -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            /tmp/autoplius-data/myfin_rates.json \
-            "${VM_USER}@${VM_HOST}:/tmp/myfin_rates.json"
+          APP_DIR="/opt/autoplius-scraper"
+          DB_PATH="/var/lib/autoplius-scraper/data/autoplius.db"
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            "${VM_USER}@${VM_HOST}" <<'REMOTE'
-          set -euo pipefail
-          sudo cp /tmp/myfin_rates.json /var/lib/autoplius-scraper/data/myfin_rates.json
-          sudo chown autoplius:autoplius /var/lib/autoplius-scraper/data/myfin_rates.json
-          sudo systemctl restart autoplius-ui
-          REMOTE
+            "${VM_USER}@${VM_HOST}" \
+            "sudo -u autoplius env PYTHONPATH='${APP_DIR}' DB_PATH='${DB_PATH}' '${APP_DIR}/.venv/bin/python' '${APP_DIR}/tools/refresh_myfin_rates.py' --apply-json -" \
+            < /tmp/myfin-pairs.json
+
+      - name: Restart UI
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${VM_USER}@${VM_HOST}" \
+            'sudo systemctl restart autoplius-ui.service && sleep 2 && systemctl is-active autoplius-ui.service'

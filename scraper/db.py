@@ -130,6 +130,16 @@ CREATE TABLE IF NOT EXISTS user_favorites (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS exchange_rates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pair TEXT NOT NULL,
+    rate REAL NOT NULL,
+    fetched_at TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'myfin'
+);
+
+CREATE INDEX IF NOT EXISTS idx_exchange_rates_pair_time ON exchange_rates(pair, fetched_at DESC);
 """
 
 
@@ -260,6 +270,21 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id, created_at DESC)"
+    )
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS exchange_rates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pair TEXT NOT NULL,
+            rate REAL NOT NULL,
+            fetched_at TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'myfin'
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_exchange_rates_pair_time ON exchange_rates(pair, fetched_at DESC)"
     )
 
 
@@ -1877,4 +1902,60 @@ def toggle_user_favorite(db_path: Path, user_id: int, listing_id: int) -> bool:
         return False
     add_user_favorite(db_path, user_id, listing_id)
     return True
+
+
+EXCHANGE_RATE_PAIRS = ("eurusd", "usd")
+
+
+def save_exchange_rates(
+    db_path: Path,
+    pairs: dict[str, float],
+    *,
+    fetched_at: str | None = None,
+    source: str = "myfin",
+) -> str:
+    when = fetched_at or _utc_now()
+    init_db(db_path)
+    with connect(db_path) as conn:
+        for pair in EXCHANGE_RATE_PAIRS:
+            if pair not in pairs:
+                continue
+            rate = float(pairs[pair])
+            if rate <= 0:
+                raise ValueError(f"exchange rate out of range for {pair}: {rate}")
+            conn.execute(
+                """
+                INSERT INTO exchange_rates (pair, rate, fetched_at, source)
+                VALUES (?, ?, ?, ?)
+                """,
+                (pair, rate, when, source),
+            )
+    return when
+
+
+def get_latest_exchange_rate(db_path: Path, pair: str) -> float | None:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT rate
+            FROM exchange_rates
+            WHERE pair = ?
+            ORDER BY fetched_at DESC, id DESC
+            LIMIT 1
+            """,
+            (pair,),
+        ).fetchone()
+    if row is None:
+        return None
+    return float(row["rate"])
+
+
+def get_latest_exchange_rates(db_path: Path) -> dict[str, float]:
+    rates: dict[str, float] = {}
+    for pair in EXCHANGE_RATE_PAIRS:
+        rate = get_latest_exchange_rate(db_path, pair)
+        if rate is not None:
+            rates[pair] = rate
+    return rates
 
