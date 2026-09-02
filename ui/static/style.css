@@ -115,6 +115,53 @@ main {
   text-align: center;
 }
 
+.import-presets {
+  position: relative;
+}
+
+.import-presets-trigger {
+  cursor: pointer;
+  font: inherit;
+}
+
+.import-presets.is-open .import-presets-trigger {
+  background: var(--accent-soft);
+  border-color: #b7dccb;
+  color: var(--accent);
+}
+
+.import-presets-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 30;
+  display: grid;
+  gap: 0.35rem;
+  min-width: 20rem;
+  max-width: min(24rem, calc(100vw - 2rem));
+  padding: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 10px 28px rgba(28, 26, 22, 0.12);
+}
+
+.import-preset-link {
+  display: block;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.import-preset-link:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

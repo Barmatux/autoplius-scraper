@@ -3,6 +3,20 @@
     href="{{ url_for('index', tab='all', sort=nav_sort) }}"
     class="tab{% if active_tab == 'all' %} active{% endif %}"
   >Объявления</a>
+  <div class="import-presets" data-import-presets>
+    <button
+      type="button"
+      class="tab import-presets-trigger"
+      data-import-presets-trigger
+      aria-expanded="false"
+      aria-haspopup="true"
+    >Топ модели для импорта</button>
+    <div class="import-presets-menu" data-import-presets-menu hidden>
+      {% for preset in import_presets %}
+      <a href="{{ preset.href }}" class="import-preset-link">{{ preset.label }}</a>
+      {% endfor %}
+    </div>
+  </div>
   <a
     href="{{ url_for('index', tab='no_volume', sort=nav_sort) }}"
     class="tab{% if active_tab == 'no_volume' %} active{% endif %}"
@@ -22,3 +36,4 @@
   >Аналитика</a>
   {% endif %}
 </nav>
+<script src="{{ url_for('static', filename='import_presets.js') }}" defer></script>

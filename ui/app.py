@@ -75,7 +75,7 @@ from autoplius.transmission_labels import (
     parse_transmission_filter_values,
     transmission_db_values_for_slugs,
 )
-from autoplius.price_display import catalog_price_lines, price_lt_lines
+from autoplius.import_presets import preset_links
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
 
@@ -100,6 +100,11 @@ app.secret_key = (
     or os.environ.get("UI_PASSWORD")
     or "autoplius-dev-secret-change-me"
 )
+
+
+@app.context_processor
+def inject_import_presets() -> dict[str, Any]:
+    return {"import_presets": preset_links(url_for("index"))}
 
 
 def _parse_iso_datetime(value: str | None) -> datetime | None:
