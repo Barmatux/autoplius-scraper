@@ -27,7 +27,12 @@ if sudo -u autoplius git status --porcelain deploy/ | grep -q .; then
 fi
 
 if sudo -u autoplius git status --porcelain | grep -q .; then
-  echo "ERROR: VM working tree is dirty; commit or stash changes before deploy" >&2
+  echo "=== stash leftover VM changes (tracked + untracked) ==="
+  sudo -u autoplius git stash push -u -m "deploy-autostash-$(date +%Y%m%d-%H%M%S)" || true
+fi
+
+if sudo -u autoplius git status --porcelain | grep -q .; then
+  echo "ERROR: VM working tree is still dirty after stash" >&2
   sudo -u autoplius git status -sb >&2 || true
   exit 1
 fi
@@ -43,6 +48,8 @@ for f in "$APP"/deploy/*.sh; do
   sed -i 's/\r$//' "$f"
   chmod +x "$f"
 done
+# Keep the checkout clean so the next pipeline run is not blocked by CRLF drift.
+sudo -u autoplius git checkout -- deploy/ || true
 
 echo "=== systemd units ==="
 sudo cp "$APP/deploy/autoplius-scraper.service" "$APP/deploy/autoplius-scraper.timer" /etc/systemd/system/
