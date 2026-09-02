@@ -1,19 +1,31 @@
+{% set is_favorite = current_user and item.autoplius_id in favorite_listing_ids %}
+{% set favorite_label = favorite_button_label if favorite_button_label is defined else none %}
 {% if current_user %}
-{% set is_favorite = item.autoplius_id in favorite_listing_ids %}
 <form
-  class="favorite-form"
+  class="favorite-form{% if favorite_label %} favorite-form-labeled{% endif %}"
   method="post"
   action="{{ url_for('toggle_favorite', listing_id=item.autoplius_id) }}"
   data-favorite-form
 >
   <button
     type="submit"
-    class="favorite-btn{% if is_favorite %} is-active{% endif %}"
+    class="favorite-btn{% if favorite_label %} favorite-btn-labeled{% endif %}{% if is_favorite %} is-active{% endif %}"
     aria-pressed="{{ 'true' if is_favorite else 'false' }}"
     aria-label="{{ 'Убрать из избранного' if is_favorite else 'Добавить в избранное' }}"
     title="{{ 'Убрать из избранного' if is_favorite else 'В избранное' }}"
   >
     <span class="favorite-icon" aria-hidden="true">{{ '★' if is_favorite else '☆' }}</span>
+    {% if favorite_label %}
+    <span class="favorite-btn-label" data-favorite-label>{{ 'В избранном' if is_favorite else favorite_label }}</span>
+    {% endif %}
   </button>
 </form>
+{% elif favorite_label %}
+<a
+  class="favorite-btn favorite-btn-labeled favorite-login-link"
+  href="{{ url_for('login', next=request.full_path if request.full_path != '?' else request.path) }}"
+>
+  <span class="favorite-icon" aria-hidden="true">☆</span>
+  <span class="favorite-btn-label">{{ favorite_label }}</span>
+</a>
 {% endif %}

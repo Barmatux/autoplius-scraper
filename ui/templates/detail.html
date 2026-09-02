@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ item|listing_headline }} · Autoplius Scraper</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260902d">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260902e">
 </head>
 <body>
   {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
@@ -39,6 +39,15 @@
   </header>
 
   <main class="detail-layout{% if not photos.full %} detail-layout-no-gallery{% endif %}">
+    <div class="detail-heading">
+      <div class="detail-heading-text">
+        <a class="detail-back-link" href="{{ back_url }}" data-back-to-list>← к списку</a>
+        <h1 class="detail-title">{{ item|listing_headline }}</h1>
+      </div>
+      {% set favorite_button_label = "В избранное" %}
+      {% include "_listing_favorite_button.html" %}
+    </div>
+
     {% if photos.full %}
     <section class="detail-gallery">
         <div
@@ -48,7 +57,7 @@
         >
           <div class="gallery-stage">
             <button type="button" class="gallery-nav gallery-nav-prev" data-gallery-prev aria-label="Предыдущее фото"{% if photos.full|length < 2 %} hidden{% endif %}>‹</button>
-            <img class="hero" data-gallery-hero src="{{ photos.full[0] }}" alt="" role="button" tabindex="0">
+            <img class="hero" data-gallery-hero src="{{ photos.full[0] }}" alt="{{ item|listing_headline }}" role="button" tabindex="0">
             <button type="button" class="gallery-nav gallery-nav-next" data-gallery-next aria-label="Следующее фото"{% if photos.full|length < 2 %} hidden{% endif %}>›</button>
             {% if photos.full|length > 1 %}
             <div class="gallery-counter" data-gallery-counter>1 / {{ photos.full|length }}</div>

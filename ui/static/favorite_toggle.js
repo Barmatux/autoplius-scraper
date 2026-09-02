@@ -2,6 +2,7 @@
   function setFavoriteState(form, isFavorite) {
     const button = form.querySelector(".favorite-btn");
     const icon = form.querySelector(".favorite-icon");
+    const label = form.querySelector("[data-favorite-label]");
     if (!button || !icon) {
       return;
     }
@@ -13,6 +14,9 @@
     );
     button.title = isFavorite ? "Убрать из избранного" : "В избранное";
     icon.textContent = isFavorite ? "★" : "☆";
+    if (label) {
+      label.textContent = isFavorite ? "В избранном" : "В избранное";
+    }
   }
 
   function adjustCabinetFavoriteCount(delta) {

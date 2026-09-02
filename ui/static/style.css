@@ -2086,6 +2086,46 @@ td.col-description {
   max-width: 100%;
 }
 
+.detail-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.detail-heading-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.detail-back-link {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.detail-back-link:hover {
+  color: var(--accent);
+}
+
+.detail-title {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.detail-heading .favorite-form,
+.detail-heading .favorite-login-link {
+  flex-shrink: 0;
+}
+
 .detail-scrape-note {
   margin: 0 0 1rem;
   padding: 0.65rem 0.85rem;
@@ -2623,6 +2663,15 @@ body.lightbox-open {
     gap: 0.85rem;
   }
 
+  .detail-heading {
+    padding: 0.75rem 0.85rem 0;
+    align-items: center;
+  }
+
+  .detail-title {
+    font-size: 1.15rem;
+  }
+
   .detail-gallery {
     border: 0;
     border-radius: 0;
@@ -3025,6 +3074,21 @@ body.lightbox-open {
   font-size: 1.1rem;
   line-height: 1;
   padding: 0;
+  text-decoration: none;
+}
+
+.favorite-btn-labeled {
+  width: auto;
+  min-height: 2.25rem;
+  height: auto;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.favorite-btn-label {
+  white-space: nowrap;
 }
 
 .favorite-btn:hover,
@@ -3032,6 +3096,10 @@ body.lightbox-open {
   border-color: #e6b800;
   color: #c99700;
   background: #fffbea;
+}
+
+.favorite-login-link:hover {
+  text-decoration: none;
 }
 
 .listing-card-top {
