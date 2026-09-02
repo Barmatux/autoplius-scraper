@@ -110,6 +110,15 @@ CREATE TABLE IF NOT EXISTS engine_catalog (
 );
 
 CREATE INDEX IF NOT EXISTS idx_engine_catalog_make_model ON engine_catalog(make, model);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    password_hash TEXT NOT NULL,
+    display_name TEXT,
+    created_at TEXT NOT NULL,
+    last_login_at TEXT
+);
 """
 
 
@@ -1621,4 +1630,102 @@ def archive_pickup_listings(db_path: Path) -> int:
         if not pickup_ids:
             return 0
         return _archive_listings(conn, pickup_ids, archived_at=now)
+
+
+def _user_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    username = str(row["username"])
+    display_name = (row["display_name"] or "").strip()
+    return {
+        "id": int(row["id"]),
+        "username": username,
+        "display_name": display_name or username,
+        "created_at": row["created_at"],
+        "last_login_at": row["last_login_at"],
+    }
+
+
+def create_user(
+    db_path: Path,
+    username: str,
+    password: str,
+    *,
+    display_name: str | None = None,
+) -> dict[str, Any]:
+    from werkzeug.security import generate_password_hash
+
+    normalized = username.strip()
+    if len(normalized) < 3:
+        raise ValueError("username must be at least 3 characters")
+    if not password:
+        raise ValueError("password required")
+
+    init_db(db_path)
+    now = _utc_now()
+    with connect(db_path) as conn:
+        try:
+            conn.execute(
+                """
+                INSERT INTO users (username, password_hash, display_name, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    normalized,
+                    generate_password_hash(password),
+                    (display_name or "").strip() or None,
+                    now,
+                ),
+            )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError(f"username already exists: {normalized}") from exc
+        row = conn.execute(
+            "SELECT * FROM users WHERE username = ? COLLATE NOCASE",
+            (normalized,),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("failed to load created user")
+    return _user_row_to_dict(row)
+
+
+def get_user_by_id(db_path: Path, user_id: int) -> dict[str, Any] | None:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    return _user_row_to_dict(row) if row else None
+
+
+def get_user_by_username(db_path: Path, username: str) -> dict[str, Any] | None:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM users WHERE username = ? COLLATE NOCASE",
+            (username.strip(),),
+        ).fetchone()
+    return _user_row_to_dict(row) if row else None
+
+
+def verify_user_password(
+    db_path: Path,
+    username: str,
+    password: str,
+) -> dict[str, Any] | None:
+    from werkzeug.security import check_password_hash
+
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM users WHERE username = ? COLLATE NOCASE",
+            (username.strip(),),
+        ).fetchone()
+        if row is None:
+            return None
+        if not check_password_hash(str(row["password_hash"]), password):
+            return None
+        now = _utc_now()
+        conn.execute(
+            "UPDATE users SET last_login_at = ? WHERE id = ?",
+            (now, int(row["id"])),
+        )
+    user = _user_row_to_dict(row)
+    user["last_login_at"] = now
+    return user
 

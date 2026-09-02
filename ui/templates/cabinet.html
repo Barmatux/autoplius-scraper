@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Личный кабинет · Autoplius Scraper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    {% set brand_sub = "Личный кабинет" %}
+    {% include "_brand.html" %}
+    <div class="meta">
+      {% include "_admin_bar.html" %}
+    </div>
+  </header>
+
+  <main class="auth-page">
+    <section class="auth-panel cabinet-panel">
+      <h1 class="auth-title">Здравствуйте, {{ user.display_name }}</h1>
+      <p class="auth-lead">Вы вошли как <strong>{{ user.username }}</strong>.</p>
+
+      <div class="cabinet-stats">
+        {% if stats.exists %}
+        <div class="pill">Объявлений в базе: {{ stats.listings or 0 }}</div>
+        <div class="pill">Активных: {{ stats.active_listings or 0 }}</div>
+        <div class="pill">В архиве: {{ stats.archived_listings or 0 }}</div>
+        {% else %}
+        <div class="pill">База объявлений пока не загружена</div>
+        {% endif %}
+      </div>
+
+      <div class="cabinet-actions">
+        <a class="admin-enter-link" href="{{ url_for('index') }}">К списку объявлений</a>
+        <a class="admin-enter-link" href="{{ url_for('logout') }}">Выйти</a>
+      </div>
+
+      {% if user.last_login_at %}
+      <p class="cabinet-meta">Последний вход: {{ user.last_login_at|format_datetime }}</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

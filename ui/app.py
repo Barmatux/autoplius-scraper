@@ -19,6 +19,7 @@ from scraper.db import (
     fetch_listings,
     fetch_listings_by_ids,
     fetch_scrape_runs,
+    get_user_by_id,
     init_db,
     engine_catalog_missing_count,
     engine_catalog_new_count,
@@ -27,6 +28,7 @@ from scraper.db import (
     set_listing_archived,
     set_listing_engine_volume,
     update_engine_catalog_entry,
+    verify_user_password,
 )
 from scraper.listing_filter_options import fetch_listing_filter_options
 from scraper.listing_query import count_listings, fetch_listing_ids
@@ -306,6 +308,25 @@ def _is_admin() -> bool:
     return _check_admin_auth() or session.get("admin") is True
 
 
+def _current_user() -> dict[str, Any] | None:
+    raw_id = session.get("user_id")
+    if raw_id is None:
+        return None
+    path = db_path()
+    if not path.is_file():
+        return None
+    try:
+        init_db(path)
+        user = get_user_by_id(path, int(raw_id))
+    except (TypeError, ValueError):
+        user = None
+    if user is None:
+        session.pop("user_id", None)
+        session.pop("username", None)
+        return None
+    return user
+
+
 @app.before_request
 def require_admin_auth():
     if not request.path.startswith("/admin"):
@@ -327,6 +348,15 @@ def require_admin_auth():
     )
 
 
+@app.before_request
+def require_cabinet_auth():
+    if not request.path.startswith("/cabinet"):
+        return None
+    if _current_user() is not None:
+        return None
+    return redirect(url_for("login", next=_current_request_path()))
+
+
 @app.context_processor
 def inject_nav_helpers():
     return {
@@ -338,6 +368,11 @@ def inject_nav_helpers():
 @app.context_processor
 def inject_admin():
     return {"is_admin": _is_admin()}
+
+
+@app.context_processor
+def inject_user():
+    return {"current_user": _current_user()}
 
 
 def _safe_redirect_target(raw: str | None) -> str:
@@ -379,6 +414,51 @@ def admin_enter():
 def admin_logout():
     session.pop("admin", None)
     return redirect(url_for("index"))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if _current_user() is not None:
+        return redirect(_safe_redirect_target(request.args.get("next")))
+
+    error = None
+    next_url = request.args.get("next")
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        next_url = request.form.get("next") or next_url
+        if not username or not password:
+            error = "Введите логин и пароль."
+        else:
+            try:
+                user = verify_user_password(require_db(), username, password)
+            except Exception:
+                user = None
+            if user is None:
+                error = "Неверный логин или пароль."
+            else:
+                session.permanent = True
+                session["user_id"] = user["id"]
+                session["username"] = user["username"]
+                return redirect(_safe_redirect_target(next_url))
+
+    return render_template("login.html", error=error, next=next_url)
+
+
+@app.get("/logout")
+def logout():
+    session.pop("user_id", None)
+    session.pop("username", None)
+    return redirect(url_for("index"))
+
+
+@app.get("/cabinet")
+def cabinet():
+    user = _current_user()
+    if user is None:
+        return redirect(url_for("login", next=url_for("cabinet")))
+    stats = db_stats(require_db())
+    return render_template("cabinet.html", user=user, stats=stats)
 
 
 @app.context_processor

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вход · Autoplius Scraper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    {% set brand_sub = "Вход в личный кабинет" %}
+    {% include "_brand.html" %}
+    <div class="meta">
+      {% include "_admin_bar.html" %}
+    </div>
+  </header>
+
+  <main class="auth-page">
+    <section class="auth-panel">
+      <h1 class="auth-title">Вход</h1>
+      <p class="auth-lead">Используйте логин и пароль, выданные администратором.</p>
+
+      {% if error %}
+      <p class="auth-error">{{ error }}</p>
+      {% endif %}
+
+      <form class="auth-form" method="post">
+        {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+        <label>
+          Логин
+          <input type="text" name="username" autocomplete="username" required autofocus>
+        </label>
+        <label>
+          Пароль
+          <input type="password" name="password" autocomplete="current-password" required>
+        </label>
+        <button type="submit" class="auth-submit">Войти</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
