@@ -8,6 +8,8 @@ TRANSMISSION_SLUG_AUTO_CLASSIC = "auto-classic"
 TRANSMISSION_SLUG_ROBOT = "robot"
 TRANSMISSION_SLUG_CVT = "cvt"
 
+# Autoplius search filter is binary (Automatinė / Mechaninė). Keep subtype
+# slugs for matching rare detail-page variants stored in the DB.
 TRANSMISSION_AUTO_SLUGS = (
     TRANSMISSION_SLUG_AUTO_CLASSIC,
     TRANSMISSION_SLUG_ROBOT,
@@ -17,25 +19,22 @@ TRANSMISSION_AUTO_SLUGS = (
 TRANSMISSION_FILTER_GROUPS: list[dict] = [
     {
         "slug": TRANSMISSION_SLUG_AUTO,
-        "label": "автомат",
-        "subtypes": [
-            {"slug": TRANSMISSION_SLUG_AUTO_CLASSIC, "label": "автоматическая"},
-            {"slug": TRANSMISSION_SLUG_ROBOT, "label": "робот"},
-            {"slug": TRANSMISSION_SLUG_CVT, "label": "вариатор"},
-        ],
+        "label": "АКПП",
+        "subtypes": [],
     },
     {
         "slug": TRANSMISSION_SLUG_MANUAL,
-        "label": "механика",
+        "label": "МКПП",
         "subtypes": [],
     },
 ]
 
 _FILTER_SLUG_ALIASES: dict[str, str] = {
     "auto": TRANSMISSION_SLUG_AUTO,
-    "автомат": TRANSMISSION_SLUG_AUTO_CLASSIC,
-    "automatic": TRANSMISSION_SLUG_AUTO_CLASSIC,
-    "автоматическая": TRANSMISSION_SLUG_AUTO_CLASSIC,
+    "акпп": TRANSMISSION_SLUG_AUTO,
+    "автомат": TRANSMISSION_SLUG_AUTO,
+    "automatic": TRANSMISSION_SLUG_AUTO,
+    "автоматическая": TRANSMISSION_SLUG_AUTO,
     "auto-classic": TRANSMISSION_SLUG_AUTO_CLASSIC,
     "robot": TRANSMISSION_SLUG_ROBOT,
     "dct": TRANSMISSION_SLUG_ROBOT,
@@ -43,7 +42,9 @@ _FILTER_SLUG_ALIASES: dict[str, str] = {
     "cvt": TRANSMISSION_SLUG_CVT,
     "вариатор": TRANSMISSION_SLUG_CVT,
     "manual": TRANSMISSION_SLUG_MANUAL,
+    "мкпп": TRANSMISSION_SLUG_MANUAL,
     "механика": TRANSMISSION_SLUG_MANUAL,
+    "механическая": TRANSMISSION_SLUG_MANUAL,
     "механ": TRANSMISSION_SLUG_MANUAL,
 }
 
@@ -93,15 +94,20 @@ def classify_transmission_slug(value: str | None) -> str | None:
     if not key:
         return None
 
-    if key in {"manual", "механика"} or key.startswith("механ") or key.startswith("mechanin"):
+    if (
+        key in {"manual", "механика", "механическая", "мкпп"}
+        or key.startswith("механ")
+        or key.startswith("mechanin")
+    ):
         return TRANSMISSION_SLUG_MANUAL
     if key in {"cvt", "вариатор"} or "вариатор" in key or "variator" in key:
         return TRANSMISSION_SLUG_CVT
     if key in {"dct", "robot", "робот"} or key.startswith("робот") or "robot" in key:
         return TRANSMISSION_SLUG_ROBOT
     if (
-        key in {"automatic", "автомат", "автоматическая"}
+        key in {"automatic", "автомат", "автоматическая", "акпп", "auto"}
         or "автомат" in key
+        or "tiptronic" in key
         or key.startswith("automatin")
     ):
         return TRANSMISSION_SLUG_AUTO_CLASSIC
@@ -147,29 +153,32 @@ def transmission_filter_display_label(slugs: list[str]) -> str:
         return "Любая"
     labels: list[str] = []
     slugs_set = set(slugs)
-    auto_all = TRANSMISSION_SLUG_AUTO in slugs_set or all(
+    if TRANSMISSION_SLUG_AUTO in slugs_set or any(
         slug in slugs_set for slug in TRANSMISSION_AUTO_SLUGS
-    )
-    if auto_all:
-        labels.append("автомат")
-    else:
-        subtype_labels = {
-            subtype["slug"]: subtype["label"]
-            for group in TRANSMISSION_FILTER_GROUPS
-            for subtype in group.get("subtypes", [])
-        }
-        for slug in TRANSMISSION_AUTO_SLUGS:
-            if slug in slugs_set:
-                labels.append(subtype_labels[slug])
+    ):
+        labels.append("АКПП")
     if TRANSMISSION_SLUG_MANUAL in slugs_set:
-        labels.append("механика")
+        labels.append("МКПП")
     return multi_filter_selection_label(labels, "Любая")
+
+
+def transmission_short_label(value: str | None) -> str | None:
+    """Compact gearbox label for card headlines: МКПП / АКПП."""
+    slug = classify_transmission_slug(value)
+    if slug == TRANSMISSION_SLUG_MANUAL:
+        return "МКПП"
+    if slug in TRANSMISSION_AUTO_SLUGS or slug == TRANSMISSION_SLUG_AUTO:
+        return "АКПП"
+    return None
 
 
 def transmission_listing_label(value: str | None) -> str:
     text = (value or "").strip()
     if not text:
         return text
+    short = transmission_short_label(text)
+    if short:
+        return short
     low = text.casefold()
     if "кпп" in low:
         return text

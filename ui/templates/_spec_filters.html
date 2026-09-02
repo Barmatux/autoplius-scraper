@@ -96,7 +96,7 @@
     data-catalog-multi-select
     data-param-name="transmission"
     data-placeholder="Любая"
-    data-hierarchical="transmission"
+    data-menu-fit="content"
   >
     КПП
     <div
@@ -110,47 +110,18 @@
     </div>
     <div class="catalog-multi-select-menu" hidden>
       {% for group in spec_filters.transmission_groups %}
-        {% if group.subtypes %}
-          <label class="catalog-multi-select-row catalog-multi-select-row-group{% if group.slug in spec_filters.transmission_checked %} is-selected{% endif %}">
-            <span class="catalog-multi-select-mark" aria-hidden="true"></span>
-            <input
-              type="checkbox"
-              class="catalog-multi-select-input"
-              value="{{ group.slug }}"
-              data-multi-select-role="parent"
-              data-label="{{ group.label }}"
-              {% if group.slug in spec_filters.transmission_checked %}checked{% endif %}
-            />
-            <span class="catalog-multi-select-label">{{ group.label }}</span>
-          </label>
-          {% for subtype in group.subtypes %}
-            <label class="catalog-multi-select-row catalog-multi-select-row-sub{% if subtype.slug in spec_filters.transmission_checked %} is-selected{% endif %}">
-              <span class="catalog-multi-select-mark" aria-hidden="true"></span>
-              <input
-                type="checkbox"
-                class="catalog-multi-select-input"
-                value="{{ subtype.slug }}"
-                data-multi-select-role="subtype"
-                data-label="{{ subtype.label }}"
-                {% if subtype.slug in spec_filters.transmission_checked %}checked{% endif %}
-              />
-              <span class="catalog-multi-select-label">{{ subtype.label }}</span>
-            </label>
-          {% endfor %}
-        {% else %}
-          <label class="catalog-multi-select-row{% if group.slug in spec_filters.transmission_checked %} is-selected{% endif %}">
-            <span class="catalog-multi-select-mark" aria-hidden="true"></span>
-            <input
-              type="checkbox"
-              class="catalog-multi-select-input"
-              value="{{ group.slug }}"
-              data-multi-select-role="manual"
-              data-label="{{ group.label }}"
-              {% if group.slug in spec_filters.transmission_checked %}checked{% endif %}
-            />
-            <span class="catalog-multi-select-label">{{ group.label }}</span>
-          </label>
-        {% endif %}
+        <label class="catalog-multi-select-row{% if group.slug in spec_filters.transmission_checked %} is-selected{% endif %}">
+          <span class="catalog-multi-select-mark" aria-hidden="true"></span>
+          <input
+            type="checkbox"
+            class="catalog-multi-select-input"
+            value="{{ group.slug }}"
+            data-multi-select-role="option"
+            data-label="{{ group.label }}"
+            {% if group.slug in spec_filters.transmission_checked %}checked{% endif %}
+          />
+          <span class="catalog-multi-select-label">{{ group.label }}</span>
+        </label>
       {% endfor %}
     </div>
     <div class="catalog-multi-select-values"></div>

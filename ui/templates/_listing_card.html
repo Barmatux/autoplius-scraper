@@ -4,6 +4,8 @@
   {% set list_photos = photos.thumb if photos.thumb else photos.full %}
   {% set make, model = item|listing_make_model %}
   {% set vol = item|engine_volume %}
+  {% set has_vol = vol and vol not in ('—', 'тАФ') and ('l' in vol.lower() or 'л' in vol.lower()) %}
+  {% set kpp = item.transmission|transmission_short %}
   {% set detail_href = url_for('listing_detail', listing_id=item.autoplius_id, next=request_path) %}
 
   {% if list_photos %}
@@ -36,19 +38,9 @@
 
   <h3 class="listing-card-title">
     <a href="{{ detail_href }}" data-save-return>
-      <span class="listing-make">{{ make }}</span>
-      {% if model %}<span class="listing-model">{{ model }}</span>{% endif %}
-      {% if item.year %}<span class="listing-card-year"> · {{ item.year }}</span>{% endif %}
+      <span class="listing-make">{{ make }}</span>{% if model %} <span class="listing-model">{{ model }}</span>{% endif %}{% if item.year %} · {{ item.year }}{% endif %}{% if item.body_type %} · {{ item.body_type }}{% endif %}{% if has_vol or item.fuel %} · {% if has_vol %}{{ vol }}{% endif %}{% if has_vol and item.fuel %} {% endif %}{% if item.fuel %}{{ item.fuel }}{% endif %}{% endif %}{% if kpp %} · {{ kpp }}{% endif %}
     </a>
   </h3>
-
-  {% if item.body_type %}
-  <p class="listing-card-meta">{{ item.body_type }}</p>
-  {% endif %}
-
-  {% if vol and vol not in ('—', 'тАФ') and ('l' in vol.lower() or 'л' in vol.lower()) %}
-  <p class="listing-card-meta"><strong>Объём:</strong> {{ vol }}</p>
-  {% endif %}
 
   {% if item.mileage_km is not none %}
   <p class="listing-card-meta"><strong>Пробег:</strong> {{ "{:,}".format(item.mileage_km|int).replace(",", " ") }} км</p>
@@ -62,11 +54,9 @@
   </p>
   {% endif %}
 
-  <div class="listing-spec-tags">
-    {% if item.fuel %}<span>{{ item.fuel }}</span>{% endif %}
-    {% if item.transmission %}<span>{{ item.transmission }}</span>{% endif %}
-    {% if item.has_vin_badge %}<span>VIN указан</span>{% endif %}
-  </div>
+  {% if item.has_vin_badge %}
+  <div class="listing-spec-tags"><span>VIN указан</span></div>
+  {% endif %}
 
   {% set desc = item|listing_description %}
   {% if desc %}

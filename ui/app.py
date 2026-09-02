@@ -87,6 +87,7 @@ from autoplius.spec_filters import (
 from autoplius.transmission_labels import (
     parse_transmission_filter_values,
     transmission_db_values_for_slugs,
+    transmission_short_label,
 )
 from autoplius.import_presets import preset_links
 from autoplius.price_rb import estimate_price_rb
@@ -202,6 +203,11 @@ def format_duration(value: float | int | None) -> str:
 @app.template_filter("engine_volume")
 def engine_volume(item: dict[str, Any]) -> str:
     return engine_volume_from_listing(item) or "—"
+
+
+@app.template_filter("transmission_short")
+def transmission_short(value: str | None) -> str:
+    return transmission_short_label(value) or ""
 
 
 @app.template_filter("engine_kpp_lines")
