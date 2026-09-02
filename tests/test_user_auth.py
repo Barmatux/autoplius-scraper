@@ -107,3 +107,82 @@ def test_admin_login_via_single_form(tmp_path, monkeypatch):
     page = client.get("/")
     assert page.status_code == 200
     assert "Архив" in page.get_data(as_text=True)
+
+
+@pytest.mark.skipif(
+    __import__("importlib").util.find_spec("flask") is None,
+    reason="Flask is not installed",
+)
+def test_register_and_auto_login(tmp_path, monkeypatch):
+    import ui.app as ui_app
+    from scraper.db import get_user_by_username, init_db
+
+    monkeypatch.setenv("ADMIN_USER", "admin")
+    monkeypatch.setenv("ADMIN_PASSWORD", "admin-secret")
+
+    db_path = tmp_path / "test.db"
+    ui_app.app.config["DB_PATH"] = db_path
+    ui_app.app.config["TESTING"] = True
+    init_db(db_path)
+
+    client = ui_app.app.test_client()
+    page = client.get("/register")
+    assert page.status_code == 200
+    assert "Зарегистрироваться" in page.get_data(as_text=True)
+
+    bad = client.post(
+        "/register",
+        data={
+            "username": "ab",
+            "password": "secret123",
+            "password_confirm": "secret123",
+        },
+    )
+    assert bad.status_code == 200
+    assert "от 3 до 32 символов" in bad.get_data(as_text=True)
+
+    reserved = client.post(
+        "/register",
+        data={
+            "username": "admin",
+            "password": "secret123",
+            "password_confirm": "secret123",
+        },
+    )
+    assert reserved.status_code == 200
+    assert "зарезервирован" in reserved.get_data(as_text=True)
+
+    mismatch = client.post(
+        "/register",
+        data={
+            "username": "dave",
+            "password": "secret123",
+            "password_confirm": "other123",
+        },
+    )
+    assert mismatch.status_code == 200
+    assert "не совпадают" in mismatch.get_data(as_text=True)
+
+    ok = client.post(
+        "/register",
+        data={
+            "username": "dave",
+            "password": "secret123",
+            "password_confirm": "secret123",
+            "display_name": "Dave",
+        },
+        follow_redirects=False,
+    )
+    assert ok.status_code == 302
+    assert ok.headers["Location"].endswith("/cabinet")
+
+    with client.session_transaction() as sess:
+        assert sess.get("username") == "dave"
+
+    created = get_user_by_username(db_path, "dave")
+    assert created is not None
+    assert created["display_name"] == "Dave"
+
+    cabinet = client.get("/cabinet")
+    assert cabinet.status_code == 200
+    assert "Dave" in cabinet.get_data(as_text=True)

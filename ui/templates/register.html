@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Регистрация · Autoplius Scraper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    {% set brand_sub = "Регистрация" %}
+    {% include "_brand.html" %}
+    <div class="meta">
+      {% include "_admin_bar.html" %}
+    </div>
+  </header>
+
+  <main class="auth-page">
+    <section class="auth-panel">
+      <h1 class="auth-title">Регистрация</h1>
+      <p class="auth-lead">Создайте аккаунт для доступа к личному кабинету.</p>
+
+      {% if error %}
+      <p class="auth-error">{{ error }}</p>
+      {% endif %}
+
+      <form class="auth-form" method="post">
+        <label>
+          Логин
+          <input type="text" name="username" autocomplete="username" required autofocus
+                 value="{{ values.username }}">
+        </label>
+        <label>
+          Имя (необязательно)
+          <input type="text" name="display_name" autocomplete="name"
+                 value="{{ values.display_name }}">
+        </label>
+        <label>
+          Пароль
+          <input type="password" name="password" autocomplete="new-password" required>
+        </label>
+        <label>
+          Повтор пароля
+          <input type="password" name="password_confirm" autocomplete="new-password" required>
+        </label>
+        <button type="submit" class="auth-submit">Зарегистрироваться</button>
+      </form>
+
+      <p class="auth-footer">
+        Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a>
+      </p>
+    </section>
+  </main>
+</body>
+</html>

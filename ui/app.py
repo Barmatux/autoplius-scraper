@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,7 @@ from scraper.db import (
     fetch_listings,
     fetch_listings_by_ids,
     fetch_scrape_runs,
+    create_user,
     get_user_by_id,
     init_db,
     engine_catalog_missing_count,
@@ -382,11 +384,44 @@ def inject_user():
     return {"current_user": _current_user()}
 
 
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_-]{3,32}$")
+_MIN_REGISTRATION_PASSWORD_LEN = 6
+
+
 def _safe_redirect_target(raw: str | None) -> str:
     target = (raw or "").strip()
     if target.startswith("/") and not target.startswith("//"):
         return target
     return url_for("index", sort=DEFAULT_LIST_SORT)
+
+
+def _validate_registration_fields(
+    username: str,
+    password: str,
+    password_confirm: str,
+    *,
+    display_name: str = "",
+) -> tuple[str | None, dict[str, str]]:
+    values = {
+        "username": username.strip(),
+        "display_name": display_name.strip(),
+    }
+    normalized = values["username"]
+    if not normalized:
+        return "Введите логин.", values
+    if not _USERNAME_RE.fullmatch(normalized):
+        return (
+            "Логин: от 3 до 32 символов, только латиница, цифры, «_» и «-».",
+            values,
+        )
+    admin_user, _admin_password = _admin_credentials()
+    if admin_user and normalized.casefold() == admin_user.casefold():
+        return "Этот логин зарезервирован.", values
+    if len(password) < _MIN_REGISTRATION_PASSWORD_LEN:
+        return f"Пароль: минимум {_MIN_REGISTRATION_PASSWORD_LEN} символов.", values
+    if password != password_confirm:
+        return "Пароли не совпадают.", values
+    return None, values
 
 
 def _current_request_path() -> str:
@@ -445,6 +480,54 @@ def login():
                 return redirect(_safe_redirect_target(next_url or url_for("cabinet")))
 
     return render_template("login.html", error=error, next=next_url)
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if _is_admin():
+        return redirect(url_for("index", sort=DEFAULT_LIST_SORT))
+    if _current_user() is not None:
+        return redirect(url_for("cabinet"))
+
+    error = None
+    values = {"username": "", "display_name": ""}
+    if request.method == "POST":
+        username = request.form.get("username") or ""
+        password = request.form.get("password") or ""
+        password_confirm = request.form.get("password_confirm") or ""
+        display_name = request.form.get("display_name") or ""
+        error, values = _validate_registration_fields(
+            username,
+            password,
+            password_confirm,
+            display_name=display_name,
+        )
+        if error is None:
+            try:
+                user = create_user(
+                    require_db(),
+                    values["username"],
+                    password,
+                    display_name=values["display_name"] or None,
+                )
+            except ValueError as exc:
+                message = str(exc)
+                if "already exists" in message:
+                    error = "Пользователь с таким логином уже существует."
+                elif "username must be at least" in message:
+                    error = "Логин: минимум 3 символа."
+                elif "password required" in message:
+                    error = "Введите пароль."
+                else:
+                    error = "Не удалось создать аккаунт. Попробуйте другой логин."
+            else:
+                session.permanent = True
+                session["user_id"] = user["id"]
+                session["username"] = user["username"]
+                session.pop("admin", None)
+                return redirect(url_for("cabinet"))
+
+    return render_template("register.html", error=error, values=values)
 
 
 @app.get("/logout")

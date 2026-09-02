@@ -2524,6 +2524,23 @@ body.lightbox-open {
   filter: brightness(1.05);
 }
 
+.auth-footer {
+  margin: 1.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.auth-footer a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+}
+
 .cabinet-panel .cabinet-stats {
   display: flex;
   flex-wrap: wrap;
