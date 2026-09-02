@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 
 from botocore.exceptions import BotoCoreError, ClientError
 from flask import Response, abort, send_file
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from scraper.config import Settings
 from scraper.s3_storage import get_s3_client
@@ -65,9 +65,10 @@ def _image_response(data: bytes, content_type: str) -> Response:
 
 def _resize_webp(data: bytes, width: int) -> bytes:
     image = Image.open(BytesIO(data))
+    image = ImageOps.exif_transpose(image)
     image = image.convert("RGB")
     if image.width > width:
-        height = max(1, int(image.height * (width / image.width)))
+        height = max(1, int(round(image.height * (width / image.width))))
         image = image.resize((width, height), Image.Resampling.LANCZOS)
     out = BytesIO()
     image.save(out, format="WEBP", quality=72, method=4)
