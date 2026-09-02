@@ -38,6 +38,9 @@ STEALTH_INIT_SCRIPT = (
     "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
 )
 
+_NOT_FOUND_TITLE_RE = re.compile(r"\b404\b|not found|не найдена", re.I)
+_NOT_FOUND_H1_RE = re.compile(r"\b404\b|not found|не найдена", re.I)
+
 
 def browser_locale(base_url: str | None = None) -> str:
     host = urlparse(base_url or get_base_url()).netloc.lower()
@@ -88,6 +91,13 @@ class TurnstileInterceptor:
 def is_challenge_page(html: str, title: str = "") -> bool:
     blob = f"{title}\n{html}".lower()
     return any(marker in blob for marker in CHALLENGE_MARKERS)
+
+
+def is_not_found_page(title: str, html: str) -> bool:
+    """Detect Autoplius 404 pages without matching listing IDs like A31404018."""
+    if _NOT_FOUND_TITLE_RE.search(title):
+        return True
+    return "страница не найдена" in html.lower()
 
 
 def has_target_content(page: Page, html: str) -> bool:
@@ -247,14 +257,14 @@ def wait_for_content(
             page.wait_for_timeout(2000)
             continue
 
-        if page.locator("h1").filter(has_text=re.compile(r"404|not found|не найдена", re.I)).count() > 0:
-            raise RuntimeError(f"Page not found: {page.url}")
-        if "404" in title.lower() or "страница не найдена" in html.lower():
-            raise RuntimeError(f"Page not found: {page.url}")
-
         if has_target_content(page, html):
             dismiss_cookie_banner(page)
             return
+
+        if page.locator("h1").filter(has_text=_NOT_FOUND_H1_RE).count() > 0:
+            raise RuntimeError(f"Page not found: {page.url}")
+        if is_not_found_page(title, html):
+            raise RuntimeError(f"Page not found: {page.url}")
 
         page.wait_for_timeout(1000)
 
