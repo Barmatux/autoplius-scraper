@@ -13,6 +13,7 @@ MAKE_SLUGS: dict[str, str] = {
     "Hyundai": "hyundai",
     "Kia": "kia",
     "Ford": "ford",
+    "Volvo": "volvo",
 }
 
 MODEL_SLUGS: dict[str, dict[str, str]] = {
@@ -22,6 +23,13 @@ MODEL_SLUGS: dict[str, dict[str, str]] = {
     "Hyundai": {"i40": "i40"},
     "Kia": {"Optima": "optima"},
     "Ford": {"S-Max": "s-max", "Galaxy": "galaxy"},
+    "Volvo": {
+        "V50": "v50",
+        "V60": "v60",
+        "V70": "v70",
+        "S80": "s80",
+        "S60": "s60",
+    },
 }
 
 
@@ -32,6 +40,30 @@ class TargetModelSpec:
     year_from: int | None = None
     year_to: int | None = None
     diesel_only: bool = False
+
+
+def _query_from_spec(spec: TargetModelSpec) -> SearchQuery:
+    make_slug = MAKE_SLUGS.get(spec.make)
+    model_slug = (MODEL_SLUGS.get(spec.make) or {}).get(spec.model)
+    if not make_slug or not model_slug:
+        raise KeyError(f"Missing slug mapping for {spec.make} {spec.model}")
+    fuel_ids = (FUEL_DIESEL,) if spec.diesel_only else ()
+    year_label = ""
+    if spec.year_from and spec.year_to:
+        year_label = f"{spec.year_from}-{spec.year_to}"
+    elif spec.year_from:
+        year_label = f"{spec.year_from}+"
+    elif spec.year_to:
+        year_label = f"-{spec.year_to}"
+    fuel_label = "diesel" if spec.diesel_only else "all"
+    return SearchQuery(
+        label=f"{spec.make} {spec.model} {year_label} {fuel_label}".strip(),
+        make_slug=make_slug,
+        model_slug=model_slug,
+        year_from=spec.year_from,
+        year_to=spec.year_to,
+        fuel_ids=fuel_ids,
+    )
 
 
 def build_target_queries(*, root: Path | None = None) -> list[SearchQuery]:
@@ -51,33 +83,47 @@ def build_target_queries(*, root: Path | None = None) -> list[SearchQuery]:
         TargetModelSpec("Ford", "S-Max", 2011, None, diesel_only=True),
         TargetModelSpec("Ford", "Galaxy", 2011, None, diesel_only=True),
     ]
+    return [_query_from_spec(spec) for spec in specs]
 
-    queries: list[SearchQuery] = []
-    for spec in specs:
-        make_slug = MAKE_SLUGS.get(spec.make)
-        model_slug = (MODEL_SLUGS.get(spec.make) or {}).get(spec.model)
-        if not make_slug or not model_slug:
-            raise KeyError(f"Missing slug mapping for {spec.make} {spec.model}")
-        fuel_ids = (FUEL_DIESEL,) if spec.diesel_only else ()
-        year_label = ""
-        if spec.year_from and spec.year_to:
-            year_label = f"{spec.year_from}-{spec.year_to}"
-        elif spec.year_from:
-            year_label = f"{spec.year_from}+"
-        elif spec.year_to:
-            year_label = f"-{spec.year_to}"
-        fuel_label = "diesel" if spec.diesel_only else "all"
-        queries.append(
-            SearchQuery(
-                label=f"{spec.make} {spec.model} {year_label} {fuel_label}".strip(),
-                make_slug=make_slug,
-                model_slug=model_slug,
-                year_from=spec.year_from,
-                year_to=spec.year_to,
-                fuel_ids=fuel_ids,
-            )
+
+def _match_make(name: str) -> str:
+    key = name.strip().casefold()
+    for make in MAKE_SLUGS:
+        if make.casefold() == key:
+            return make
+    raise KeyError(f"Unknown make: {name}")
+
+
+def _match_model(make: str, name: str) -> str:
+    key = name.strip().casefold().replace(" ", "-")
+    for model, slug in (MODEL_SLUGS.get(make) or {}).items():
+        if model.casefold() == name.strip().casefold() or slug.casefold() == key:
+            return model
+    raise KeyError(f"Unknown model for {make}: {name}")
+
+
+def build_custom_queries(
+    *,
+    make: str,
+    models: list[str],
+    year_from: int | None = None,
+    year_to: int | None = None,
+    diesel_only: bool = False,
+) -> list[SearchQuery]:
+    make_name = _match_make(make)
+    if not models:
+        raise ValueError("At least one model is required")
+    specs = [
+        TargetModelSpec(
+            make_name,
+            _match_model(make_name, model),
+            year_from,
+            year_to,
+            diesel_only=diesel_only,
         )
-    return queries
+        for model in models
+    ]
+    return [_query_from_spec(spec) for spec in specs]
 
 
 def query_summary(queries: list[SearchQuery]) -> list[dict[str, Any]]:

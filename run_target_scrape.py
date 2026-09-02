@@ -10,7 +10,7 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
-from autoplius.target_queries import build_target_queries, query_summary
+from autoplius.target_queries import build_custom_queries, build_target_queries, query_summary
 from scraper.config import Settings
 
 
@@ -51,6 +51,23 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Skip search; enrich listings without detail_scraped in DB",
     )
+    parser.add_argument(
+        "--make",
+        help="Custom scrape: make name (e.g. Volvo). Uses --model filters instead of the default target list.",
+    )
+    parser.add_argument(
+        "--model",
+        action="append",
+        dest="models",
+        help="Custom scrape: model name (repeatable). Example: --model V60 --model S80",
+    )
+    parser.add_argument("--year-from", type=int, dest="year_from", help="Custom scrape: year from")
+    parser.add_argument("--year-to", type=int, dest="year_to", help="Custom scrape: year to")
+    parser.add_argument(
+        "--diesel",
+        action="store_true",
+        help="Custom scrape: diesel only",
+    )
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
 
@@ -60,7 +77,18 @@ def main(argv: list[str] | None = None) -> int:
 
         discover_main()
 
-    queries = build_target_queries(root=root)
+    if args.make or args.models:
+        if not args.make or not args.models:
+            parser.error("custom scrape requires both --make and at least one --model")
+        queries = build_custom_queries(
+            make=args.make,
+            models=args.models,
+            year_from=args.year_from,
+            year_to=args.year_to,
+            diesel_only=args.diesel,
+        )
+    else:
+        queries = build_target_queries(root=root)
     if args.list_queries:
         print(json.dumps(query_summary(queries), ensure_ascii=False, indent=2))
         return 0
