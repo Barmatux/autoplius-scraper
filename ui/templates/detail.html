@@ -80,9 +80,10 @@
           </dd>
         </div>
         {% endfor %}
-        <div><dt>Фото</dt><dd>{{ photos.full|length if photos.full else 0 }}</dd></div>
+        {% if is_admin %}
         <div><dt>В БД с</dt><dd>{{ item.first_seen_at or '—' }}</dd></div>
         <div><dt>Обновлено</dt><dd>{{ item.last_seen_at or '—' }}</dd></div>
+        {% endif %}
         <div><dt>URL</dt><dd><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.url }}</a></dd></div>
       </dl>
 

@@ -33,3 +33,24 @@ def test_mileage_dedupes_km_variants():
     }
     rows = detail_spec_rows(item)
     assert [row["label"] for row in rows].count("Пробег") == 1
+
+
+def test_detail_engine_line_merges_fuel_volume_and_power():
+    item = {
+        "year": "2013-08",
+        "fuel": "Дизель",
+        "engine_liters": 1.6,
+        "parameters": {
+            "Двигатель": "1560 см³, 111 Л.С. (82кВ)",
+            "Тип топлива": "Дизель",
+            "Объём двигателя, см³": "1.6 л",
+        },
+    }
+    rows = detail_spec_rows(item)
+    labels = [row["label"] for row in rows]
+    engine = next(row for row in rows if row["label"] == "Двигатель")
+    assert "Топливо" not in labels
+    assert "Тип топлива" not in labels
+    assert "Объём двигателя, см³" not in labels
+    assert labels.count("Двигатель") == 1
+    assert engine["value"] == "Дизель 1.6л (1560 см³) 111 Л.С. (82кВ)"
