@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Archive Skoda, Ligier/Microcar, pickups and remove them from engine catalog."""
+"""Archive blocked makes (Aixam, Skoda, Ligier/Microcar), pickups and remove them from engine catalog."""
 from __future__ import annotations
 
 import argparse
