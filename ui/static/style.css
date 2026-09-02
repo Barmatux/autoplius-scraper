@@ -1988,14 +1988,24 @@ td.col-description {
   word-break: break-all;
 }
 
-.check {
-  justify-content: flex-end;
+.filters label.check {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  min-height: 2.4rem;
 }
 
-.check input {
+.check input[type="checkbox"] {
   width: 1.1rem;
   height: 1.1rem;
-  margin-top: 0.55rem;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.check span {
+  line-height: 1.2;
+  color: var(--ink);
 }
 
 .pager {

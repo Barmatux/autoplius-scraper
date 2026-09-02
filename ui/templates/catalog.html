@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Каталог двигателей — Autoplius Scraper</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260902f">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260902g">
 </head>
 {% macro render_catalog_tree(catalog_tree, section_class='') %}
   {% for make_group in catalog_tree %}
@@ -110,13 +110,13 @@
           </select>
         </label>
         <label class="check">
-          <span>до 1.9л</span>
           <input type="hidden" name="upto_19l" value="0">
           <input type="checkbox" name="upto_19l" value="1" {% if upto_19l %}checked{% endif %}>
+          <span>до 1.9л</span>
         </label>
         <label class="check">
-          <span>Только без объёма</span>
           <input type="checkbox" name="missing" value="1" {% if only_missing %}checked{% endif %}>
+          <span>Только без объёма</span>
         </label>
         <button type="submit">Показать</button>
       </form>

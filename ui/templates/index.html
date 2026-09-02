@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Autoplius Scraper</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260902f">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260902g">
 </head>
 {% macro view_qs() -%}
 {%- if listings_view == 'cards' -%}&view=cards{%- endif -%}
@@ -139,20 +139,20 @@
       </label>
       {% if tab not in ('no_volume', 'electric') %}
       <label class="check">
-        <span>до 1.9л</span>
         <input type="hidden" name="upto_19l" value="0">
         <input type="checkbox" name="upto_19l" value="1" {% if upto_19l %}checked{% endif %}>
+        <span>до 1.9л</span>
       </label>
       {% endif %}
       <label class="check">
-        <span>проходные</span>
         <input type="hidden" name="passable" value="0">
         <input type="checkbox" name="passable" value="1" {% if passable %}checked{% endif %}>
+        <span>проходные</span>
       </label>
       <label class="check">
-        <span>Старше 3-х лет</span>
         <input type="hidden" name="over_3y" value="0">
         <input type="checkbox" name="over_3y" value="1" {% if over_3y %}checked{% endif %}>
+        <span>Старше 3-х лет</span>
       </label>
       {% for c in selected_cities %}
       <input type="hidden" name="city" value="{{ c }}">
