@@ -11,6 +11,18 @@
     summary.textContent = String(Math.max(0, current + delta));
   }
 
+  function adjustNoVolumeTabCount(delta) {
+    const tabCount = document.querySelector('.tabs a[href*="tab=no_volume"] .tab-count');
+    if (!tabCount) {
+      return;
+    }
+    const current = parseInt(tabCount.textContent, 10);
+    if (Number.isNaN(current)) {
+      return;
+    }
+    tabCount.textContent = String(Math.max(0, current + delta));
+  }
+
   document.addEventListener("submit", (event) => {
     const form = event.target.closest("[data-admin-archive-form]");
     if (!form) {
@@ -51,6 +63,7 @@
         window.setTimeout(() => {
           row.remove();
           adjustSummaryCount(-1);
+          adjustNoVolumeTabCount(-1);
           const tbody = document.querySelector(".listings-table tbody");
           if (tbody && !tbody.querySelector("[data-listing-row]")) {
             const tableWrap = document.querySelector(".table-wrap");

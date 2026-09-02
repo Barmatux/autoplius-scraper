@@ -337,6 +337,10 @@ def _current_request_path() -> str:
     return request.path + (f"?{qs}" if qs else "")
 
 
+def _wants_json_response() -> bool:
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
 @app.get("/admin/enter")
 def admin_enter():
     user, _password = _admin_credentials()
@@ -982,8 +986,12 @@ def _admin_listing_redirect(**params: str):
 def admin_archive_listing(listing_id: int):
     path = require_db()
     if fetch_listing(path, listing_id) is None:
+        if _wants_json_response():
+            return jsonify({"ok": False, "error": "not found"}), 404
         abort(404, "listing not found in database")
     set_listing_archived(path, listing_id, archived=True)
+    if _wants_json_response():
+        return jsonify({"ok": True, "id": listing_id, "archived": True})
     return _admin_listing_redirect(archived=1)
 
 
@@ -991,8 +999,12 @@ def admin_archive_listing(listing_id: int):
 def admin_restore_listing(listing_id: int):
     path = require_db()
     if fetch_listing(path, listing_id) is None:
+        if _wants_json_response():
+            return jsonify({"ok": False, "error": "not found"}), 404
         abort(404, "listing not found in database")
     set_listing_archived(path, listing_id, archived=False)
+    if _wants_json_response():
+        return jsonify({"ok": True, "id": listing_id, "archived": False})
     return _admin_listing_redirect(restored=1)
 
 
