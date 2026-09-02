@@ -7,7 +7,7 @@ from autoplius.catalog_filters import listing_year
 from autoplius.catalog_filters import is_pickup_listing
 from autoplius.listing_display import listing_make_model
 
-BLOCKED_MAKES = frozenset({"Ligier", "Microcar", "Skoda"})
+BLOCKED_MAKES = frozenset({"Aixam", "Ligier", "Microcar", "Skoda"})
 
 
 def is_blocked_make(make: str | None) -> bool:

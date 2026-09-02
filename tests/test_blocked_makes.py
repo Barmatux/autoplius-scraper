@@ -1,10 +1,13 @@
 from autoplius.make_model_filters import BLOCKED_MAKES, is_blocked_make, is_blocked_listing
 
 
-def test_blocked_makes_include_ligier_microcar_and_skoda():
+def test_blocked_makes_include_aixam_ligier_microcar_and_skoda():
+    assert "Aixam" in BLOCKED_MAKES
     assert "Ligier" in BLOCKED_MAKES
     assert "Microcar" in BLOCKED_MAKES
     assert "Skoda" in BLOCKED_MAKES
+    assert is_blocked_make("Aixam")
+    assert is_blocked_make("aixam")
     assert is_blocked_make("Ligier")
     assert is_blocked_make("microcar")
     assert is_blocked_make("Skoda")
@@ -36,6 +39,14 @@ def test_blocked_listings_hidden_from_catalog(tmp_path):
     upsert_listing_item(
         db_path,
         {
+            "autoplius_id": 204,
+            "title": "Aixam Crossover, 2022",
+            "price_eur": 12000,
+        },
+    )
+    upsert_listing_item(
+        db_path,
+        {
             "autoplius_id": 203,
             "title": "Renault Clio, 2020",
             "price_eur": 10000,
@@ -46,6 +57,7 @@ def test_blocked_listings_hidden_from_catalog(tmp_path):
     assert listings[0]["autoplius_id"] == 203
     assert is_blocked_listing({"title": "Ligier JS50, 2020"})
     assert is_blocked_listing({"title": "Microcar M.Go, 2019"})
+    assert is_blocked_listing({"title": "Aixam Crossover, 2022"})
 
 
 def test_purge_blocked_makes_archives_existing_rows(tmp_path):
