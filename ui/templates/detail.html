@@ -56,7 +56,7 @@
           <div class="thumbs">
             {% for src in photos.thumb %}
             <button type="button" class="thumb-btn{% if loop.first %} is-active{% endif %}" data-gallery-thumb="{{ loop.index0 }}">
-              <img src="{{ src }}" alt="" loading="lazy">
+              <img src="{{ src }}" alt="" loading="lazy" decoding="async">
             </button>
             {% endfor %}
           </div>

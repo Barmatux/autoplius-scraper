@@ -7,7 +7,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from botocore.exceptions import BotoCoreError, ClientError
 from flask import Flask, abort, jsonify, redirect, render_template, request, Response, session, url_for
 
 from scraper.config import Settings
@@ -31,7 +30,7 @@ from scraper.db import (
 from scraper.listing_filter_options import fetch_listing_filter_options
 from scraper.listing_query import count_listings, fetch_listing_ids
 from scraper.listing_sql_filters import ListingFilters
-from scraper.s3_storage import get_s3_client
+from ui.media_serve import LIST_THUMB_WIDTH, parse_width, serve_remote_photo, serve_s3_object
 from ui.photo_urls import is_external_photo_url, photo_display_url, photo_display_urls
 from ui.table_layout import COL_KEYS, load_table_layout, save_table_layout, validate_layout
 from autoplius.cities_lt import distance_from_vilnius_label, google_maps_url
@@ -114,7 +113,10 @@ def photo_full_list_filter(urls: list[str] | None) -> list[str]:
 
 @app.template_filter("photo_thumb_list")
 def photo_thumb_list_filter(urls: list[str] | None) -> list[str]:
-    return [url for url in (thumb_photo_url(item) for item in normalize_photo_list(urls or [])) if url]
+    return photo_display_urls(
+        [url for url in (thumb_photo_url(item) for item in normalize_photo_list(urls or [])) if url],
+        width=LIST_THUMB_WIDTH,
+    )
 
 
 @app.template_filter("listing_photos")
@@ -124,7 +126,7 @@ def listing_photos_filter(item: dict[str, Any]) -> dict[str, Any]:
         urls = [item["photo_url"]]
     sets = listing_photo_sets(urls)
     full = photo_display_urls(sets["full"])
-    thumb = photo_display_urls(sets["thumb"])
+    thumb = photo_display_urls(sets["thumb"], width=LIST_THUMB_WIDTH)
     return {
         "full": full,
         "thumb": thumb,
@@ -504,14 +506,6 @@ def _fetch_index_listings(
     return exclude_blocked_makes(listings)
 
 
-def _image_response(data: bytes, content_type: str) -> Response:
-    return Response(
-        data,
-        mimetype=content_type,
-        headers={"Cache-Control": "public, max-age=86400, immutable"},
-    )
-
-
 @app.get("/media/object")
 def media_object():
     key = request.args.get("key", "").strip()
@@ -519,17 +513,7 @@ def media_object():
         abort(400, "Invalid object key")
     if not SETTINGS.s3_enabled:
         abort(503, "S3 storage is not configured")
-
-    try:
-        response = get_s3_client(SETTINGS).get_object(Bucket=SETTINGS.s3_bucket, Key=key)
-    except (ClientError, BotoCoreError):
-        abort(404, "Object not found")
-
-    body = response.get("Body")
-    if body is None:
-        abort(404, "Object body missing")
-    content_type = response.get("ContentType") or "application/octet-stream"
-    return _image_response(body.read(), content_type)
+    return serve_s3_object(SETTINGS, key, parse_width(request.args.get("w")))
 
 
 @app.get("/media/proxy")
@@ -537,7 +521,7 @@ def media_proxy():
     url = request.args.get("url", "").strip()
     if not is_external_photo_url(url):
         abort(400, "Invalid photo URL")
-    return redirect(url, code=302)
+    return serve_remote_photo(url, SETTINGS.autoplius_base_url, parse_width(request.args.get("w")))
 
 
 def display_description(item: dict[str, Any]) -> tuple[str | None, str | None]:

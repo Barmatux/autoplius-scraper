@@ -21,6 +21,10 @@ updated = backfill_engine_liters(Settings.from_env().db_path)
 print("backfill_engine_liters:", updated)
 PY
 
+echo "=== media cache dir ==="
+mkdir -p /var/lib/autoplius-scraper/media-cache
+chown autoplius:autoplius /var/lib/autoplius-scraper/media-cache
+
 if [[ -f deploy/nginx-autoplius-ui.conf ]]; then
   echo "=== nginx config ==="
   sudo cp deploy/nginx-autoplius-ui.conf /etc/nginx/sites-available/autoplius-ui

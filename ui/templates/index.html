@@ -259,7 +259,7 @@
             <td class="photo">
               {% if list_photos %}
               <div class="list-gallery" data-list-gallery data-photos='{{ list_photos|tojson }}'>
-                <img data-list-photo src="{{ list_photos[0] }}" alt="" loading="lazy">
+                <img data-list-photo src="{{ list_photos[0] }}" alt="" loading="{{ 'eager' if loop.index0 < 8 else 'lazy' }}" decoding="async">
                 {% if list_photos|length > 1 %}
                 <button type="button" class="list-photo-nav list-photo-prev" data-list-photo-prev aria-label="Предыдущее фото">‹</button>
                 <button type="button" class="list-photo-nav list-photo-next" data-list-photo-next aria-label="Следующее фото">›</button>

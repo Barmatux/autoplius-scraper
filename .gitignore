@@ -10,3 +10,4 @@ logs/
 *.log
 *.db
 *.db-journal
+media-cache/
