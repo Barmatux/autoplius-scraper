@@ -1,4 +1,8 @@
 <div class="brand">
   <p class="brand-name"><a class="brand-link" href="{{ url_for('index') }}">Autoplius Scraper</a></p>
+  {% if brand_sub_html is defined and brand_sub_html %}
+  <p class="brand-sub">{{ brand_sub_html|safe }}</p>
+  {% elif brand_sub is defined and brand_sub %}
   <p class="brand-sub">{{ brand_sub }}</p>
+  {% endif %}
 </div>
