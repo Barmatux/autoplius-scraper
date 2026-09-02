@@ -44,6 +44,8 @@ from autoplius.engine_catalog import (
     split_catalog_entries,
 )
 from autoplius.detail_display import detail_spec_rows
+from autoplius.listing_description import seller_description
+from autoplius.price_display import catalog_price_lines, price_lt_lines
 from autoplius.engine_volume import (
     engine_volume_from_listing,
     parse_manual_volume_input,
