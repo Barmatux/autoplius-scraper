@@ -6,6 +6,7 @@ import logging
 import os
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 from pathlib import Path
 from typing import Literal
 from urllib.error import HTTPError, URLError
@@ -26,11 +27,14 @@ _USER_AGENT = (
 )
 
 _CACHE_TTL_SEC = float(os.environ.get("LISTING_LIVE_CACHE_SEC", "1200") or "1200")
+_UNKNOWN_CACHE_TTL_SEC = float(os.environ.get("LISTING_LIVE_UNKNOWN_CACHE_SEC", "90") or "90")
 _HTTP_TIMEOUT_SEC = float(os.environ.get("LISTING_LIVE_HTTP_TIMEOUT_SEC", "10") or "10")
-_BROWSER_TIMEOUT_MS = int(float(os.environ.get("LISTING_LIVE_BROWSER_TIMEOUT_SEC", "20") or "20") * 1000)
+_BROWSER_TIMEOUT_MS = int(float(os.environ.get("LISTING_LIVE_BROWSER_TIMEOUT_SEC", "25") or "25") * 1000)
+_PROBE_TIMEOUT_SEC = float(os.environ.get("LISTING_LIVE_PROBE_TIMEOUT_SEC", "35") or "35")
 
 _cache: dict[str, tuple[float, LiveStatus]] = {}
 _cache_lock = threading.Lock()
+_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="listing-live")
 _inflight: dict[str, threading.Event] = {}
 _inflight_lock = threading.Lock()
 
@@ -52,8 +56,9 @@ def _cache_get(url: str) -> LiveStatus | None:
 
 
 def _cache_set(url: str, status: LiveStatus) -> LiveStatus:
+    ttl = _UNKNOWN_CACHE_TTL_SEC if status == "unknown" else _CACHE_TTL_SEC
     with _cache_lock:
-        _cache[url] = (time.monotonic() + max(30.0, _CACHE_TTL_SEC), status)
+        _cache[url] = (time.monotonic() + max(15.0, ttl), status)
     return status
 
 
@@ -193,16 +198,27 @@ def probe_listing_browser(url: str) -> LiveStatus:
     profile = _profile_dir()
     try:
         with sync_playwright() as playwright:
-            context = create_browser_context(
-                playwright,
-                headless=True,
-                profile_dir=profile,
-                storage_state=None,
-            )
+            try:
+                context = create_browser_context(
+                    playwright,
+                    headless=True,
+                    profile_dir=profile,
+                    storage_state=None,
+                )
+            except Exception as exc:
+                if profile is None:
+                    raise
+                logger.info("listing live profile unavailable (%s); retry without profile", exc)
+                context = create_browser_context(
+                    playwright,
+                    headless=True,
+                    profile_dir=None,
+                    storage_state=None,
+                )
             page = context.new_page()
             try:
                 page.goto(target, wait_until="domcontentloaded", timeout=_BROWSER_TIMEOUT_MS)
-                page.wait_for_timeout(800)
+                page.wait_for_timeout(1200)
                 title = page.title() or ""
                 html = page.content()
                 final_url = page.url or target
@@ -227,8 +243,15 @@ def probe_listing_browser(url: str) -> LiveStatus:
         return "unknown"
 
 
+def _probe_uncached(url: str) -> LiveStatus:
+    status = probe_listing_http(url)
+    if status == "unknown" and _browser_enabled():
+        status = probe_listing_browser(url)
+    return status
+
+
 def probe_listing_url(url: str) -> LiveStatus:
-    """Return live status for a listing URL (cached)."""
+    """Return live status for a listing URL (cached, off gevent worker thread)."""
     target = _normalize_url(url)
     if not target:
         return "unknown"
@@ -244,13 +267,16 @@ def probe_listing_url(url: str) -> LiveStatus:
             event = threading.Event()
             _inflight[target] = event
     if not leader:
-        event.wait(timeout=max(_HTTP_TIMEOUT_SEC, 25.0) + 5.0)
+        event.wait(timeout=_PROBE_TIMEOUT_SEC + 5.0)
         return _cache_get(target) or "unknown"
 
     try:
-        status = probe_listing_http(target)
-        if status == "unknown" and _browser_enabled():
-            status = probe_listing_browser(target)
+        future = _executor.submit(_probe_uncached, target)
+        try:
+            status = future.result(timeout=_PROBE_TIMEOUT_SEC)
+        except FuturesTimeout:
+            logger.info("listing live probe timed out for %s", target)
+            status = "unknown"
         return _cache_set(target, status)
     finally:
         with _inflight_lock:
