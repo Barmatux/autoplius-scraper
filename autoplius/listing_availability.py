@@ -180,7 +180,14 @@ def _browser_enabled() -> bool:
         return False
     if mode in {"1", "true", "yes", "on", "browser", "playwright"}:
         return True
-    return _profile_dir() is not None
+    if _profile_dir() is not None:
+        return True
+    try:
+        import playwright  # noqa: F401
+
+        return True
+    except Exception:
+        return False
 
 
 def probe_listing_browser(url: str) -> LiveStatus:
