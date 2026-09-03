@@ -6,7 +6,7 @@
   {% set vol = item|engine_volume %}
   {% set has_vol = vol and vol not in ('—', 'тАФ') and ('l' in vol.lower() or 'л' in vol.lower()) %}
   {% set kpp = item.transmission|transmission_short %}
-  {% set detail_href = url_for('listing_detail', listing_id=item.autoplius_id, next=request_path) %}
+  {% set detail_href = url_for('listing_detail', listing_id=item.autoplius_id) %}
 
   <div class="listing-card-top">
     {% include "_listing_favorite_button.html" %}

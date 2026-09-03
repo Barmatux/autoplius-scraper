@@ -341,7 +341,7 @@
                 {% include "_listing_favorite_button.html" %}
                 <div class="listing-auto-main">
               {% set make, model = item|listing_make_model %}
-              <a class="listing-name" href="{{ url_for('listing_detail', listing_id=item.autoplius_id, next=request_path) }}" data-save-return>
+              <a class="listing-name" href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}" data-save-return>
                 <span class="listing-make">{{ make }}</span>
                 {% if model %}<span class="listing-model">{{ model }}</span>{% endif %}
               </a>

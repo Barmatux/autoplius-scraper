@@ -43,8 +43,7 @@
     });
   });
 
-  const backLink = document.querySelector("[data-back-to-list]");
-  if (backLink) {
+  document.querySelectorAll("[data-back-to-list]").forEach((backLink) => {
     const href = backLink.getAttribute("href") || "";
     if (href === "/" || href.startsWith("/?")) {
       const saved = readReturnTarget();
@@ -52,5 +51,5 @@
         backLink.setAttribute("href", saved);
       }
     }
-  }
+  });
 })();

@@ -1270,18 +1270,23 @@ def api_listing_engine_volume(listing_id: int):
     return jsonify({"ok": True, "id": listing_id, "liters": liters})
 
 
+@app.get("/l/<int:listing_id>")
 @app.get("/listing/<int:listing_id>")
 def listing_detail(listing_id: int):
     item = fetch_listing(require_db(), listing_id)
     if item is None:
         abort(404, "listing not found in database")
     photos = listing_photos_filter(item)
+    # Prefer clean /listing/<id> URLs; return path is restored via localStorage
+    # (data-save-return / data-back-to-list). Optional ?next= still works.
+    next_raw = request.args.get("next")
+    back_url = _safe_redirect_target(next_raw) if next_raw else url_for("index")
     return render_template(
         "detail.html",
         item=item,
         photos=photos,
         display_description=display_description,
-        back_url=_safe_redirect_target(request.args.get("next")),
+        back_url=back_url,
     )
 
 
