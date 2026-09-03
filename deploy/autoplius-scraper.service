@@ -1,5 +1,5 @@
 [Unit]
-Description=Autoplius search scraper (30-minute incremental snapshot)
+Description=Autoplius search scraper (20-minute incremental snapshot)
 After=network-online.target
 Wants=network-online.target
 
