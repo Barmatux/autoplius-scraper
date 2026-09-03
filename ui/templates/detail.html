@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ item|listing_headline }} · Autoplius Scraper</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260903d">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260903e">
 </head>
 <body>
   {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
@@ -110,14 +110,12 @@
         <div><dt>Обновлено</dt><dd>{{ item.last_seen_at or '—' }}</dd></div>
         {% endif %}
         <div>
-          <dt class="detail-url-label">
+          <dt class="detail-url-label"{% if is_admin %} data-listing-live-root data-listing-id="{{ item.autoplius_id }}"{% endif %}>
             URL
-            <span
-              class="listing-live-status"
-              data-listing-live
-              data-listing-id="{{ item.autoplius_id }}"
-              hidden
-            ></span>
+            {% if is_admin %}
+            <button type="button" class="listing-live-check" data-listing-live-check>Check</button>
+            <span class="listing-live-status" data-listing-live-status hidden></span>
+            {% endif %}
           </dt>
           <dd class="detail-url">
             <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.url }}</a>
@@ -162,7 +160,9 @@
   {% endif %}
   <script src="{{ url_for('static', filename='tab_preference.js') }}" defer></script>
   <script src="{{ url_for('static', filename='price_rb_tooltip.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='listing_live.js') }}?v=20260903d" defer></script>
+  {% if is_admin %}
+  <script src="{{ url_for('static', filename='listing_live.js') }}?v=20260903e" defer></script>
+  {% endif %}
   {% if current_user %}
   <script src="{{ url_for('static', filename='favorite_toggle.js') }}" defer></script>
   {% endif %}

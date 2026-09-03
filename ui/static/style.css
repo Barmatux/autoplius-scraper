@@ -2433,16 +2433,40 @@ body.lightbox-open {
 .detail-url-label {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .detail-url {
   min-width: 0;
 }
 
+.listing-live-check {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.28rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.listing-live-check:hover:not(:disabled) {
+  border-color: #b7dccb;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.listing-live-check:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .listing-live-status {
   display: inline;
-  color: #0b7a45;
   font-size: 1rem;
   font-weight: 700;
   line-height: 1;
@@ -2452,10 +2476,20 @@ body.lightbox-open {
   min-width: 0;
   height: auto;
   border-radius: 0;
+  color: var(--muted);
 }
 
 .listing-live-status.is-available {
-  display: inline;
+  color: #0b7a45;
+}
+
+.listing-live-status.is-unavailable {
+  color: #b42318;
+}
+
+.listing-live-status.is-unknown,
+.listing-live-status.is-loading {
+  color: var(--muted);
 }
 
 .description {

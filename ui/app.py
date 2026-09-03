@@ -1292,6 +1292,8 @@ def listing_detail(listing_id: int):
 
 @app.get("/api/listing/<int:listing_id>/live")
 def listing_live_status(listing_id: int):
+    if not _is_admin():
+        return jsonify({"ok": False, "error": "admin only", "status": "unknown"}), 403
     item = fetch_listing(require_db(), listing_id)
     if item is None:
         return jsonify({"ok": False, "error": "not found", "status": "unknown"}), 404
