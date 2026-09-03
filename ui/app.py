@@ -875,13 +875,13 @@ def _active_filter_count(
     min_price: str,
     max_price: str,
     vehicle_rows: list[dict[str, str]],
-    year_from: str,
-    year_to: str,
+    year_from: str | int,
+    year_to: str | int,
     selected_body_types: list[str],
     selected_fuels: list[str],
     selected_transmissions: list[str],
-    volume_from: str,
-    volume_to: str,
+    volume_from: str | float,
+    volume_to: str | float,
     selected_cities: list[str],
     upto_19l: bool,
     passable: bool,
@@ -897,7 +897,7 @@ def _active_filter_count(
         count += 1
     if any((row.get("make") or row.get("model")) for row in vehicle_rows):
         count += 1
-    if (year_from or "").strip() or (year_to or "").strip():
+    if str(year_from or "").strip() or str(year_to or "").strip():
         count += 1
     if selected_body_types:
         count += 1
@@ -905,7 +905,7 @@ def _active_filter_count(
         count += 1
     if selected_transmissions:
         count += 1
-    if (volume_from or "").strip() or (volume_to or "").strip():
+    if str(volume_from or "").strip() or str(volume_to or "").strip():
         count += 1
     if selected_cities:
         count += 1
