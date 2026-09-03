@@ -93,6 +93,7 @@ from autoplius.transmission_labels import (
     transmission_short_label,
 )
 from autoplius.import_presets import preset_links
+from autoplius.listing_availability import probe_listing_url
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
 
@@ -1282,6 +1283,18 @@ def listing_detail(listing_id: int):
         display_description=display_description,
         back_url=_safe_redirect_target(request.args.get("next")),
     )
+
+
+@app.get("/api/listing/<int:listing_id>/live")
+def listing_live_status(listing_id: int):
+    item = fetch_listing(require_db(), listing_id)
+    if item is None:
+        return jsonify({"ok": False, "error": "not found", "status": "unknown"}), 404
+    url = (item.get("url") or "").strip()
+    if not url:
+        return jsonify({"ok": True, "status": "unknown", "listing_id": listing_id})
+    status = probe_listing_url(url)
+    return jsonify({"ok": True, "status": status, "listing_id": listing_id})
 
 
 @app.get("/admin/listings")

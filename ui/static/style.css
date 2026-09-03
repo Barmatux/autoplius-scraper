@@ -2430,6 +2430,33 @@ body.lightbox-open {
   word-break: break-word;
 }
 
+.detail-url {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.listing-live-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #0b7a45;
+  background: #ddf6e8;
+  border: 1px solid #b7e4c7;
+}
+
+.listing-live-status.is-available {
+  display: inline-flex;
+}
+
 .description {
   margin: 0;
   line-height: 1.5;
