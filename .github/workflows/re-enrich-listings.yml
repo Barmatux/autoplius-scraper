@@ -1,0 +1,64 @@
+# Re-fetch Autoplius detail pages and sync photos to MinIO for specific listing IDs.
+#
+# Required repository secrets: VM_HOST, VM_USER, VM_SSH_PRIVATE_KEY
+# (same as deploy-vm.yml)
+
+name: Re-enrich listings
+
+on:
+  workflow_dispatch:
+    inputs:
+      listing_ids:
+        description: "Space-separated Autoplius listing IDs"
+        required: true
+        type: string
+      force_photos:
+        description: "Overwrite existing MinIO objects"
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: re-enrich-autoplius-vm
+  cancel-in-progress: false
+
+jobs:
+  re-enrich:
+    name: Re-enrich on VM
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+
+      - name: Trust VM host key
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
+
+      - name: Re-enrich listings
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          LISTING_IDS: ${{ inputs.listing_ids }}
+          FORCE_PHOTOS: ${{ inputs.force_photos }}
+        run: |
+          set -euo pipefail
+          ids="$(echo "$LISTING_IDS" | tr ',;' ' ' | xargs)"
+          if [[ -z "$ids" ]]; then
+            echo "ERROR: no listing IDs" >&2
+            exit 1
+          fi
+          force_arg=""
+          if [[ "$FORCE_PHOTOS" == "true" ]]; then
+            force_arg="--force-photos"
+          fi
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${VM_USER}@${VM_HOST}" \
+            "sudo -u autoplius bash -lc $(printf '%q' "cd /opt/autoplius-scraper && set -a && source .env && set +a && /opt/autoplius-scraper/.venv/bin/python tools/re_enrich_listings.py ${ids} --sync-photos ${force_arg}")"

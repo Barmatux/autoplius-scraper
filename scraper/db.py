@@ -309,17 +309,31 @@ def _is_external_photo_url(url: str | None) -> bool:
     return bool(url and url.startswith("http"))
 
 
+def _photo_urls_from_row_value(raw: Any) -> list[str]:
+    if isinstance(raw, list):
+        return [url for url in raw if isinstance(url, str) and url]
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, json.JSONDecodeError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [url for url in parsed if isinstance(url, str) and url]
+
+
 def _preserve_stored_photos(row: dict[str, Any], existing: sqlite3.Row) -> None:
     """Keep MinIO URLs when scrape refreshed only external autoplius links."""
     if not _should_keep_stored_photos(existing["photo_url"], row.get("photo_url")):
         return
     if row.get("detail_scraped"):
-        try:
-            new_urls = json.loads(row.get("photo_urls_json") or "[]")
-            old_urls = json.loads(existing["photo_urls_json"] or "[]")
-        except json.JSONDecodeError:
-            new_urls, old_urls = [], []
+        new_urls = _photo_urls_from_row_value(row.get("photo_urls_json"))
+        old_urls = _photo_urls_from_row_value(existing["photo_urls_json"])
+        if not old_urls and existing["photo_url"]:
+            old_urls = [existing["photo_url"]]
         new_external = [url for url in new_urls if _is_external_photo_url(url)]
+        # Allow replacing a list-thumb MinIO object with a richer detail gallery.
         if len(new_external) > len(old_urls):
             return
     row["photo_url"] = existing["photo_url"]
