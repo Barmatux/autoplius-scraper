@@ -2977,6 +2977,25 @@ body.lightbox-open {
 
   .catalog.listings-feed {
     grid-template-columns: 1fr;
+    gap: 0.65rem;
+    width: calc(100% + 1.7rem);
+    margin-left: -0.85rem;
+    margin-right: -0.85rem;
+  }
+
+  .listings-feed .listing-card {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    box-shadow: none;
+  }
+
+  .listings-feed .listing-card:hover {
+    transform: none;
+  }
+
+  .listings-feed .card-price-bar {
+    border-radius: 0;
   }
 
   .listings-view-toggle,
