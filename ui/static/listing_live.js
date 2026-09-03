@@ -7,6 +7,7 @@
   const listingId = root.getAttribute("data-listing-id");
   const button = root.querySelector("[data-listing-live-check]");
   const statusNode = root.querySelector("[data-listing-live-status]");
+  const reasonNode = root.querySelector("[data-listing-live-reason]");
   if (!listingId || !button || !statusNode) {
     return;
   }
@@ -17,6 +18,10 @@
     statusNode.removeAttribute("title");
     statusNode.removeAttribute("aria-label");
     statusNode.textContent = "";
+    if (reasonNode) {
+      reasonNode.hidden = true;
+      reasonNode.textContent = "";
+    }
   }
 
   function showStatus(kind, text, title) {
@@ -27,6 +32,15 @@
     if (title) {
       statusNode.setAttribute("title", title);
       statusNode.setAttribute("aria-label", title);
+    }
+    if (reasonNode) {
+      if (title && kind !== "loading") {
+        reasonNode.hidden = false;
+        reasonNode.textContent = title;
+      } else {
+        reasonNode.hidden = true;
+        reasonNode.textContent = "";
+      }
     }
   }
 
@@ -53,15 +67,16 @@
       })
       .then(function (payload) {
         const status = payload && payload.status;
+        const label = (payload && payload.reason_label) || "";
         if (status === "available") {
-          showStatus("available", "✓", "Объявление доступно на Autoplius");
+          showStatus("available", "✓", label || "Объявление доступно на Autoplius");
           return;
         }
         if (status === "unavailable") {
-          showStatus("unavailable", "✕", "Объявление недоступно на Autoplius");
+          showStatus("unavailable", "✕", label || "Объявление недоступно на Autoplius");
           return;
         }
-        showStatus("unknown", "?", "Не удалось проверить актуальность");
+        showStatus("unknown", "?", label || "Не удалось проверить актуальность");
       })
       .catch(function () {
         showStatus("unknown", "?", "Ошибка проверки");

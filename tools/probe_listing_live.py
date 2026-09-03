@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI helper: print available|unavailable|unknown for one Autoplius listing URL."""
+"""CLI helper: print status[:reason] for one Autoplius listing URL."""
 
 from __future__ import annotations
 
@@ -25,12 +25,12 @@ def main() -> int:
         except ValueError:
             listing_id = None
     if not url:
-        print("unknown")
+        print("unknown:http_error")
         return 2
-    status = probe_listing_http(url, listing_id=listing_id)
-    if status == "unknown":
-        status = _probe_listing_browser_inline(url, listing_id=listing_id)
-    print(status)
+    result = probe_listing_http(url, listing_id=listing_id)
+    if result.status == "unknown":
+        result = _probe_listing_browser_inline(url, listing_id=listing_id)
+    print(f"{result.status}:{result.reason or ''}")
     return 0
 
 

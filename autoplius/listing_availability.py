@@ -8,6 +8,7 @@ import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 from urllib.error import HTTPError, URLError
@@ -20,6 +21,17 @@ from autoplius.urls import get_base_url
 logger = logging.getLogger(__name__)
 
 LiveStatus = Literal["available", "unavailable", "unknown"]
+
+REASON_LABELS = {
+    "available": "Объявление доступно на Autoplius",
+    "unavailable": "Объявление недоступно на Autoplius",
+    "cloudflare": "Cloudflare блокирует проверку с сервера",
+    "timeout": "Таймаут проверки",
+    "http_error": "Ошибка сети при обращении к Autoplius",
+    "browser_error": "Не удалось открыть страницу через браузер",
+    "no_content": "Страница открылась, но карточка объявления не распознана",
+    "server_error": "Autoplius вернул ошибку сервера",
+}
 
 _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -46,34 +58,50 @@ _HTTP_TIMEOUT_SEC = float(os.environ.get("LISTING_LIVE_HTTP_TIMEOUT_SEC", "10") 
 _BROWSER_TIMEOUT_MS = int(float(os.environ.get("LISTING_LIVE_BROWSER_TIMEOUT_SEC", "25") or "25") * 1000)
 _PROBE_TIMEOUT_SEC = float(os.environ.get("LISTING_LIVE_PROBE_TIMEOUT_SEC", "35") or "35")
 
-_cache: dict[str, tuple[float, LiveStatus]] = {}
+_cache: dict[str, tuple[float, "LiveProbeResult"]] = {}
 _cache_lock = threading.Lock()
 _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="listing-live")
 _inflight: dict[str, threading.Event] = {}
 _inflight_lock = threading.Lock()
 
 
+@dataclass(frozen=True)
+class LiveProbeResult:
+    status: LiveStatus
+    reason: str | None = None
+
+    @property
+    def reason_label(self) -> str:
+        if self.reason and self.reason in REASON_LABELS:
+            return REASON_LABELS[self.reason]
+        if self.status == "available":
+            return REASON_LABELS["available"]
+        if self.status == "unavailable":
+            return REASON_LABELS["unavailable"]
+        return "Не удалось проверить актуальность"
+
+
 def _normalize_url(url: str) -> str:
     return (url or "").strip()
 
 
-def _cache_get(url: str) -> LiveStatus | None:
+def _cache_get(key: str) -> LiveProbeResult | None:
     with _cache_lock:
-        hit = _cache.get(url)
+        hit = _cache.get(key)
         if not hit:
             return None
-        expires_at, status = hit
+        expires_at, result = hit
         if expires_at < time.monotonic():
-            _cache.pop(url, None)
+            _cache.pop(key, None)
             return None
-        return status
+        return result
 
 
-def _cache_set(url: str, status: LiveStatus) -> LiveStatus:
-    ttl = _UNKNOWN_CACHE_TTL_SEC if status == "unknown" else _CACHE_TTL_SEC
+def _cache_set(key: str, result: LiveProbeResult) -> LiveProbeResult:
+    ttl = _UNKNOWN_CACHE_TTL_SEC if result.status == "unknown" else _CACHE_TTL_SEC
     with _cache_lock:
-        _cache[url] = (time.monotonic() + max(15.0, ttl), status)
-    return status
+        _cache[key] = (time.monotonic() + max(15.0, ttl), result)
+    return result
 
 
 def classify_listing_html(
@@ -83,26 +111,24 @@ def classify_listing_html(
     title: str,
     html: str,
     listing_id: int | None = None,
-) -> LiveStatus:
+) -> LiveProbeResult:
     """Classify an Autoplius response without performing network I/O."""
     final_url = (url or "").lower()
     if status_code == 404 or status_code == 410:
-        return "unavailable"
+        return LiveProbeResult("unavailable", "unavailable")
     if status_code >= 500:
-        return "unknown"
+        return LiveProbeResult("unknown", "server_error")
     if is_not_found_page(title, html) or _is_inactive_listing(title, html):
-        return "unavailable"
+        return LiveProbeResult("unavailable", "unavailable")
     if "/404" in final_url or final_url.rstrip("/").endswith("/not-found"):
-        return "unavailable"
-    if is_challenge_page(html, title):
-        return "unknown"
-    if status_code in {401, 403, 429}:
-        return "unknown"
+        return LiveProbeResult("unavailable", "unavailable")
+    if is_challenge_page(html, title) or status_code in {401, 403, 429}:
+        return LiveProbeResult("unknown", "cloudflare")
     if status_code == 200 and _looks_like_active_listing(html, listing_id=listing_id):
-        return "available"
+        return LiveProbeResult("available", "available")
     if status_code == 200:
-        return "unknown"
-    return "unknown"
+        return LiveProbeResult("unknown", "no_content")
+    return LiveProbeResult("unknown", "http_error")
 
 
 def _is_inactive_listing(title: str, html: str) -> bool:
@@ -115,8 +141,6 @@ def _looks_like_active_listing(html: str, *, listing_id: int | None = None) -> b
     blob = html.lower()
     if "second-parameters" not in blob or "parameter-row" not in blob:
         return False
-    # Related-ads / 404 shells often still contain /objavlenija/ links — never
-    # treat those alone as proof that *this* listing is live.
     detail_markers = (
         "announcement-price",
         "js-seller-phone",
@@ -130,7 +154,6 @@ def _looks_like_active_listing(html: str, *, listing_id: int | None = None) -> b
     if listing_id is None:
         return True
     sid = str(listing_id)
-    # Require the id as its own token so related ads with nearby ids don't match.
     return bool(re.search(rf"(?<!\d){re.escape(sid)}(?!\d)", html))
 
 
@@ -139,13 +162,13 @@ def probe_listing_http(
     *,
     timeout: float | None = None,
     listing_id: int | None = None,
-) -> LiveStatus:
+) -> LiveProbeResult:
     target = _normalize_url(url)
     if not target:
-        return "unknown"
+        return LiveProbeResult("unknown", "http_error")
     parsed = urlparse(target)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        return "unknown"
+        return LiveProbeResult("unknown", "http_error")
 
     request = Request(
         target,
@@ -170,12 +193,13 @@ def probe_listing_http(
         content_type = ""
     except (URLError, TimeoutError, OSError) as exc:
         logger.info("listing live HTTP probe failed for %s: %s", target, exc)
-        return "unknown"
+        return LiveProbeResult("unknown", "http_error")
 
     if "text/html" not in content_type and raw[:1] not in (b"<", b"!"):
-        # Unexpected payload (often CF binary/block); treat as unknown.
+        if status_code in {401, 403, 429}:
+            return LiveProbeResult("unknown", "cloudflare")
         if status_code == 200:
-            return "unknown"
+            return LiveProbeResult("unknown", "no_content")
 
     html = raw.decode("utf-8", errors="replace")
     title = _extract_title(html)
@@ -230,10 +254,10 @@ def _browser_enabled() -> bool:
         return False
 
 
-def probe_listing_browser(url: str, *, listing_id: int | None = None) -> LiveStatus:
+def probe_listing_browser(url: str, *, listing_id: int | None = None) -> LiveProbeResult:
     target = _normalize_url(url)
     if not target:
-        return "unknown"
+        return LiveProbeResult("unknown", "browser_error")
     inline = os.environ.get("LISTING_LIVE_BROWSER_INLINE", "").strip().lower() in {
         "1",
         "true",
@@ -241,9 +265,11 @@ def probe_listing_browser(url: str, *, listing_id: int | None = None) -> LiveSta
         "on",
     }
     if not inline:
-        status = _probe_listing_browser_subprocess(target, listing_id=listing_id)
-        if status != "unknown":
-            return status
+        result = _probe_listing_browser_subprocess(target, listing_id=listing_id)
+        if result.status != "unknown" or result.reason not in {None, "browser_error"}:
+            return result
+        if result.reason == "cloudflare":
+            return result
     return _probe_listing_browser_inline(target, listing_id=listing_id)
 
 
@@ -251,13 +277,13 @@ def _probe_listing_browser_subprocess(
     url: str,
     *,
     listing_id: int | None = None,
-) -> LiveStatus:
+) -> LiveProbeResult:
     import subprocess
     import sys
 
     helper = Path(__file__).resolve().parents[1] / "tools" / "probe_listing_live.py"
     if not helper.is_file():
-        return "unknown"
+        return LiveProbeResult("unknown", "browser_error")
     python = os.environ.get("LISTING_LIVE_PYTHON", "").strip() or sys.executable
     env = os.environ.copy()
     env["LISTING_LIVE_BROWSER_INLINE"] = "1"
@@ -279,11 +305,17 @@ def _probe_listing_browser_subprocess(
         )
     except Exception as exc:
         logger.info("listing live subprocess failed for %s: %s", url, exc)
-        return "unknown"
+        return LiveProbeResult("unknown", "browser_error")
     lines = [line.strip() for line in (completed.stdout or "").splitlines() if line.strip()]
-    value = (lines[-1] if lines else "unknown").lower()
-    if value in {"available", "unavailable", "unknown"}:
-        return value  # type: ignore[return-value]
+    raw = lines[-1] if lines else "unknown"
+    if ":" in raw:
+        status, reason = raw.split(":", 1)
+    else:
+        status, reason = raw, ""
+    status = status.lower().strip()
+    reason = reason.strip() or None
+    if status in {"available", "unavailable", "unknown"}:
+        return LiveProbeResult(status, reason)  # type: ignore[arg-type]
     logger.info(
         "listing live subprocess unexpected output for %s rc=%s out=%r err=%r",
         url,
@@ -291,24 +323,24 @@ def _probe_listing_browser_subprocess(
         (completed.stdout or "")[-300:],
         (completed.stderr or "")[-300:],
     )
-    return "unknown"
+    return LiveProbeResult("unknown", "browser_error")
 
 
 def _probe_listing_browser_inline(
     url: str,
     *,
     listing_id: int | None = None,
-) -> LiveStatus:
+) -> LiveProbeResult:
     target = _normalize_url(url)
     if not target:
-        return "unknown"
+        return LiveProbeResult("unknown", "browser_error")
     try:
         from playwright.sync_api import sync_playwright
 
         from autoplius.browser import create_browser_context
     except Exception as exc:
         logger.info("listing live browser unavailable: %s", exc)
-        return "unknown"
+        return LiveProbeResult("unknown", "browser_error")
 
     profile = _profile_dir()
     try:
@@ -348,21 +380,34 @@ def _probe_listing_browser_inline(
                 context.close()
     except Exception as exc:
         logger.info("listing live browser probe failed for %s: %s", target, exc)
-        return "unknown"
+        return LiveProbeResult("unknown", "browser_error")
 
 
-def _probe_uncached(url: str, *, listing_id: int | None = None) -> LiveStatus:
-    status = probe_listing_http(url, listing_id=listing_id)
-    if status == "unknown" and _browser_enabled():
-        status = probe_listing_browser(url, listing_id=listing_id)
-    return status
+def _probe_uncached(url: str, *, listing_id: int | None = None) -> LiveProbeResult:
+    result = probe_listing_http(url, listing_id=listing_id)
+    if result.status == "unknown" and result.reason == "cloudflare" and _browser_enabled():
+        browser_result = probe_listing_browser(url, listing_id=listing_id)
+        if browser_result.status != "unknown" or browser_result.reason not in {
+            None,
+            "browser_error",
+        }:
+            return browser_result
+        # Prefer the more specific Cloudflare reason when browser also fails open.
+        return result if result.reason else browser_result
+    if result.status == "unknown" and _browser_enabled():
+        return probe_listing_browser(url, listing_id=listing_id)
+    return result
 
 
 def probe_listing_url(url: str, *, listing_id: int | None = None) -> LiveStatus:
-    """Return live status for a listing URL (cached, off gevent worker thread)."""
+    return probe_listing_result(url, listing_id=listing_id).status
+
+
+def probe_listing_result(url: str, *, listing_id: int | None = None) -> LiveProbeResult:
+    """Return live status + reason for a listing URL (cached, off gevent worker)."""
     target = _normalize_url(url)
     if not target:
-        return "unknown"
+        return LiveProbeResult("unknown", "http_error")
     cache_key = f"{listing_id or ''}::{target}"
 
     cached = _cache_get(cache_key)
@@ -377,16 +422,16 @@ def probe_listing_url(url: str, *, listing_id: int | None = None) -> LiveStatus:
             _inflight[cache_key] = event
     if not leader:
         event.wait(timeout=_PROBE_TIMEOUT_SEC + 5.0)
-        return _cache_get(cache_key) or "unknown"
+        return _cache_get(cache_key) or LiveProbeResult("unknown", "timeout")
 
     try:
         future = _executor.submit(_probe_uncached, target, listing_id=listing_id)
         try:
-            status = future.result(timeout=_PROBE_TIMEOUT_SEC)
+            result = future.result(timeout=_PROBE_TIMEOUT_SEC)
         except FuturesTimeout:
             logger.info("listing live probe timed out for %s", target)
-            status = "unknown"
-        return _cache_set(cache_key, status)
+            result = LiveProbeResult("unknown", "timeout")
+        return _cache_set(cache_key, result)
     finally:
         with _inflight_lock:
             _inflight.pop(cache_key, None)

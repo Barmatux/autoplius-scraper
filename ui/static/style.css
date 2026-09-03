@@ -2492,6 +2492,13 @@ body.lightbox-open {
   color: var(--muted);
 }
 
+.listing-live-reason {
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.2;
+  max-width: 18rem;
+}
+
 .description {
   margin: 0;
   line-height: 1.5;

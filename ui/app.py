@@ -93,7 +93,7 @@ from autoplius.transmission_labels import (
     transmission_short_label,
 )
 from autoplius.import_presets import preset_links
-from autoplius.listing_availability import probe_listing_url
+from autoplius.listing_availability import probe_listing_result
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
 
@@ -1299,9 +1299,25 @@ def listing_live_status(listing_id: int):
         return jsonify({"ok": False, "error": "not found", "status": "unknown"}), 404
     url = (item.get("url") or "").strip()
     if not url:
-        return jsonify({"ok": True, "status": "unknown", "listing_id": listing_id})
-    status = probe_listing_url(url, listing_id=listing_id)
-    return jsonify({"ok": True, "status": status, "listing_id": listing_id})
+        return jsonify(
+            {
+                "ok": True,
+                "status": "unknown",
+                "reason": "http_error",
+                "reason_label": "У объявления нет URL",
+                "listing_id": listing_id,
+            }
+        )
+    result = probe_listing_result(url, listing_id=listing_id)
+    return jsonify(
+        {
+            "ok": True,
+            "status": result.status,
+            "reason": result.reason,
+            "reason_label": result.reason_label,
+            "listing_id": listing_id,
+        }
+    )
 
 
 @app.get("/admin/listings")

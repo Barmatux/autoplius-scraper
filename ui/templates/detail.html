@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ item|listing_headline }} · Autoplius Scraper</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260903e">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260903f">
 </head>
 <body>
   {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
@@ -115,6 +115,7 @@
             {% if is_admin %}
             <button type="button" class="listing-live-check" data-listing-live-check>Check</button>
             <span class="listing-live-status" data-listing-live-status hidden></span>
+            <span class="listing-live-reason muted" data-listing-live-reason hidden></span>
             {% endif %}
           </dt>
           <dd class="detail-url">
@@ -161,7 +162,7 @@
   <script src="{{ url_for('static', filename='tab_preference.js') }}" defer></script>
   <script src="{{ url_for('static', filename='price_rb_tooltip.js') }}" defer></script>
   {% if is_admin %}
-  <script src="{{ url_for('static', filename='listing_live.js') }}?v=20260903e" defer></script>
+  <script src="{{ url_for('static', filename='listing_live.js') }}?v=20260903f" defer></script>
   {% endif %}
   {% if current_user %}
   <script src="{{ url_for('static', filename='favorite_toggle.js') }}" defer></script>
