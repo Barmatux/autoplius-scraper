@@ -2430,31 +2430,32 @@ body.lightbox-open {
   word-break: break-word;
 }
 
-.detail-url {
-  display: flex;
+.detail-url-label {
+  display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.detail-url {
+  min-width: 0;
 }
 
 .listing-live-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.15rem;
-  height: 1.15rem;
-  padding: 0 0.2rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
+  display: inline;
+  color: #0b7a45;
+  font-size: 1rem;
   font-weight: 700;
   line-height: 1;
-  color: #0b7a45;
-  background: #ddf6e8;
-  border: 1px solid #b7e4c7;
+  background: none;
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  height: auto;
+  border-radius: 0;
 }
 
 .listing-live-status.is-available {
-  display: inline-flex;
+  display: inline;
 }
 
 .description {

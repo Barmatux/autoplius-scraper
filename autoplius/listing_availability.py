@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
@@ -24,6 +25,19 @@ _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/122.0.0.0 Safari/537.36"
+)
+
+_INACTIVE_LISTING_RE = re.compile(
+    r"skelbimas\s+nerastas|"
+    r"skelbimas\s+neaktyvus|"
+    r"объявление\s+не\s+найдено|"
+    r"объявление\s+неактивно|"
+    r"advertisement\s+(?:was\s+)?not\s+found|"
+    r"this\s+(?:advertisement|listing)\s+is\s+(?:no\s+longer\s+available|unavailable|inactive)|"
+    r"announcement\s+not\s+found|"
+    r"page\s+not\s+found|"
+    r"страница\s+не\s+найдена",
+    re.I,
 )
 
 _CACHE_TTL_SEC = float(os.environ.get("LISTING_LIVE_CACHE_SEC", "1200") or "1200")
@@ -62,14 +76,21 @@ def _cache_set(url: str, status: LiveStatus) -> LiveStatus:
     return status
 
 
-def classify_listing_html(*, status_code: int, url: str, title: str, html: str) -> LiveStatus:
+def classify_listing_html(
+    *,
+    status_code: int,
+    url: str,
+    title: str,
+    html: str,
+    listing_id: int | None = None,
+) -> LiveStatus:
     """Classify an Autoplius response without performing network I/O."""
     final_url = (url or "").lower()
     if status_code == 404 or status_code == 410:
         return "unavailable"
     if status_code >= 500:
         return "unknown"
-    if is_not_found_page(title, html):
+    if is_not_found_page(title, html) or _is_inactive_listing(title, html):
         return "unavailable"
     if "/404" in final_url or final_url.rstrip("/").endswith("/not-found"):
         return "unavailable"
@@ -77,30 +98,48 @@ def classify_listing_html(*, status_code: int, url: str, title: str, html: str) 
         return "unknown"
     if status_code in {401, 403, 429}:
         return "unknown"
-    if status_code == 200 and _looks_like_listing(html):
+    if status_code == 200 and _looks_like_active_listing(html, listing_id=listing_id):
         return "available"
     if status_code == 200:
         return "unknown"
     return "unknown"
 
 
-def _looks_like_listing(html: str) -> bool:
+def _is_inactive_listing(title: str, html: str) -> bool:
+    blob = f"{title}\n{html}"
+    return bool(_INACTIVE_LISTING_RE.search(blob))
+
+
+def _looks_like_active_listing(html: str, *, listing_id: int | None = None) -> bool:
+    """Require detail-page markers; ignore search/404 pages with related ads."""
     blob = html.lower()
-    markers = (
-        "second-parameters",
-        "parameter-row",
+    if "second-parameters" not in blob or "parameter-row" not in blob:
+        return False
+    # Related-ads / 404 shells often still contain /objavlenija/ links — never
+    # treat those alone as proof that *this* listing is live.
+    detail_markers = (
         "announcement-price",
-        "announcement-title",
         "js-seller-phone",
-        "data-clipboard",
-        "/objavlenija/",
-        "/skelbimai/",
+        "contacts-phone",
+        "seller-contact",
+        "announcement-title",
+        "bookmarked-announcement",
     )
-    hits = sum(1 for marker in markers if marker in blob)
-    return hits >= 2 or ("parameter-row" in blob and "€" in html)
+    if not any(marker in blob for marker in detail_markers):
+        return False
+    if listing_id is None:
+        return True
+    sid = str(listing_id)
+    # Require the id as its own token so related ads with nearby ids don't match.
+    return bool(re.search(rf"(?<!\d){re.escape(sid)}(?!\d)", html))
 
 
-def probe_listing_http(url: str, *, timeout: float | None = None) -> LiveStatus:
+def probe_listing_http(
+    url: str,
+    *,
+    timeout: float | None = None,
+    listing_id: int | None = None,
+) -> LiveStatus:
     target = _normalize_url(url)
     if not target:
         return "unknown"
@@ -145,6 +184,7 @@ def probe_listing_http(url: str, *, timeout: float | None = None) -> LiveStatus:
         url=final_url,
         title=title,
         html=html,
+        listing_id=listing_id,
     )
 
 
@@ -190,7 +230,7 @@ def _browser_enabled() -> bool:
         return False
 
 
-def probe_listing_browser(url: str) -> LiveStatus:
+def probe_listing_browser(url: str, *, listing_id: int | None = None) -> LiveStatus:
     target = _normalize_url(url)
     if not target:
         return "unknown"
@@ -201,13 +241,17 @@ def probe_listing_browser(url: str) -> LiveStatus:
         "on",
     }
     if not inline:
-        status = _probe_listing_browser_subprocess(target)
+        status = _probe_listing_browser_subprocess(target, listing_id=listing_id)
         if status != "unknown":
             return status
-    return _probe_listing_browser_inline(target)
+    return _probe_listing_browser_inline(target, listing_id=listing_id)
 
 
-def _probe_listing_browser_subprocess(url: str) -> LiveStatus:
+def _probe_listing_browser_subprocess(
+    url: str,
+    *,
+    listing_id: int | None = None,
+) -> LiveStatus:
     import subprocess
     import sys
 
@@ -220,9 +264,12 @@ def _probe_listing_browser_subprocess(url: str) -> LiveStatus:
     env["PYTHONPATH"] = str(helper.parents[1]) + (
         os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else ""
     )
+    cmd = [python, str(helper), url]
+    if listing_id is not None:
+        cmd.append(str(listing_id))
     try:
         completed = subprocess.run(
-            [python, str(helper), url],
+            cmd,
             check=False,
             capture_output=True,
             text=True,
@@ -247,14 +294,18 @@ def _probe_listing_browser_subprocess(url: str) -> LiveStatus:
     return "unknown"
 
 
-def _probe_listing_browser_inline(url: str) -> LiveStatus:
+def _probe_listing_browser_inline(
+    url: str,
+    *,
+    listing_id: int | None = None,
+) -> LiveStatus:
     target = _normalize_url(url)
     if not target:
         return "unknown"
     try:
         from playwright.sync_api import sync_playwright
 
-        from autoplius.browser import create_browser_context, has_target_content
+        from autoplius.browser import create_browser_context
     except Exception as exc:
         logger.info("listing live browser unavailable: %s", exc)
         return "unknown"
@@ -286,17 +337,12 @@ def _probe_listing_browser_inline(url: str) -> LiveStatus:
                 title = page.title() or ""
                 html = page.content()
                 final_url = page.url or target
-                if is_not_found_page(title, html):
-                    return "unavailable"
-                if is_challenge_page(html, title):
-                    return "unknown"
-                if has_target_content(page, html) or _looks_like_listing(html):
-                    return "available"
                 return classify_listing_html(
                     status_code=200,
                     url=final_url,
                     title=title,
                     html=html,
+                    listing_id=listing_id,
                 )
             finally:
                 context.close()
@@ -305,42 +351,43 @@ def _probe_listing_browser_inline(url: str) -> LiveStatus:
         return "unknown"
 
 
-def _probe_uncached(url: str) -> LiveStatus:
-    status = probe_listing_http(url)
+def _probe_uncached(url: str, *, listing_id: int | None = None) -> LiveStatus:
+    status = probe_listing_http(url, listing_id=listing_id)
     if status == "unknown" and _browser_enabled():
-        status = probe_listing_browser(url)
+        status = probe_listing_browser(url, listing_id=listing_id)
     return status
 
 
-def probe_listing_url(url: str) -> LiveStatus:
+def probe_listing_url(url: str, *, listing_id: int | None = None) -> LiveStatus:
     """Return live status for a listing URL (cached, off gevent worker thread)."""
     target = _normalize_url(url)
     if not target:
         return "unknown"
+    cache_key = f"{listing_id or ''}::{target}"
 
-    cached = _cache_get(target)
+    cached = _cache_get(cache_key)
     if cached is not None:
         return cached
 
     with _inflight_lock:
-        event = _inflight.get(target)
+        event = _inflight.get(cache_key)
         leader = event is None
         if leader:
             event = threading.Event()
-            _inflight[target] = event
+            _inflight[cache_key] = event
     if not leader:
         event.wait(timeout=_PROBE_TIMEOUT_SEC + 5.0)
-        return _cache_get(target) or "unknown"
+        return _cache_get(cache_key) or "unknown"
 
     try:
-        future = _executor.submit(_probe_uncached, target)
+        future = _executor.submit(_probe_uncached, target, listing_id=listing_id)
         try:
             status = future.result(timeout=_PROBE_TIMEOUT_SEC)
         except FuturesTimeout:
             logger.info("listing live probe timed out for %s", target)
             status = "unknown"
-        return _cache_set(target, status)
+        return _cache_set(cache_key, status)
     finally:
         with _inflight_lock:
-            _inflight.pop(target, None)
+            _inflight.pop(cache_key, None)
         event.set()

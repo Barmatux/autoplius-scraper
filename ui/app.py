@@ -1298,7 +1298,7 @@ def listing_live_status(listing_id: int):
     url = (item.get("url") or "").strip()
     if not url:
         return jsonify({"ok": True, "status": "unknown", "listing_id": listing_id})
-    status = probe_listing_url(url)
+    status = probe_listing_url(url, listing_id=listing_id)
     return jsonify({"ok": True, "status": status, "listing_id": listing_id})
 
 
