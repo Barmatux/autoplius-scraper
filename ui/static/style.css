@@ -220,10 +220,11 @@ main {
 }
 
 .import-presets-menu {
-  position: absolute;
-  top: calc(100% + 0.35rem);
+  /* Fixed so the menu is not clipped by .tabs { overflow-x: auto }. */
+  position: fixed;
+  top: 0;
   left: 0;
-  z-index: 30;
+  z-index: 1400;
   display: none;
   gap: 0.35rem;
   min-width: 20rem;
@@ -243,7 +244,7 @@ main {
   display: block;
   padding: 0.55rem 0.75rem;
   border-radius: 8px;
-  color: var(--text);
+  color: var(--ink);
   font-size: 0.92rem;
   font-weight: 600;
   line-height: 1.35;

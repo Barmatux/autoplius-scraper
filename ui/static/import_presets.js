@@ -10,13 +10,37 @@
     return;
   }
 
+  function positionMenu() {
+    const rect = trigger.getBoundingClientRect();
+    const gap = 6;
+    const padding = 8;
+    const menuWidth = Math.min(
+      Math.max(menu.offsetWidth || 320, rect.width),
+      window.innerWidth - padding * 2
+    );
+    let left = rect.left;
+    if (left + menuWidth > window.innerWidth - padding) {
+      left = window.innerWidth - padding - menuWidth;
+    }
+    if (left < padding) {
+      left = padding;
+    }
+    menu.style.top = `${Math.round(rect.bottom + gap)}px`;
+    menu.style.left = `${Math.round(left)}px`;
+    menu.style.width = `${Math.round(menuWidth)}px`;
+  }
+
   function setOpen(open) {
     root.classList.toggle("is-open", open);
     trigger.setAttribute("aria-expanded", open ? "true" : "false");
     if (open) {
       menu.removeAttribute("hidden");
+      positionMenu();
     } else {
       menu.setAttribute("hidden", "");
+      menu.style.top = "";
+      menu.style.left = "";
+      menu.style.width = "";
     }
   }
 
@@ -39,6 +63,26 @@
       setOpen(false);
     }
   });
+
+  window.addEventListener(
+    "resize",
+    function () {
+      if (root.classList.contains("is-open")) {
+        positionMenu();
+      }
+    },
+    { passive: true }
+  );
+
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (root.classList.contains("is-open")) {
+        positionMenu();
+      }
+    },
+    { passive: true, capture: true }
+  );
 
   menu.querySelectorAll("a").forEach(function (link) {
     link.addEventListener("click", function () {
