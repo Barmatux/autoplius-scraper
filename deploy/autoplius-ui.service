@@ -8,6 +8,8 @@ Type=simple
 WorkingDirectory=/opt/autoplius-scraper
 EnvironmentFile=-/opt/autoplius-scraper/.env
 Environment=DATA_DIR=/var/lib/autoplius-scraper/data
+Environment=PROFILE_DIR=/var/lib/autoplius-scraper/browser-profile
+Environment=LISTING_LIVE_BROWSER=auto
 Environment=UI_HOST=0.0.0.0
 Environment=UI_PORT=8080
 # gevent: concurrent /media/object S3 reads without blocking HTML pages.
