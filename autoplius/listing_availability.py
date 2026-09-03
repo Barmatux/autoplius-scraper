@@ -194,10 +194,67 @@ def probe_listing_browser(url: str) -> LiveStatus:
     target = _normalize_url(url)
     if not target:
         return "unknown"
+    inline = os.environ.get("LISTING_LIVE_BROWSER_INLINE", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if not inline:
+        status = _probe_listing_browser_subprocess(target)
+        if status != "unknown":
+            return status
+    return _probe_listing_browser_inline(target)
+
+
+def _probe_listing_browser_subprocess(url: str) -> LiveStatus:
+    import subprocess
+    import sys
+
+    helper = Path(__file__).resolve().parents[1] / "tools" / "probe_listing_live.py"
+    if not helper.is_file():
+        return "unknown"
+    python = os.environ.get("LISTING_LIVE_PYTHON", "").strip() or sys.executable
+    env = os.environ.copy()
+    env["LISTING_LIVE_BROWSER_INLINE"] = "1"
+    env["PYTHONPATH"] = str(helper.parents[1]) + (
+        os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else ""
+    )
+    try:
+        completed = subprocess.run(
+            [python, str(helper), url],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=max(15.0, _PROBE_TIMEOUT_SEC),
+            env=env,
+            cwd=str(helper.parents[1]),
+        )
+    except Exception as exc:
+        logger.info("listing live subprocess failed for %s: %s", url, exc)
+        return "unknown"
+    lines = [line.strip() for line in (completed.stdout or "").splitlines() if line.strip()]
+    value = (lines[-1] if lines else "unknown").lower()
+    if value in {"available", "unavailable", "unknown"}:
+        return value  # type: ignore[return-value]
+    logger.info(
+        "listing live subprocess unexpected output for %s rc=%s out=%r err=%r",
+        url,
+        completed.returncode,
+        (completed.stdout or "")[-300:],
+        (completed.stderr or "")[-300:],
+    )
+    return "unknown"
+
+
+def _probe_listing_browser_inline(url: str) -> LiveStatus:
+    target = _normalize_url(url)
+    if not target:
+        return "unknown"
     try:
         from playwright.sync_api import sync_playwright
 
-        from autoplius.browser import create_browser_context
+        from autoplius.browser import create_browser_context, has_target_content
     except Exception as exc:
         logger.info("listing live browser unavailable: %s", exc)
         return "unknown"
@@ -233,8 +290,6 @@ def probe_listing_browser(url: str) -> LiveStatus:
                     return "unavailable"
                 if is_challenge_page(html, title):
                     return "unknown"
-                from autoplius.browser import has_target_content
-
                 if has_target_content(page, html) or _looks_like_listing(html):
                     return "available"
                 return classify_listing_html(
