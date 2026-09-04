@@ -15,10 +15,11 @@ from pathlib import Path
 ROOT = Path("/opt/autoplius-scraper")
 sys.path.insert(0, str(ROOT))
 from scraper.config import Settings
-from scraper.listing_query import backfill_engine_liters
+from scraper.listing_query import backfill_engine_liters, backfill_mileage_km
 
-updated = backfill_engine_liters(Settings.from_env().db_path)
-print("backfill_engine_liters:", updated)
+settings = Settings.from_env()
+print("backfill_engine_liters:", backfill_engine_liters(settings.db_path))
+print("backfill_mileage_km:", backfill_mileage_km(settings.db_path))
 PY
 
 echo "=== exchange rates ==="

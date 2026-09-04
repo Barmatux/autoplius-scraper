@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from autoplius.engine_volume import engine_volume_liters
+from autoplius.labels import mileage_from_parameters, parse_mileage_km
 from scraper.db import (
     LISTING_COLUMNS_FILTER,
     _listing_sort_sql,
@@ -24,6 +25,14 @@ def _volume_item_from_row(row: Any) -> dict[str, Any]:
         "description_ru": row["description_ru"],
         "parameters": json.loads(row["parameters_json"] or "{}"),
     }
+
+
+def _parameters_from_row(row: Any) -> dict[str, Any]:
+    try:
+        parsed = json.loads(row["parameters_json"] or "{}")
+    except (TypeError, json.JSONDecodeError, KeyError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def count_listings(db_path: Path, filters: ListingFilters) -> int:
@@ -116,6 +125,48 @@ def backfill_engine_liters(db_path: Path, *, batch_size: int = 500, force: bool 
                 conn.execute(
                     "UPDATE listings SET engine_liters = ? WHERE autoplius_id = ?",
                     (liters, row["autoplius_id"]),
+                )
+                updated += 1
+            last_id = int(rows[-1]["autoplius_id"])
+    return updated
+
+
+def backfill_mileage_km(db_path: Path, *, batch_size: int = 500, force: bool = False) -> int:
+    """Fill mileage_km from parameters_json when the column is empty."""
+    if not db_path.is_file():
+        return 0
+    updated = 0
+    with connect(db_path) as conn:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(listings)")}
+        if "mileage_km" not in cols or "parameters_json" not in cols:
+            return 0
+        last_id = 0
+        null_clause = "" if force else "mileage_km IS NULL AND "
+        while True:
+            rows = conn.execute(
+                f"""
+                SELECT autoplius_id, mileage_km, parameters_json
+                FROM listings
+                WHERE {null_clause} autoplius_id > ?
+                ORDER BY autoplius_id
+                LIMIT ?
+                """,
+                (last_id, batch_size),
+            ).fetchall()
+            if not rows:
+                break
+            for row in rows:
+                parsed = mileage_from_parameters(_parameters_from_row(row))
+                if parsed is None:
+                    continue
+                current = parse_mileage_km(row["mileage_km"])
+                if not force and current is not None:
+                    continue
+                if current == parsed:
+                    continue
+                conn.execute(
+                    "UPDATE listings SET mileage_km = ? WHERE autoplius_id = ?",
+                    (parsed, row["autoplius_id"]),
                 )
                 updated += 1
             last_id = int(rows[-1]["autoplius_id"])

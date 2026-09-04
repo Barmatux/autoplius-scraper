@@ -11,7 +11,7 @@ from autoplius.engine_volume import (
     engine_volume_liters,
     _parse_volume_cm3_from_text,
 )
-from autoplius.labels import PARAMETER_TO_FIELD
+from autoplius.labels import PARAMETER_TO_FIELD, resolve_listing_mileage_km
 
 _SKIP_PARAM_LABEL_RE = re.compile(
     r"(co[\s₂2]?|выброс|emisij|"
@@ -124,7 +124,7 @@ def _detail_engine_line(item: dict[str, Any]) -> str | None:
 
 def _field_value(item: dict[str, Any], field: str) -> str | None:
     if field == "mileage_km":
-        mileage = item.get("mileage_km")
+        mileage = resolve_listing_mileage_km(item)
         if mileage is None:
             return None
         return f"{int(mileage):,}".replace(",", " ") + " km"

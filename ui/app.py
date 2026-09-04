@@ -58,6 +58,7 @@ from autoplius.engine_catalog import (
     split_catalog_entries,
 )
 from autoplius.detail_display import detail_spec_rows
+from autoplius.labels import resolve_listing_mileage_km
 from autoplius.listing_description import seller_description
 from autoplius.price_display import catalog_price_lines, price_lt_lines
 from autoplius.engine_volume import (
@@ -209,6 +210,11 @@ def engine_volume(item: dict[str, Any]) -> str:
     return engine_volume_from_listing(item) or "—"
 
 
+@app.template_filter("listing_mileage_km")
+def listing_mileage_km_filter(item: dict[str, Any]) -> int | None:
+    return resolve_listing_mileage_km(item)
+
+
 @app.template_filter("transmission_short")
 def transmission_short(value: str | None) -> str:
     return transmission_short_label(value) or ""
@@ -226,7 +232,7 @@ def engine_kpp_lines(item: dict[str, Any]) -> list[str]:
     transmission = (item.get("transmission") or "").strip()
     if transmission:
         lines.append(transmission)
-    mileage_km = item.get("mileage_km")
+    mileage_km = resolve_listing_mileage_km(item)
     if mileage_km is not None:
         lines.append(f"{int(mileage_km):,}".replace(",", " ") + " km")
     return lines

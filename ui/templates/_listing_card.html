@@ -46,8 +46,9 @@
     </a>
   </h3>
 
-  {% if item.mileage_km is not none %}
-  <p class="listing-card-meta"><strong>Пробег:</strong> {{ "{:,}".format(item.mileage_km|int).replace(",", " ") }} км</p>
+  {% set mileage_km = item|listing_mileage_km %}
+  {% if mileage_km is not none %}
+  <p class="listing-card-meta"><strong>Пробег:</strong> {{ "{:,}".format(mileage_km|int).replace(",", " ") }} км</p>
   {% endif %}
 
   {% if item.city %}

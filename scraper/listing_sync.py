@@ -202,7 +202,13 @@ def merge_listing_row(
             if not _has_value(new_value):
                 merged[field] = old_value
 
-        if field in {"price_net_eur", "price_gross_eur", "price_vat_note", "engine_liters"}:
+        if field in {
+            "price_net_eur",
+            "price_gross_eur",
+            "price_vat_note",
+            "engine_liters",
+            "mileage_km",
+        }:
             if new_value is None and old_value is not None:
                 merged[field] = old_value
 
@@ -212,7 +218,19 @@ def merge_listing_row(
         merged["detail_error"] = existing.get("detail_error")
 
     _refresh_merged_engine_liters(merged)
+    _refresh_merged_mileage_km(merged)
     return merged
+
+
+def _merged_parameters(merged: dict[str, Any]) -> dict[str, Any]:
+    parameters = merged.get("parameters")
+    if isinstance(parameters, dict):
+        return parameters
+    try:
+        parsed = json.loads(merged.get("parameters_json") or "{}")
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def _refresh_merged_engine_liters(merged: dict[str, Any]) -> None:
@@ -221,18 +239,26 @@ def _refresh_merged_engine_liters(merged: dict[str, Any]) -> None:
 
     if merged.get("engine_liters") is not None:
         return
-    try:
-        parameters = json.loads(merged.get("parameters_json") or "{}")
-    except json.JSONDecodeError:
-        parameters = {}
+    parameters = _merged_parameters(merged)
     liters = engine_volume_liters(
         {
             "title": merged.get("title"),
             "engine": merged.get("engine"),
             "description": merged.get("description"),
             "description_ru": merged.get("description_ru"),
-            "parameters": parameters if isinstance(parameters, dict) else {},
+            "parameters": parameters,
         }
     )
     if liters is not None:
         merged["engine_liters"] = liters
+
+
+def _refresh_merged_mileage_km(merged: dict[str, Any]) -> None:
+    """Fill mileage_km from Autoplius parameters when search scrape omitted it."""
+    from autoplius.labels import mileage_from_parameters, parse_mileage_km
+
+    if parse_mileage_km(merged.get("mileage_km")) is not None:
+        return
+    parsed = mileage_from_parameters(_merged_parameters(merged))
+    if parsed is not None:
+        merged["mileage_km"] = parsed
