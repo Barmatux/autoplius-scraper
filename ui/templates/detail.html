@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ item|listing_headline }} · Autoplius Scraper</title>
+  <title>{{ item|listing_headline }} · Europe to Belarus</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260904b">
 </head>
 <body>
@@ -11,7 +11,7 @@
   <header class="top">
     {% set brand_sub_html %}
       <a href="{{ back_url }}" data-back-to-list>← к списку</a>
-      · {{ item|listing_headline }} · #{{ item.autoplius_id }} · SQLite
+      · {{ item|listing_headline }} · #{{ item.autoplius_id }}
     {% endset %}
     <div class="top-main">
       {% include "_brand.html" %}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Autoplius Scraper</title>
+  <title>Europe to Belarus</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260904c">
 </head>
 {% macro view_qs() -%}
@@ -51,7 +51,6 @@
 <body>
   {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
   <header class="top">
-    {% set brand_sub = "Все объявления из SQLite" %}
     <div class="top-main">
       {% include "_brand.html" %}
       {% include "_mobile_nav.html" %}
