@@ -2430,6 +2430,30 @@ body.lightbox-open {
   word-break: break-word;
 }
 
+.detail-price-rb .price-vat-line,
+.detail-price-rb .price-rb-line {
+  line-height: 1.25;
+}
+
+.detail-price-rb .price-vat-line + .price-vat-line,
+.detail-price-rb .price-rb-line + .price-rb-line {
+  margin-top: 0.35rem;
+}
+
+.detail-price-rb .price-vat-label {
+  font-weight: 400;
+}
+
+.detail-price-rb .price-vat-amount,
+.detail-price-rb .price-rb-value {
+  color: #1a4d8c;
+  font-weight: 600;
+}
+
+.detail-price-rb .price-rb {
+  display: inline-block;
+}
+
 .detail-url-label {
   display: inline-flex;
   align-items: center;

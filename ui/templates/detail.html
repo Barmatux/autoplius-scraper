@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ item|listing_headline }} · Autoplius Scraper</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260903f">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260904b">
 </head>
 <body>
   {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
@@ -79,14 +79,7 @@
     <section class="detail-info">
       <dl class="kv">
         <div><dt>Цена в LT</dt><dd>{{ render_price_lt(item) }}</dd></div>
-        <div><dt>Цена в BY</dt><dd>
-          {% set price_lines = item|catalog_price_lines %}
-          {% if price_lines and price_lines[0].label %}
-          {{ render_price_rb_vat(item) }}
-          {% else %}
-          {{ render_price_rb(item) }}
-          {% endif %}
-        </dd></div>
+        <div><dt>Цена в BY</dt><dd class="detail-price-rb">{{ render_price_rb(item) }}</dd></div>
         {% for row in item|detail_spec_rows %}
         <div>
           <dt>{{ row.label }}</dt>

@@ -48,8 +48,15 @@
 
 {% macro render_price_rb(item) %}
 {% for line in item|catalog_price_lines %}
-  <div class="price-rb-line{% if line.label %} price-vat-line{% endif %}">
+  {% if line.label %}
+  <div class="price-vat-line">
+    <div class="price-vat-label muted">{{ line.label }}</div>
+    <div class="price-vat-amount">{{ render_price_rb_value(line.rb) }}</div>
+  </div>
+  {% else %}
+  <div class="price-rb-line">
     {{ render_price_rb_value(line.rb) }}
   </div>
+  {% endif %}
 {% endfor %}
 {% endmacro %}
