@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Каталог двигателей — Autoplius Scraper</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260903f">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260904a">
 </head>
 {% macro render_catalog_tree(catalog_tree, section_class='') %}
   {% for make_group in catalog_tree %}
@@ -27,24 +27,35 @@
           </thead>
           <tbody>
             {% for entry in model_group.entries %}
-            <tr class="catalog-row{% if entry.customs_cm3 is none %} catalog-row-missing{% endif %}{% if entry.is_manual %} catalog-row-manual{% endif %}{% if entry.is_new %} catalog-row-new{% endif %}" data-catalog-row data-entry-id="{{ entry.id }}" data-make="{{ entry.make }}" data-model="{{ entry.model or '' }}"{% if entry.is_new %} data-catalog-new="1"{% endif %}>
+            <tr class="catalog-row{% if entry.customs_cm3 is none %} catalog-row-missing{% endif %}{% if entry.is_manual %} catalog-row-manual{% endif %}{% if entry.is_new %} catalog-row-new{% endif %}" data-catalog-row data-entry-id="{{ entry.id }}" data-make="{{ entry.make }}" data-model="{{ entry.model or '' }}"{% if entry.suggested_cm3 %} data-suggested-cm3="{{ entry.suggested_cm3 }}"{% endif %}{% if entry.is_new %} data-catalog-new="1"{% endif %}>
               <td>{{ entry.engine_label }}</td>
               <td>{{ entry.fuel or '—' }}</td>
-              <td class="num">{% if entry.suggested_cm3 %}{{ entry.suggested_cm3 }}{% else %}—{% endif %}</td>
+              <td class="num catalog-suggested-cell{% if entry.suggested_cm3 and entry.customs_cm3 is none %} catalog-suggested-ready{% endif %}">
+                {% if entry.suggested_cm3 %}
+                <button
+                  type="button"
+                  class="catalog-suggested-btn"
+                  data-catalog-use-suggested
+                  title="Подставить {{ entry.suggested_cm3 }} см³ в поле растаможки"
+                >{{ entry.suggested_cm3 }}</button>
+                {% else %}
+                —
+                {% endif %}
+              </td>
               <td class="catalog-edit-cell">
                 <input
                   type="number"
                   class="catalog-cm3-input"
                   min="1"
                   step="1"
-                  value="{{ entry.customs_cm3 if entry.customs_cm3 is not none else '' }}"
+                  value="{{ entry.customs_cm3 if entry.customs_cm3 is not none else (entry.suggested_cm3 or '') }}"
                   placeholder="{% if entry.suggested_cm3 %}{{ entry.suggested_cm3 }}{% else %}см³{% endif %}"
                   aria-label="Объём для растаможки"
                 >
               </td>
               <td class="num">{{ entry.listing_count }}</td>
               <td class="catalog-actions">
-                <button type="button" class="catalog-save-btn" data-catalog-save>Сохранить</button>
+                <button type="button" class="catalog-save-btn" data-catalog-save title="{% if entry.customs_cm3 is none and entry.suggested_cm3 %}Подтвердить {{ entry.suggested_cm3 }} см³{% else %}Сохранить объём{% endif %}">Сохранить</button>
                 <span class="catalog-save-status" data-catalog-status aria-live="polite"></span>
               </td>
             </tr>
@@ -166,6 +177,6 @@
     {% endif %}
   </main>
   <script src="{{ url_for('static', filename='tab_preference.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='engine_catalog.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='engine_catalog.js') }}?v=20260904a" defer></script>
 </body>
 </html>

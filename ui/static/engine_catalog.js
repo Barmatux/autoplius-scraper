@@ -139,6 +139,13 @@
     var wasMissing = row.classList.contains("catalog-row-missing");
     var wasNew = row.getAttribute("data-catalog-new") === "1";
     var raw = input.value.trim();
+    if (raw === "") {
+      var suggested = (row.getAttribute("data-suggested-cm3") || "").trim();
+      if (suggested) {
+        raw = suggested;
+        input.value = suggested;
+      }
+    }
     var payload = { customs_cm3: raw === "" ? null : Number(raw) };
     if (raw !== "" && (!Number.isFinite(payload.customs_cm3) || payload.customs_cm3 <= 0)) {
       setStatus(row, "Некорректный объём", "error");
@@ -159,6 +166,13 @@
       }
       row.classList.toggle("catalog-row-missing", payload.customs_cm3 === null);
       row.classList.toggle("catalog-row-manual", payload.customs_cm3 !== null);
+      var suggestedCell = row.querySelector(".catalog-suggested-cell");
+      if (suggestedCell) {
+        suggestedCell.classList.toggle(
+          "catalog-suggested-ready",
+          payload.customs_cm3 === null && Boolean(row.getAttribute("data-suggested-cm3"))
+        );
+      }
       setStatus(row, "Сохранено", "ok");
 
       if (wasNew && payload.customs_cm3 !== null) {
@@ -173,11 +187,27 @@
     }
   }
 
+  function applySuggested(row) {
+    var input = row.querySelector(".catalog-cm3-input");
+    var suggested = (row.getAttribute("data-suggested-cm3") || "").trim();
+    if (!input || !suggested) return;
+    input.value = suggested;
+    input.focus();
+    input.select();
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("[data-catalog-save]").forEach(function (button) {
       button.addEventListener("click", function () {
         var row = button.closest("[data-catalog-row]");
         if (row) saveRow(row);
+      });
+    });
+
+    document.querySelectorAll("[data-catalog-use-suggested]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var row = button.closest("[data-catalog-row]");
+        if (row) applySuggested(row);
       });
     });
 

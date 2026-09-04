@@ -2723,6 +2723,31 @@ body.lightbox-open {
   width: 150px;
 }
 
+.catalog-suggested-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 0.15em;
+}
+
+.catalog-suggested-ready .catalog-suggested-btn {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration-style: solid;
+}
+
+.catalog-suggested-btn:hover,
+.catalog-suggested-btn:focus-visible {
+  color: var(--accent);
+}
+
 .catalog-cm3-input {
   width: 100%;
   box-sizing: border-box;
