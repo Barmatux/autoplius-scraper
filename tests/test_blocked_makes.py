@@ -1,13 +1,14 @@
 from autoplius.make_model_filters import BLOCKED_MAKES, is_blocked_make, is_blocked_listing
 
 
-def test_blocked_makes_include_aixam_ligier_microcar_skoda_chatenet_and_byd():
+def test_blocked_makes_include_aixam_ligier_microcar_skoda_chatenet_byd_and_daihatsu():
     assert "Aixam" in BLOCKED_MAKES
     assert "Ligier" in BLOCKED_MAKES
     assert "Microcar" in BLOCKED_MAKES
     assert "Skoda" in BLOCKED_MAKES
     assert "Chatenet" in BLOCKED_MAKES
     assert "BYD" in BLOCKED_MAKES
+    assert "Daihatsu" in BLOCKED_MAKES
     assert is_blocked_make("Aixam")
     assert is_blocked_make("aixam")
     assert is_blocked_make("Ligier")
@@ -18,6 +19,8 @@ def test_blocked_makes_include_aixam_ligier_microcar_skoda_chatenet_and_byd():
     assert is_blocked_make("chatenet")
     assert is_blocked_make("BYD")
     assert is_blocked_make("byd")
+    assert is_blocked_make("Daihatsu")
+    assert is_blocked_make("daihatsu")
     assert not is_blocked_make("Renault")
 
 
@@ -74,6 +77,14 @@ def test_blocked_listings_hidden_from_catalog(tmp_path):
             "price_eur": 7000,
         },
     )
+    upsert_listing_item(
+        db_path,
+        {
+            "autoplius_id": 207,
+            "title": "Daihatsu Terios, 2018",
+            "price_eur": 11000,
+        },
+    )
     listings = fetch_listings(db_path)
     assert len(listings) == 1
     assert listings[0]["autoplius_id"] == 203
@@ -82,6 +93,7 @@ def test_blocked_listings_hidden_from_catalog(tmp_path):
     assert is_blocked_listing({"title": "Aixam Crossover, 2022"})
     assert is_blocked_listing({"title": "BYD Atto 3, 2023"})
     assert is_blocked_listing({"title": "Chatenet CH26, 2021"})
+    assert is_blocked_listing({"title": "Daihatsu Terios, 2018"})
 
 
 def test_purge_blocked_makes_archives_existing_rows(tmp_path):
