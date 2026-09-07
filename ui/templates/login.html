@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Вход · Europe to Belarus</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260903f">
+  <title>Вход · EuroHUB</title>
+  {% include "_meta_brand.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907e">
 </head>
 <body>
   <header class="top">
-    {% set brand_sub = "Вход в личный кабинет" %}
     <div class="top-main">
       {% include "_brand.html" %}
       {% include "_mobile_nav.html" %}

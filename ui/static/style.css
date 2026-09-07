@@ -125,6 +125,11 @@ body {
   font-size: 0.95rem;
 }
 
+.brand-sub-extra {
+  margin-top: 0.15rem;
+  font-size: 0.88rem;
+}
+
 .meta {
   display: flex;
   flex-wrap: wrap;
@@ -2974,7 +2979,8 @@ body.lightbox-open {
   }
 
   .brand-sub {
-    display: none;
+    font-size: 0.78rem;
+    line-height: 1.25;
   }
 
   .top {

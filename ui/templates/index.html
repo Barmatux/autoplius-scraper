@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Europe to Belarus</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260904c">
+  <title>EuroHUB. Авто из Европы в Беларусь</title>
+  {% include "_meta_brand.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907e">
 </head>
 {% macro view_qs() -%}
 {%- if listings_view == 'cards' -%}&view=cards{%- endif -%}

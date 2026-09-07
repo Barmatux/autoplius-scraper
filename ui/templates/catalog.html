@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Каталог двигателей — Europe to Belarus</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907a">
+  <title>Каталог двигателей · EuroHUB</title>
+  {% include "_meta_brand.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907e">
 </head>
 {% macro render_catalog_tree(catalog_tree, section_class='') %}
   {% for make_group in catalog_tree %}
@@ -72,7 +73,6 @@
 {% endmacro %}
 <body>
   <header class="top">
-    {% set brand_sub = "Справочник объёмов для расчёта растаможки" %}
     <div class="top-main">
       {% include "_brand.html" %}
       {% include "_mobile_nav.html" %}
