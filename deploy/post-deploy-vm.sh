@@ -7,7 +7,7 @@ PY="${DEPLOY_PY:-$APP/.venv/bin/python}"
 
 cd "$APP"
 
-echo "=== backfill engine_liters ==="
+echo "=== backfill engine_liters / mileage ==="
 sudo -u autoplius "$PY" - <<'PY'
 import sys
 from pathlib import Path
@@ -20,6 +20,20 @@ from scraper.listing_query import backfill_engine_liters, backfill_mileage_km
 settings = Settings.from_env()
 print("backfill_engine_liters:", backfill_engine_liters(settings.db_path))
 print("backfill_mileage_km:", backfill_mileage_km(settings.db_path))
+PY
+
+echo "=== purge blocked makes ==="
+sudo -u autoplius "$PY" - <<'PY'
+import sys
+from pathlib import Path
+
+ROOT = Path("/opt/autoplius-scraper")
+sys.path.insert(0, str(ROOT))
+from scraper.config import Settings
+from scraper.db import purge_blocked_makes
+
+result = purge_blocked_makes(Settings.from_env().db_path)
+print("purge_blocked_makes:", result)
 PY
 
 echo "=== exchange rates ==="
