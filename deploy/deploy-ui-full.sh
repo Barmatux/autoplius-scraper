@@ -8,24 +8,33 @@ sudo cp "$APP/deploy/autoplius-ui.service" /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl restart autoplius-ui.service
 
-# nginx on :80 -> flask :8080
+# nginx: do not wipe Certbot SSL site on every deploy
 if ! command -v nginx >/dev/null 2>&1; then
   sudo apt-get update -qq
   sudo apt-get install -y -qq nginx
 fi
-sudo cp "$APP/deploy/nginx-autoplius-ui.conf" /etc/nginx/sites-available/autoplius-ui
-sudo ln -sfn /etc/nginx/sites-available/autoplius-ui /etc/nginx/sites-enabled/autoplius-ui
+if [[ -d /etc/letsencrypt/live/eu2.by ]] && [[ -f /etc/nginx/sites-available/autoplius-ui ]] \
+  && grep -qE 'listen[[:space:]]+\[?::\]?:?443|listen[[:space:]]+443' /etc/nginx/sites-available/autoplius-ui; then
+  echo "SSL cert for eu2.by present — leaving /etc/nginx/sites-available/autoplius-ui unchanged"
+elif grep -qE 'listen[[:space:]]+\[?::\]?:?443|listen[[:space:]]+443' "$APP/deploy/nginx-autoplius-ui.conf"; then
+  sudo cp "$APP/deploy/nginx-autoplius-ui.conf" /etc/nginx/sites-available/autoplius-ui
+  sudo ln -sfn /etc/nginx/sites-available/autoplius-ui /etc/nginx/sites-enabled/autoplius-ui
+else
+  echo "WARNING: refusing to install HTTP-only nginx conf; keep full SSL file in deploy/"
+fi
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl enable --now nginx
 sudo systemctl reload nginx
 if command -v ufw >/dev/null 2>&1; then
   sudo ufw allow 80/tcp || true
+  sudo ufw allow 443/tcp || true
   sudo ufw allow 8080/tcp || true
 fi
 
 sleep 1
 curl -s -o /dev/null -w "flask8080=%{http_code}\n" http://127.0.0.1:8080/
 curl -s -o /dev/null -w "nginx80=%{http_code}\n" http://127.0.0.1/
+curl -sk -o /dev/null -w "nginx443=%{http_code}\n" https://127.0.0.1/ || true
 sudo systemctl is-active autoplius-ui.service nginx
 echo "Open http://84.252.139.137/  (need SG TCP 80) or SSH tunnel to :8080"

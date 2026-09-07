@@ -4,9 +4,10 @@
   {% set list_photos = photos.thumb if photos.thumb else photos.full %}
   {% set make, model = item|listing_make_model %}
   {% set vol = item|engine_volume %}
-  {% set has_vol = vol and vol not in ('—', 'тАФ') and ('l' in vol.lower() or 'л' in vol.lower()) %}
+  {% set has_vol = vol and vol not in ('—', '-') and ('l' in vol.lower() or 'л' in vol.lower()) %}
   {% set kpp = item.transmission|transmission_short %}
   {% set detail_href = url_for('listing_detail', listing_id=item.autoplius_id) %}
+  {% set mileage_km = item|listing_mileage_km %}
 
   <div class="listing-card-top">
     {% include "_listing_favorite_button.html" %}
@@ -46,9 +47,7 @@
     </a>
   </h3>
 
-  {% set mileage_km = item|listing_mileage_km %}
-  {% if mileage_km is not none %}
-  <p class="listing-card-meta"><strong>Пробег:</strong> {{ "{:,}".format(mileage_km|int).replace(",", " ") }} км</p>
+{% if mileage_km is not none %}  <p class="listing-card-meta"><strong>Пробег:</strong> {{ "{:,}".format(mileage_km|int).replace(",", " ") }} км</p>
   {% endif %}
 
   {% if item.city %}
@@ -75,6 +74,16 @@
   {% if item.first_seen_at %}
   <p class="listing-card-date muted">{{ item.first_seen_at|format_date }} · {{ item.first_seen_at|format_time }}</p>
   {% endif %}
+
+  <div class="listing-card-consult">
+    <button
+      type="button"
+      class="feedback-consult-btn"
+      data-feedback-open="home"
+      data-feedback-listing="{{ item.autoplius_id }}"
+      data-feedback-title="{{ item|listing_headline }}"
+    >Консультация</button>
+  </div>
 
   {% set price_lines = item|catalog_price_lines %}
   {% set has_vat = price_lines and price_lines|length >= 2 and price_lines[0].label %}

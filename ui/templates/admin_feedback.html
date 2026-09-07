@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Сообщения · Кабинет администратора</title>
+  {% include "_site_icons.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907a">
+</head>
+<body>
+  <header class="top">
+    {% set brand_sub = "Сообщения" %}
+    {% set active_tab = "feedback" %}
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+      </div>
+    </div>
+  </header>
+
+  <main class="cabinet-page feedback-inbox-page">
+    <section class="auth-panel cabinet-panel feedback-inbox-panel">
+      <h1 class="auth-title">Обратная связь</h1>
+      <p class="auth-lead">Заявки на звонок и сообщения с сайта. Новых: <strong>{{ unread_count }}</strong>.</p>
+      <div class="cabinet-actions">
+        <a class="admin-enter-link" href="{{ url_for('index') }}">К объявлениям</a>
+        <a class="admin-enter-link{% if not status_filter %} is-active-filter{% endif %}" href="{{ url_for('admin_feedback') }}">Все</a>
+        <a class="admin-enter-link{% if status_filter == 'new' %} is-active-filter{% endif %}" href="{{ url_for('admin_feedback', status='new') }}">Новые</a>
+        <a class="admin-enter-link{% if status_filter == 'done' %} is-active-filter{% endif %}" href="{{ url_for('admin_feedback', status='done') }}">Закрытые</a>
+      </div>
+    </section>
+
+    {% if not messages %}
+    <section class="auth-panel cabinet-panel">
+      <p class="empty">Пока нет сообщений.</p>
+    </section>
+    {% else %}
+    <div class="feedback-inbox-list">
+      {% for item in messages %}
+      <article class="auth-panel cabinet-panel feedback-inbox-card status-{{ item.status }}">
+        <div class="feedback-inbox-head">
+          <span class="pill{% if item.status == 'new' %} accent{% endif %}">
+            {% if item.kind == 'callback' %}Звонок{% else %}Сообщение{% endif %}
+          </span>
+          <span class="pill">{{ item.status }}</span>
+          <time class="feedback-inbox-time" datetime="{{ item.created_at }}">{{ item.created_at|format_datetime }}</time>
+        </div>
+        {% if item.phone %}
+        <p class="feedback-inbox-phone"><a href="tel:{{ item.phone }}">{{ item.phone }}</a></p>
+        {% endif %}
+        {% if item.name %}
+        <p class="feedback-inbox-name">{{ item.name }}</p>
+        {% endif %}
+        {% if item.body %}
+        <p class="feedback-inbox-body">{{ item.body }}</p>
+        {% endif %}
+        {% if item.page_url %}
+        <p class="cabinet-meta"><a href="{{ item.page_url }}" target="_blank" rel="noopener">Страница отправки</a></p>
+        {% endif %}
+        <form class="feedback-inbox-actions" method="post" action="{{ url_for('admin_feedback_status', message_id=item.id) }}">
+          {% if item.status != 'read' %}
+          <button type="submit" name="status" value="read" class="admin-enter-link">Прочитано</button>
+          {% endif %}
+          {% if item.status != 'done' %}
+          <button type="submit" name="status" value="done" class="admin-enter-link">Закрыть</button>
+          {% endif %}
+          {% if item.status != 'new' %}
+          <button type="submit" name="status" value="new" class="admin-enter-link">Вернуть в новые</button>
+          {% endif %}
+        </form>
+      </article>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </main>
+
+  {% include "_feedback_modal.html" %}
+  {% include '_yandex_metrika.html' %}
+</body>
+</html>

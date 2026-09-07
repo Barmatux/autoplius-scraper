@@ -4,29 +4,35 @@ from dataclasses import replace
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
-from flask import Flask, abort, jsonify, redirect, render_template, request, Response, session, url_for
+from flask import Flask, abort, jsonify, make_response, redirect, render_template, request, Response, session, url_for
 
 from scraper.config import Settings
 from scraper.db import (
     count_scrape_runs,
+    count_unread_feedback,
+    create_feedback_message,
     create_user,
     db_stats,
     default_db_path,
     fetch_engine_catalog,
+    fetch_feedback_messages,
     fetch_listing,
     fetch_listings,
     fetch_listings_by_ids,
     fetch_scrape_runs,
+    fetch_sitemap_listings,
     fetch_user_favorite_ids,
     get_user_by_id,
     init_db,
     engine_catalog_missing_count,
     engine_catalog_new_count,
     scrape_runs_analytics,
+    set_feedback_status,
     toggle_user_favorite,
     update_listing_admin,
     update_user_rb_extras,
@@ -46,6 +52,15 @@ from ui.media_serve import (
     serve_s3_object,
     serve_s3_object_from_cache,
 )
+from ui.page_cache import (
+    get_cached_html,
+    home_cache_ttl,
+    is_bot_user_agent,
+    listing_bot_cache_ttl,
+    make_cache_key,
+    set_cached_html,
+)
+from ui.request_timing import init_request_timing
 from ui.photo_urls import is_external_photo_url, photo_display_url, photo_display_urls
 from ui.table_layout import COL_KEYS, load_table_layout, save_table_layout, validate_layout
 from autoplius.cities_lt import distance_from_vilnius_label, google_maps_url
@@ -122,6 +137,7 @@ app.secret_key = (
     or os.environ.get("UI_PASSWORD")
     or "autoplius-dev-secret-change-me"
 )
+init_request_timing(app)
 
 
 @app.context_processor
@@ -129,13 +145,19 @@ def inject_import_presets() -> dict[str, Any]:
     return {"import_presets": preset_links(url_for("index"))}
 
 
+DISPLAY_TZ = ZoneInfo("Europe/Minsk")
+
+
 def _parse_iso_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(DISPLAY_TZ)
 
 
 @app.template_filter("photo_full_list")
@@ -171,7 +193,7 @@ def listing_photos_filter(item: dict[str, Any]) -> dict[str, Any]:
 def format_datetime(value: str | None) -> str:
     dt = _parse_iso_datetime(value)
     if dt is None:
-        return "тАФ" if not value else value[:16].replace("T", " ")
+        return "—" if not value else value[:16].replace("T", " ")
     return dt.strftime("%d.%m.%Y %H:%M")
 
 
@@ -179,7 +201,7 @@ def format_datetime(value: str | None) -> str:
 def format_date(value: str | None) -> str:
     dt = _parse_iso_datetime(value)
     if dt is None:
-        return "тАФ" if not value else value[:10]
+        return "—" if not value else value[:10]
     return dt.strftime("%d.%m.%Y")
 
 
@@ -297,6 +319,17 @@ def listing_headline_filter(item: dict[str, Any]) -> str:
 @app.template_filter("listing_make_model")
 def listing_make_model_filter(item: dict[str, Any]) -> tuple[str, str]:
     return parse_listing_make_model(item)
+
+
+@app.template_filter("listing_mileage_km")
+def listing_mileage_km_filter(item: dict[str, Any]) -> int | None:
+    raw = item.get("mileage_km") if isinstance(item, dict) else None
+    if raw is None or raw == "":
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
 
 
 @app.template_filter("body_type_lines")
@@ -432,6 +465,29 @@ def inject_user():
 
 
 @app.context_processor
+def inject_feedback_contacts():
+    # Temporary stubs until real chat links are set in .env
+    telegram = (os.environ.get("FEEDBACK_TELEGRAM_URL") or "").strip() or "https://t.me/"
+    whatsapp = (os.environ.get("FEEDBACK_WHATSAPP_URL") or "").strip()
+    viber = (os.environ.get("FEEDBACK_VIBER_URL") or "").strip()
+    if not whatsapp:
+        phone = re.sub(r"\D", "", os.environ.get("FEEDBACK_WHATSAPP_PHONE") or "")
+        whatsapp = f"https://wa.me/{phone}" if phone else "https://wa.me/"
+    unread = 0
+    if _is_admin():
+        try:
+            unread = count_unread_feedback(db_path())
+        except Exception:
+            unread = 0
+    return {
+        "feedback_telegram_url": telegram,
+        "feedback_whatsapp_url": whatsapp,
+        "feedback_viber_url": viber or None,
+        "feedback_unread_count": unread,
+    }
+
+
+@app.context_processor
 def inject_favorites():
     user = _current_user()
     if user is None:
@@ -497,6 +553,102 @@ def _current_request_path() -> str:
 
 def _wants_json_response() -> bool:
     return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
+@app.get("/yandex_7bbb8bcf99e23a9e.html")
+def yandex_webmaster_verification():
+    return app.send_static_file("yandex_7bbb8bcf99e23a9e.html")
+
+
+@app.get("/favicon.ico")
+def favicon_ico():
+    return app.send_static_file("favicon.ico")
+
+
+def _public_site_base() -> str:
+    configured = (os.environ.get("PUBLIC_SITE_URL") or "").strip().rstrip("/")
+    if configured:
+        return configured
+    # Prefer Host from reverse proxy when available.
+    return (request.url_root or "https://eu2.by").rstrip("/")
+
+
+def _sitemap_lastmod(value: str | None) -> str | None:
+    if not value:
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    # Prefer YYYY-MM-DD for sitemap compatibility.
+    if "T" in raw:
+        return raw.split("T", 1)[0]
+    return raw[:10]
+
+
+@app.get("/robots.txt")
+def robots_txt():
+    base = _public_site_base()
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /login\n"
+        "Disallow: /register\n"
+        "Disallow: /cabinet\n"
+        "Disallow: /admin\n"
+        "Disallow: /api/\n"
+        "\n"
+        "User-agent: Yandex\n"
+        "Crawl-delay: 2\n"
+        "Disallow: /login\n"
+        "Disallow: /register\n"
+        "Disallow: /cabinet\n"
+        "Disallow: /admin\n"
+        "Disallow: /api/\n"
+        "\n"
+        f"Host: {base}\n"
+        f"Sitemap: {base}/sitemap.xml\n"
+    )
+    return Response(body, mimetype="text/plain; charset=utf-8")
+
+
+@app.get("/sitemap.xml")
+def sitemap_xml():
+    base = _public_site_base()
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+
+    static_pages = [
+        ("/", "daily", "1.0"),
+        ("/catalog", "weekly", "0.6"),
+    ]
+    for path, changefreq, priority in static_pages:
+        lines.append("  <url>")
+        lines.append(f"    <loc>{base}{path}</loc>")
+        lines.append(f"    <changefreq>{changefreq}</changefreq>")
+        lines.append(f"    <priority>{priority}</priority>")
+        lines.append("  </url>")
+
+    try:
+        path = require_db()
+    except Exception:
+        path = None
+    if path is not None:
+        for item in fetch_sitemap_listings(path):
+            listing_id = item["autoplius_id"]
+            lines.append("  <url>")
+            lines.append(f"    <loc>{base}/listing/{listing_id}</loc>")
+            lastmod = _sitemap_lastmod(item.get("lastmod"))
+            if lastmod:
+                lines.append(f"    <lastmod>{lastmod}</lastmod>")
+            lines.append("    <changefreq>daily</changefreq>")
+            lines.append("    <priority>0.8</priority>")
+            lines.append("  </url>")
+
+    lines.append("</urlset>")
+    lines.append("")
+    return Response("\n".join(lines), mimetype="application/xml; charset=utf-8")
 
 
 @app.get("/admin/enter")
@@ -602,6 +754,78 @@ def logout():
     session.pop("username", None)
     session.pop("admin", None)
     return redirect(url_for("index", tab=TAB_ALL, sort=DEFAULT_LIST_SORT))
+
+
+@app.post("/feedback")
+def submit_feedback():
+    path = db_path()
+    init_db(path)
+    payload = request.get_json(silent=True) if request.is_json else None
+    data = payload if isinstance(payload, dict) else request.form
+    kind = (data.get("kind") or "").strip().lower()
+    user = _current_user()
+    try:
+        message = create_feedback_message(
+            path,
+            kind=kind,
+            phone=data.get("phone"),
+            name=data.get("name"),
+            body=data.get("body"),
+            user_id=int(user["id"]) if user else None,
+            page_url=data.get("page_url") or request.referrer,
+            user_agent=request.headers.get("User-Agent"),
+        )
+    except ValueError as exc:
+        err = str(exc)
+        human = {
+            "invalid kind": "Некорректный тип заявки",
+            "invalid phone": "Проверьте номер телефона",
+            "phone required": "Укажите мобильный телефон",
+            "message required": "Напишите текст сообщения",
+            "phone or name required": "Укажите имя или телефон",
+        }.get(err, "Не удалось отправить заявку")
+        if _wants_json_response() or request.is_json:
+            return jsonify({"ok": False, "error": human}), 400
+        abort(400, human)
+    if _wants_json_response() or request.is_json:
+        return jsonify({"ok": True, "id": message.get("id"), "kind": message.get("kind")})
+    return redirect(url_for("index", feedback="1"))
+
+
+@app.get("/admin/feedback")
+def admin_feedback():
+    if not _is_admin():
+        return redirect(url_for("login", next=url_for("admin_feedback")))
+    path = require_db()
+    status = (request.args.get("status") or "").strip().lower() or None
+    if status not in {None, "new", "read", "done"}:
+        status = None
+    messages = fetch_feedback_messages(path, status=status, limit=200)
+    return render_template(
+        "admin_feedback.html",
+        messages=messages,
+        status_filter=status,
+        unread_count=count_unread_feedback(path),
+        active_tab="feedback",
+    )
+
+
+@app.post("/admin/feedback/<int:message_id>/status")
+def admin_feedback_status(message_id: int):
+    if not _is_admin():
+        return redirect(url_for("login", next=url_for("admin_feedback")))
+    path = require_db()
+    status = (request.form.get("status") or "").strip().lower()
+    try:
+        updated = set_feedback_status(path, message_id, status=status)
+    except ValueError:
+        abort(400, "invalid status")
+    if updated is None:
+        abort(404, "message not found")
+    next_status = (request.args.get("status") or request.form.get("next_status") or "").strip()
+    if next_status in {"new", "read", "done"}:
+        return redirect(url_for("admin_feedback", status=next_status))
+    return redirect(url_for("admin_feedback"))
 
 
 @app.get("/cabinet")
@@ -773,6 +997,25 @@ def _current_listings_view() -> str:
     return view if view in {LISTINGS_VIEW_TABLE, LISTINGS_VIEW_CARDS} else LISTINGS_VIEW_TABLE
 
 
+def _anonymous_page_cache_allowed() -> bool:
+    """Skip HTML cache for logged-in / admin sessions (personalized markup)."""
+    if session.get("user_id") is not None or session.get("admin") is True:
+        return False
+    if _check_admin_auth():
+        return False
+    return True
+
+
+def _cached_html_response(html: str, *, hit: bool, bot: bool, ttl_sec: float) -> Response:
+    response = make_response(html)
+    response.headers["X-Page-Cache"] = "HIT" if hit else "MISS"
+    if bot and ttl_sec > 0:
+        response.headers["Cache-Control"] = f"public, max-age={int(ttl_sec)}"
+    else:
+        response.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+    return response
+
+
 def _listing_filters_for_tab(
     *,
     q: str,
@@ -928,6 +1171,15 @@ def _active_filter_count(
 @app.get("/")
 def index():
     path = require_db()
+    bot = is_bot_user_agent(request.headers.get("User-Agent"))
+    cache_ttl = home_cache_ttl(bot=bot)
+    cache_key: str | None = None
+    if _anonymous_page_cache_allowed() and cache_ttl > 0:
+        cache_key = make_cache_key("home", path, request.query_string.decode("utf-8", "replace"))
+        cached = get_cached_html(cache_key)
+        if cached is not None:
+            return _cached_html_response(cached, hit=True, bot=bot, ttl_sec=cache_ttl)
+
     q = request.args.get("q", "")
     sort = request.args.get("sort", DEFAULT_LIST_SORT)
     upto_19l = _upto_19l_enabled()
@@ -1039,7 +1291,7 @@ def index():
     )
     listings = fetch_listings_by_ids(path, page_ids, lite=True)
 
-    return render_template(
+    html = render_template(
         "index.html",
         listings=listings,
         table_layout=load_table_layout(app.config["DATA_DIR"]),
@@ -1098,6 +1350,9 @@ def index():
             tab=tab,
         ),
     )
+    if cache_key is not None:
+        set_cached_html(cache_key, html, cache_ttl)
+    return _cached_html_response(html, hit=False, bot=bot, ttl_sec=cache_ttl)
 
 
 @app.get("/api/table-layout")
@@ -1279,7 +1534,19 @@ def api_listing_engine_volume(listing_id: int):
 @app.get("/l/<int:listing_id>")
 @app.get("/listing/<int:listing_id>")
 def listing_detail(listing_id: int):
-    item = fetch_listing(require_db(), listing_id)
+    path = require_db()
+    bot = is_bot_user_agent(request.headers.get("User-Agent"))
+    cache_ttl = listing_bot_cache_ttl() if bot else 0.0
+    cache_key: str | None = None
+    if bot and _anonymous_page_cache_allowed() and cache_ttl > 0:
+        # Cache only the public detail shell; skip personalized ?next= links.
+        if not request.args.get("next"):
+            cache_key = make_cache_key(f"listing:{listing_id}", path, "")
+            cached = get_cached_html(cache_key)
+            if cached is not None:
+                return _cached_html_response(cached, hit=True, bot=True, ttl_sec=cache_ttl)
+
+    item = fetch_listing(path, listing_id)
     if item is None:
         abort(404, "listing not found in database")
     photos = listing_photos_filter(item)
@@ -1287,13 +1554,16 @@ def listing_detail(listing_id: int):
     # (data-save-return / data-back-to-list). Optional ?next= still works.
     next_raw = request.args.get("next")
     back_url = _safe_redirect_target(next_raw) if next_raw else url_for("index")
-    return render_template(
+    html = render_template(
         "detail.html",
         item=item,
         photos=photos,
         display_description=display_description,
         back_url=back_url,
     )
+    if cache_key is not None:
+        set_cached_html(cache_key, html, cache_ttl)
+    return _cached_html_response(html, hit=False, bot=bot, ttl_sec=cache_ttl)
 
 
 @app.get("/api/listing/<int:listing_id>/live")

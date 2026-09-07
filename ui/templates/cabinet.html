@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Личный кабинет · EuroHUB</title>
+<title>Личный кабинет · EuroHUB</title>
   {% include "_meta_brand.html" %}
+  {% include "_site_icons.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907e">
 </head>
 <body>
@@ -105,5 +106,7 @@
     </section>
   </main>
   <script src="{{ url_for('static', filename='favorite_toggle.js') }}" defer></script>
+  {% include "_feedback_modal.html" %}
+  {% include '_yandex_metrika.html' %}
 </body>
 </html>

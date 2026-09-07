@@ -1,0 +1,114 @@
+<button
+  type="button"
+  class="feedback-fab"
+  data-feedback-open="home"
+  aria-label="Связаться с нами"
+  title="Связаться"
+>
+  <svg class="feedback-fab-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9.4L5 20.6V17H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm2.5 5a1 1 0 1 0 0 2h11a1 1 0 1 0 0-2h-11zm0 3.5a1 1 0 1 0 0 2h7a1 1 0 1 0 0-2h-7z"/>
+  </svg>
+</button>
+
+<div class="feedback-modal" id="feedback-modal" data-feedback-modal hidden>
+  <button type="button" class="feedback-modal-backdrop" data-feedback-close aria-label="Закрыть"></button>
+  <div class="feedback-modal-panel" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
+    <button type="button" class="feedback-modal-close" data-feedback-close aria-label="Закрыть">×</button>
+
+    <div class="feedback-step is-active" data-feedback-step="home">
+      <p class="feedback-modal-lead" id="feedback-modal-title">
+        Перезвоним за 1 минуту и расскажем о выгодных авто
+      </p>
+      <p class="feedback-listing-ref" data-feedback-listing-ref hidden></p>
+      <button type="button" class="feedback-cta" data-feedback-goto="callback">Заказать звонок</button>
+
+      <div class="feedback-or" aria-hidden="true"><span>или</span></div>
+
+      <div class="feedback-messenger-row" role="group" aria-label="Мессенджеры">
+        <a
+          class="feedback-round feedback-round-tg"
+          href="{{ feedback_telegram_url }}"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Telegram"
+          title="Telegram"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.8 4.2 3.7 11.2c-1.2.5-1.2 1.1-.2 1.4l4.6 1.4 1.8 5.4c.2.7.4.9 1 .9.6 0 .8-.3 1.1-.6l2.6-2.5 5.4 4c1 .5 1.7.2 2-.9L22.9 5.5c.3-1.2-.5-1.7-1.1-1.3zM9.6 13.9l8.5-5.4c.4-.3.8-.1.5.2l-7 6.4-.3 3.1-1.7-4.3z"/></svg>
+        </a>
+        {% if feedback_viber_url %}
+        <a
+          class="feedback-round feedback-round-vb"
+          href="{{ feedback_viber_url }}"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Viber"
+          title="Viber"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.1 2C7.1 2 3.1 5.5 3.1 10c0 2.3 1.1 4.4 2.8 5.9V20l3.2-1.8c.9.3 1.9.4 2.9.4 5 0 9.1-3.5 9.1-8S17.1 2 12.1 2zm.1 13.4c-.8 0-1.6-.1-2.3-.4l-.2-.1-1.7.9.5-1.6-.1-.2c-1.1-1.1-1.7-2.4-1.7-3.9 0-3.1 2.8-5.6 6.2-5.6s6.2 2.5 6.2 5.6-2.8 5.3-6.9 5.3zm3.8-4.1c-.2-.1-1.2-.6-1.4-.7-.2-.1-.3-.1-.5.1l-.6.7c-.1.1-.3.2-.5.1-.2-.1-.9-.3-1.7-1.1-.6-.6-1.1-1.3-1.2-1.5-.1-.2 0-.3.1-.4l.4-.5c.1-.1.1-.3.2-.4 0-.1 0-.3-.1-.4l-.7-1.6c-.2-.4-.4-.4-.5-.4h-.4c-.1 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.3c.1.2 1.6 2.5 3.9 3.4.5.2 1 .4 1.3.5.6.2 1.1.1 1.5.1.5-.1 1.2-.5 1.4-1 .2-.5.2-.9.1-1 0-.1-.2-.1-.4-.2z"/></svg>
+        </a>
+        {% endif %}
+        <a
+          class="feedback-round feedback-round-wa"
+          href="{{ feedback_whatsapp_url }}"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="WhatsApp"
+          title="WhatsApp"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a9.9 9.9 0 0 0-8.6 14.8L2 22l5.4-1.4A9.9 9.9 0 1 0 12 2zm0 1.8a8.1 8.1 0 0 1 6.8 12.5l-.3.4.8 2.9-3-.8-.4.2A8.1 8.1 0 1 1 12 3.8zm4.5 10.7c-.2-.1-1.3-.6-1.5-.7-.2-.1-.4-.1-.5.1l-.6.7c-.1.2-.3.2-.5.1-.2-.1-1-.4-1.9-1.2-.7-.6-1.2-1.4-1.3-1.6-.1-.2 0-.4.1-.5l.4-.5c.1-.1.1-.3.2-.4s0-.3-.1-.4l-.7-1.7c-.2-.4-.4-.4-.5-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.4c.1.2 1.6 2.5 4 3.4.6.2 1 .4 1.4.5.6.2 1.1.2 1.5.1.5-.1 1.3-.5 1.5-1 .2-.5.2-.9.1-1-.1-.1-.2-.2-.4-.3z"/></svg>
+        </a>
+        <button
+          type="button"
+          class="feedback-round feedback-round-msg"
+          data-feedback-goto="message"
+          aria-label="Написать сообщение"
+          title="Сообщение"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 3v-3H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm4 6a1.25 1.25 0 1 0 0 2.5A1.25 1.25 0 0 0 8 10zm4 0a1.25 1.25 0 1 0 0 2.5A1.25 1.25 0 0 0 12 10zm4 0a1.25 1.25 0 1 0 0 2.5A1.25 1.25 0 0 0 16 10z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="feedback-step" data-feedback-step="callback" hidden>
+      <button type="button" class="feedback-back" data-feedback-goto="home">← Назад</button>
+      <h2 class="feedback-modal-title">Заказать звонок</h2>
+      <form class="feedback-form" data-feedback-form="callback">
+        <label class="feedback-field">
+          <span>Мобильный телефон</span>
+          <input type="tel" name="phone" required inputmode="tel" autocomplete="tel" placeholder="+375…" maxlength="32">
+        </label>
+        <label class="feedback-field">
+          <span>Комментарий <span class="feedback-optional">(необязательно)</span></span>
+          <input type="text" name="body" maxlength="500" placeholder="Удобное время звонка">
+        </label>
+        <input type="hidden" name="listing_id" value="" data-feedback-listing-field>
+        <p class="feedback-status" data-feedback-status hidden></p>
+        <button type="submit" class="feedback-cta">Отправить</button>
+      </form>
+    </div>
+
+    <div class="feedback-step" data-feedback-step="message" hidden>
+      <button type="button" class="feedback-back" data-feedback-goto="home">← Назад</button>
+      <h2 class="feedback-modal-title">Написать сообщение</h2>
+      <p class="feedback-hint">Сообщение придёт администратору в кабинет.</p>
+      <form class="feedback-form" data-feedback-form="message">
+        <label class="feedback-field">
+          <span>Имя</span>
+          <input type="text" name="name" maxlength="120" autocomplete="name" placeholder="Как к вам обращаться">
+        </label>
+        <label class="feedback-field">
+          <span>Телефон</span>
+          <input type="tel" name="phone" inputmode="tel" autocomplete="tel" placeholder="+375…" maxlength="32">
+        </label>
+        <label class="feedback-field">
+          <span>Сообщение</span>
+          <textarea name="body" required rows="4" maxlength="2000" placeholder="Ваш вопрос или пожелание"></textarea>
+        </label>
+        <input type="hidden" name="listing_id" value="" data-feedback-listing-field>
+        <p class="feedback-status" data-feedback-status hidden></p>
+        <button type="submit" class="feedback-cta">Отправить</button>
+      </form>
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='feedback_modal.js') }}?v=20260907c" defer></script>

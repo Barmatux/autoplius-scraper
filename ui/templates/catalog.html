@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Каталог двигателей · EuroHUB</title>
+<title>Каталог двигателей · EuroHUB</title>
   {% include "_meta_brand.html" %}
+  {% include "_site_icons.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907e">
 </head>
 {% macro render_catalog_tree(catalog_tree, section_class='') %}
@@ -179,6 +180,8 @@
     {% endif %}
   </main>
   <script src="{{ url_for('static', filename='tab_preference.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='engine_catalog.js') }}?v=20260907a" defer></script>
+<script src="{{ url_for('static', filename='engine_catalog.js') }}?v=20260907a" defer></script>
+  {% include "_feedback_modal.html" %}
+  {% include '_yandex_metrika.html' %}
 </body>
 </html>

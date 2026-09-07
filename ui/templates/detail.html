@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ item|listing_headline }} · EuroHUB</title>
+<title>{{ item|listing_headline }} · EuroHUB</title>
   {% set og_title = item|listing_headline ~ ' · EuroHUB' %}
   {% include "_meta_brand.html" %}
+  {% include "_site_icons.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907e">
 </head>
 <body>
@@ -46,8 +47,17 @@
         <a class="detail-back-link" href="{{ back_url }}" data-back-to-list>← к списку</a>
         <h1 class="detail-title">{{ item|listing_headline }}</h1>
       </div>
-      {% set favorite_button_label = "В избранное" %}
-      {% include "_listing_favorite_button.html" %}
+      <div class="detail-heading-actions">
+        {% set favorite_button_label = "В избранное" %}
+        {% include "_listing_favorite_button.html" %}
+        <button
+          type="button"
+          class="feedback-consult-btn detail-consult"
+          data-feedback-open="home"
+          data-feedback-listing="{{ item.autoplius_id }}"
+          data-feedback-title="{{ item|listing_headline }}"
+        >Консультация</button>
+      </div>
     </div>
 
     {% if photos.full %}
@@ -101,7 +111,7 @@
         </div>
         {% endfor %}
         {% if is_admin %}
-        <div><dt>В БД с</dt><dd>{{ item.first_seen_at or '—' }}</dd></div>
+        <div><dt>В БД с</dt><dd>{% if item.first_seen_at %}{{ item.first_seen_at|format_datetime }}{% else %}—{% endif %}</dd></div>
         <div><dt>Обновлено</dt><dd>{{ item.last_seen_at or '—' }}</dd></div>
         {% endif %}
         <div>
@@ -162,5 +172,7 @@
   {% if current_user %}
   <script src="{{ url_for('static', filename='favorite_toggle.js') }}" defer></script>
   {% endif %}
+  {% include "_feedback_modal.html" %}
+  {% include '_yandex_metrika.html' %}
 </body>
 </html>

@@ -52,6 +52,10 @@
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'analytics' %} is-active{% endif %}"
       href="{{ url_for('analytics') }}"
     >Аналитика</a>
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'feedback' %} is-active{% endif %}"
+      href="{{ url_for('admin_feedback') }}"
+    >Сообщения{% if feedback_unread_count %} <span class="tab-count">{{ feedback_unread_count }}</span>{% endif %}</a>
     {% endif %}
     <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'cabinet' %} is-active{% endif %}"

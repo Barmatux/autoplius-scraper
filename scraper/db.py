@@ -1,6 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -132,6 +133,24 @@ CREATE TABLE IF NOT EXISTS user_favorites (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS feedback_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,
+    phone TEXT,
+    name TEXT,
+    body TEXT,
+    user_id INTEGER,
+    status TEXT NOT NULL DEFAULT 'new',
+    created_at TEXT NOT NULL,
+    read_at TEXT,
+    page_url TEXT,
+    user_agent TEXT,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_messages_created ON feedback_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feedback_messages_status ON feedback_messages(status, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS exchange_rates (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -274,6 +293,31 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id, created_at DESC)"
     )
 
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS feedback_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind TEXT NOT NULL,
+            phone TEXT,
+            name TEXT,
+            body TEXT,
+            user_id INTEGER,
+            status TEXT NOT NULL DEFAULT 'new',
+            created_at TEXT NOT NULL,
+            read_at TEXT,
+            page_url TEXT,
+            user_agent TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_feedback_messages_created ON feedback_messages(created_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_feedback_messages_status ON feedback_messages(status, created_at DESC)"
+    )
+
     user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
     if user_cols:
         if "rb_privilege_usd" not in user_cols:
@@ -324,8 +368,14 @@ def _photo_urls_from_row_value(raw: Any) -> list[str]:
 
 
 def _preserve_stored_photos(row: dict[str, Any], existing: sqlite3.Row) -> None:
-    """Keep MinIO URLs when scrape refreshed only external autoplius links."""
-    if not _should_keep_stored_photos(existing["photo_url"], row.get("photo_url")):
+    """Keep MinIO/media URLs when scrape would wipe or downgrade them."""
+    existing_url = existing["photo_url"]
+    new_url = row.get("photo_url")
+    if _is_minio_photo_url(existing_url) and not _has_photo_url(new_url):
+        row["photo_url"] = existing_url
+        row["photo_urls_json"] = existing["photo_urls_json"]
+        return
+    if not _should_keep_stored_photos(existing_url, new_url):
         return
     if row.get("detail_scraped"):
         new_urls = _photo_urls_from_row_value(row.get("photo_urls_json"))
@@ -338,6 +388,10 @@ def _preserve_stored_photos(row: dict[str, Any], existing: sqlite3.Row) -> None:
             return
     row["photo_url"] = existing["photo_url"]
     row["photo_urls_json"] = existing["photo_urls_json"]
+
+
+def _has_photo_url(url: str | None) -> bool:
+    return bool(url and str(url).strip())
 
 
 def _should_keep_stored_photos(existing_url: str | None, new_url: str | None) -> bool:
@@ -679,6 +733,11 @@ def fetch_listings_pending_detail(db_path: Path) -> list[dict[str, Any]]:
             SELECT * FROM listings
             WHERE COALESCE(detail_scraped, 0) = 0
               AND (status IS NULL OR status = ?)
+              AND (
+                detail_error IS NULL
+                OR trim(detail_error) = ''
+                OR detail_error NOT LIKE 'Page not found%'
+              )
             ORDER BY autoplius_id ASC
             """,
             (LISTING_STATUS_ACTIVE,),
@@ -969,6 +1028,31 @@ def fetch_listing(db_path: Path, listing_id: int) -> dict[str, Any] | None:
             (listing_id,),
         ).fetchone()
         return row_to_listing(row) if row else None
+
+
+def fetch_sitemap_listings(db_path: Path, *, limit: int = 45000) -> list[dict[str, Any]]:
+    """Active listings for sitemap.xml (id + lastmod)."""
+    if not db_path.is_file():
+        return []
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT autoplius_id,
+                   COALESCE(updated_at, last_seen_at, first_seen_at) AS lastmod
+            FROM listings
+            WHERE status IS NULL OR status = 'active'
+            ORDER BY autoplius_id DESC
+            LIMIT ?
+            """,
+            (int(limit),),
+        ).fetchall()
+    return [
+        {
+            "autoplius_id": int(row["autoplius_id"]),
+            "lastmod": row["lastmod"],
+        }
+        for row in rows
+    ]
 
 
 def fetch_all_listings(db_path: Path) -> list[dict[str, Any]]:
@@ -2022,4 +2106,155 @@ def get_latest_exchange_rates(db_path: Path) -> dict[str, float]:
         if rate is not None:
             rates[pair] = rate
     return rates
+
+
+_FEEDBACK_KINDS = frozenset({"callback", "message"})
+_FEEDBACK_STATUSES = frozenset({"new", "read", "done"})
+
+
+def _normalize_feedback_phone(raw: str | None) -> str:
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    cleaned = re.sub(r"[^\d+]", "", text)
+    if cleaned.startswith("00"):
+        cleaned = "+" + cleaned[2:]
+    digits = re.sub(r"\D", "", cleaned)
+    if len(digits) < 9 or len(digits) > 15:
+        raise ValueError("invalid phone")
+    return cleaned if cleaned.startswith("+") else digits
+
+
+def create_feedback_message(
+    db_path: Path,
+    *,
+    kind: str,
+    phone: str | None = None,
+    name: str | None = None,
+    body: str | None = None,
+    user_id: int | None = None,
+    page_url: str | None = None,
+    user_agent: str | None = None,
+) -> dict[str, Any]:
+    init_db(db_path)
+    kind_norm = (kind or "").strip().lower()
+    if kind_norm not in _FEEDBACK_KINDS:
+        raise ValueError("invalid kind")
+    phone_norm = _normalize_feedback_phone(phone)
+    name_norm = (name or "").strip()[:120] or None
+    body_norm = (body or "").strip()
+    if kind_norm == "callback":
+        if not phone_norm:
+            raise ValueError("phone required")
+        body_norm = body_norm[:500] if body_norm else "Заказ звонка"
+    else:
+        if len(body_norm) < 3:
+            raise ValueError("message required")
+        body_norm = body_norm[:2000]
+        if not phone_norm and not name_norm:
+            raise ValueError("phone or name required")
+    created_at = _utc_now()
+    with connect(db_path) as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO feedback_messages (
+                kind, phone, name, body, user_id, status, created_at, page_url, user_agent
+            ) VALUES (?, ?, ?, ?, ?, 'new', ?, ?, ?)
+            """,
+            (
+                kind_norm,
+                phone_norm or None,
+                name_norm,
+                body_norm,
+                int(user_id) if user_id is not None else None,
+                created_at,
+                (page_url or "").strip()[:500] or None,
+                (user_agent or "").strip()[:300] or None,
+            ),
+        )
+        msg_id = int(cur.lastrowid)
+        row = conn.execute(
+            "SELECT * FROM feedback_messages WHERE id = ?",
+            (msg_id,),
+        ).fetchone()
+    return dict(row) if row else {"id": msg_id, "kind": kind_norm, "created_at": created_at}
+
+
+def count_unread_feedback(db_path: Path) -> int:
+    if not db_path.is_file():
+        return 0
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM feedback_messages WHERE status = 'new'"
+        ).fetchone()
+    return int(row["n"] if row else 0)
+
+
+def fetch_feedback_messages(
+    db_path: Path,
+    *,
+    status: str | None = None,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    init_db(db_path)
+    limit = max(1, min(500, int(limit)))
+    with connect(db_path) as conn:
+        if status and status in _FEEDBACK_STATUSES:
+            rows = conn.execute(
+                """
+                SELECT * FROM feedback_messages
+                WHERE status = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?
+                """,
+                (status, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT * FROM feedback_messages
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def set_feedback_status(
+    db_path: Path,
+    message_id: int,
+    *,
+    status: str,
+) -> dict[str, Any] | None:
+    init_db(db_path)
+    status_norm = (status or "").strip().lower()
+    if status_norm not in _FEEDBACK_STATUSES:
+        raise ValueError("invalid status")
+    with connect(db_path) as conn:
+        existing = conn.execute(
+            "SELECT * FROM feedback_messages WHERE id = ?",
+            (int(message_id),),
+        ).fetchone()
+        if existing is None:
+            return None
+        read_at = existing["read_at"]
+        if status_norm in {"read", "done"} and not read_at:
+            read_at = _utc_now()
+        if status_norm == "new":
+            read_at = None
+        conn.execute(
+            """
+            UPDATE feedback_messages
+            SET status = ?, read_at = ?
+            WHERE id = ?
+            """,
+            (status_norm, read_at, int(message_id)),
+        )
+        row = conn.execute(
+            "SELECT * FROM feedback_messages WHERE id = ?",
+            (int(message_id),),
+        ).fetchone()
+    return dict(row) if row else None
 
