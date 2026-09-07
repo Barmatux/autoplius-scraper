@@ -1,0 +1,74 @@
+# One-shot VM diagnostics for HTTP 500 / downtime.
+# Required secrets: VM_HOST, VM_USER, VM_SSH_PRIVATE_KEY
+
+name: Diagnose VM
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/diagnose-vm.yml"
+
+concurrency:
+  group: diagnose-autoplius-vm
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    name: Collect VM logs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Load SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+
+      - name: Trust VM host key
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
+
+      - name: Diagnose
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "${VM_USER}@${VM_HOST}" <<'REMOTE'
+          set -euo pipefail
+          echo "=== host ==="
+          hostname
+          date -u
+          echo "=== services ==="
+          systemctl is-active autoplius-ui.service || true
+          systemctl is-active nginx || true
+          echo "=== listen ==="
+          ss -lntp | sed -n '1,5p; /:80\|:443\|:8080/p' || true
+          echo "=== local curl ==="
+          curl -sS -m 20 -o /tmp/ui-home.html -w "localhost8080=%{http_code} ttfb=%{time_starttransfer}\n" http://127.0.0.1:8080/ || true
+          curl -sS -m 20 -o /tmp/ui-nginx.html -w "localhost80=%{http_code} ttfb=%{time_starttransfer}\n" -H 'Host: eu2.by' http://127.0.0.1/ || true
+          echo "=== response head ==="
+          head -c 400 /tmp/ui-home.html 2>/dev/null || true
+          echo
+          echo "=== journal autoplius-ui (last 80) ==="
+          sudo journalctl -u autoplius-ui.service -n 80 --no-pager || true
+          echo "=== journal nginx (last 40) ==="
+          sudo journalctl -u nginx -n 40 --no-pager || true
+          echo "=== nginx error log tail ==="
+          sudo tail -n 40 /var/log/nginx/error.log 2>/dev/null || true
+          echo "=== gunicorn/app traceback grep ==="
+          sudo journalctl -u autoplius-ui.service -n 200 --no-pager | rg -n "Traceback|ERROR|Exception|Error|Werkzeug" || true
+          echo "=== disk ==="
+          df -h / /var/lib/autoplius-scraper 2>/dev/null || df -h /
+          echo "=== recent deploy files ==="
+          ls -la /opt/autoplius-scraper/ui/templates/_brand.html /opt/autoplius-scraper/ui/templates/index.html 2>/dev/null || true
+          rg -n "Europe to Belarus|Autoplius Scraper|Все объявления из SQLite" /opt/autoplius-scraper/ui/templates/_brand.html /opt/autoplius-scraper/ui/templates/index.html 2>/dev/null || true
+          REMOTE
