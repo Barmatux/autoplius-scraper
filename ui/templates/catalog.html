@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Каталог двигателей — Europe to Belarus</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260904a">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907a">
 </head>
 {% macro render_catalog_tree(catalog_tree, section_class='') %}
   {% for make_group in catalog_tree %}
@@ -43,14 +43,16 @@
                 {% endif %}
               </td>
               <td class="catalog-edit-cell">
+                {% set pending_suggested = entry.customs_cm3 is none and entry.suggested_cm3 %}
                 <input
                   type="number"
-                  class="catalog-cm3-input"
+                  class="catalog-cm3-input{% if pending_suggested %} catalog-cm3-pending{% endif %}"
                   min="1"
                   step="1"
                   value="{{ entry.customs_cm3 if entry.customs_cm3 is not none else (entry.suggested_cm3 or '') }}"
                   placeholder="{% if entry.suggested_cm3 %}{{ entry.suggested_cm3 }}{% else %}см³{% endif %}"
                   aria-label="Объём для растаможки"
+                  {% if pending_suggested %}data-pending-suggested="1"{% endif %}
                 >
               </td>
               <td class="num">{{ entry.listing_count }}</td>
@@ -177,6 +179,6 @@
     {% endif %}
   </main>
   <script src="{{ url_for('static', filename='tab_preference.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='engine_catalog.js') }}?v=20260904a" defer></script>
+  <script src="{{ url_for('static', filename='engine_catalog.js') }}?v=20260907a" defer></script>
 </body>
 </html>

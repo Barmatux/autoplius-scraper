@@ -166,6 +166,13 @@
       }
       row.classList.toggle("catalog-row-missing", payload.customs_cm3 === null);
       row.classList.toggle("catalog-row-manual", payload.customs_cm3 !== null);
+      input.classList.toggle(
+        "catalog-cm3-pending",
+        payload.customs_cm3 === null && Boolean(row.getAttribute("data-suggested-cm3"))
+      );
+      if (payload.customs_cm3 !== null) {
+        input.removeAttribute("data-pending-suggested");
+      }
       var suggestedCell = row.querySelector(".catalog-suggested-cell");
       if (suggestedCell) {
         suggestedCell.classList.toggle(

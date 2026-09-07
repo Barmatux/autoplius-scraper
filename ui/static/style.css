@@ -2775,15 +2775,26 @@ body.lightbox-open {
   text-underline-offset: 0.15em;
 }
 
+.catalog-suggested-ready {
+  background: var(--accent-soft, rgba(15, 106, 79, 0.1));
+}
+
 .catalog-suggested-ready .catalog-suggested-btn {
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 700;
   text-decoration-style: solid;
 }
 
 .catalog-suggested-btn:hover,
 .catalog-suggested-btn:focus-visible {
   color: var(--accent);
+}
+
+.catalog-cm3-pending {
+  border-color: var(--accent);
+  background: var(--accent-soft, rgba(15, 106, 79, 0.08));
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .catalog-cm3-input {
