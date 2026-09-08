@@ -1348,6 +1348,22 @@ def purge_blocked_makes(db_path: Path) -> dict[str, int]:
                     (make, variant, variant),
                 )
                 catalog_removed += int(cur.rowcount or 0)
+        from autoplius.electric import ELECTRIC_MAKE_MODELS
+
+        for make, model in ELECTRIC_MAKE_MODELS:
+            cur = conn.execute(
+                """
+                DELETE FROM engine_catalog
+                WHERE lower(make) = lower(?)
+                  AND (
+                    lower(COALESCE(model, '')) = lower(?)
+                    OR lower(COALESCE(model, '')) LIKE lower(?) || ' %'
+                    OR (? = 'i3' AND lower(COALESCE(model, '')) LIKE 'i3s%')
+                  )
+                """,
+                (make, model, model, model.casefold()),
+            )
+            catalog_removed += int(cur.rowcount or 0)
 
     archived_blocked = 0
     archived_pickups = 0

@@ -45,7 +45,22 @@ def test_electric_tab_sql_includes_manual_and_fuel():
     sql = " AND ".join(where)
     assert "COALESCE(manual_electric, 0) = 1" in sql
     assert "лектр" in sql
+    assert "bmw" in sql
+    assert "i3" in sql
     assert "engine_liters IS NULL" not in sql
+
+
+def test_main_tab_sql_excludes_electric_and_bmw_i3():
+    filters = ListingFilters(catalog_filter=True, exclude_electric=True)
+    where, _params = build_listing_where(filters)
+    sql = " AND ".join(where)
+    assert "NOT (" in sql
+    assert "manual_electric" in sql
+    assert "bmw" in sql
+    assert "i3" in sql
+    assert "лектр" in sql
+    assert "engine_liters IS NULL" not in sql
+
 
 def test_skoda_hidden_when_catalog_filter_disabled():
     filters = ListingFilters(catalog_filter=False, exclude_blocked_makes=True)

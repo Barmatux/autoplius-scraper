@@ -8,6 +8,7 @@ from autoplius.listing_display import listing_make_model
 from autoplius.engine_volume import _parse_volume_cm3_from_text, engine_volume_cm3
 from autoplius.catalog_filters import is_pickup_listing
 from autoplius.make_model_filters import is_blocked_make, is_blocked_make_model
+from autoplius.electric import is_electric_make_model, is_pure_electric_listing
 
 CATALOG_UPTO_LITERS_DEFAULT = 1.9
 
@@ -92,6 +93,8 @@ def aggregate_catalog_groups(listings: list[dict[str, Any]]) -> list[dict[str, A
             not make
             or is_blocked_make(make)
             or is_blocked_make_model(make, model)
+            or is_electric_make_model(make, model)
+            or is_pure_electric_listing(item)
             or not engine_label
             or engine_label == "—"
         ):

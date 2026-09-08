@@ -61,6 +61,7 @@ class ListingFilters:
     engine_upto_liters: float | None = None
     engine_volume_missing: bool = False
     electric_only: bool = False
+    exclude_electric: bool = False
     volume_from: float | None = None
     volume_to: float | None = None
     cities: list[str] = field(default_factory=list)
@@ -154,9 +155,12 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
         year_expr = _reg_year_expr()
         clauses.append(f"({year_expr} IS NULL OR {year_expr} >= ?)")
         params.append(MIN_CATALOG_YEAR)
-    elif filters.engine_upto_liters is not None:
-        clauses.append("engine_liters IS NOT NULL AND engine_liters <= ?")
-        params.append(filters.engine_upto_liters)
+    else:
+        if filters.exclude_electric:
+            clauses.append(electric_sql_clause(include=False))
+        if filters.engine_upto_liters is not None:
+            clauses.append("engine_liters IS NOT NULL AND engine_liters <= ?")
+            params.append(filters.engine_upto_liters)
 
     volume_from = filters.volume_from
     volume_to = filters.volume_to

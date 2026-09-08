@@ -1037,6 +1037,7 @@ def _listing_filters_for_tab(
         passable_only=passable,
         engine_volume_missing=tab == TAB_NO_VOLUME,
         electric_only=tab == TAB_ELECTRIC,
+        exclude_electric=tab == TAB_ALL,
         engine_upto_liters=1.9 if upto_19l and tab not in {TAB_NO_VOLUME, TAB_ELECTRIC} else None,
         catalog_filter=tab not in {TAB_NO_VOLUME, TAB_ELECTRIC},
         exclude_blocked_makes=True,

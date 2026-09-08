@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from autoplius.listing_display import listing_make_model
+
 ELECTRIC_MARKERS = (
     "электр",
     "elektr",
@@ -28,6 +30,40 @@ HYBRID_OR_ICE_MARKERS = (
     "газ",
 )
 
+# Always treat these make/model pairs as battery-electric (even if fuel is missing/odd).
+ELECTRIC_MAKE_MODELS = frozenset({("BMW", "i3")})
+
+
+def _model_matches_electric(model: str, blocked_model: str) -> bool:
+    folded = model.strip().casefold()
+    target = blocked_model.strip().casefold()
+    if not folded or not target:
+        return False
+    if "," in folded:
+        folded = folded.split(",", 1)[0].strip()
+    if folded == target:
+        return True
+    if folded.startswith(f"{target} "):
+        return True
+    # BMW i3s / i3S
+    if target == "i3" and folded.startswith("i3s"):
+        return True
+    return False
+
+
+def is_electric_make_model(make: str | None, model: str | None) -> bool:
+    make_text = (make or "").strip()
+    model_text = (model or "").strip()
+    if not make_text or make_text == "—" or not model_text:
+        return False
+    make_folded = make_text.casefold()
+    for electric_make, electric_model in ELECTRIC_MAKE_MODELS:
+        if make_folded != electric_make.casefold():
+            continue
+        if _model_matches_electric(model_text, electric_model):
+            return True
+    return False
+
 
 def is_pure_electric_fuel(fuel: str | None) -> bool:
     """True for battery-only cars; false for hybrids and ICE."""
@@ -44,7 +80,32 @@ def is_pure_electric_fuel(fuel: str | None) -> bool:
 def is_pure_electric_listing(item: dict[str, Any]) -> bool:
     if int(item.get("manual_electric") or 0):
         return True
+    make, model = listing_make_model(item)
+    if is_electric_make_model(make, model):
+        return True
     return is_pure_electric_fuel(item.get("fuel"))
+
+
+def _electric_make_model_sql() -> str:
+    from autoplius.title_sql import title_make_expr, title_model_expr
+
+    make_expr = f"lower({title_make_expr()})"
+    model_expr = f"lower({title_model_expr()})"
+    parts: list[str] = []
+    for make, model in sorted(ELECTRIC_MAKE_MODELS, key=lambda pair: pair[0].casefold()):
+        folded_model = model.casefold()
+        model_checks = [
+            f"{model_expr} = '{folded_model}'",
+            f"{model_expr} LIKE '{folded_model} %'",
+        ]
+        if folded_model == "i3":
+            model_checks.append(f"{model_expr} LIKE 'i3s%'")
+        parts.append(
+            f"({make_expr} = '{make.casefold()}' AND ({' OR '.join(model_checks)}))"
+        )
+    if not parts:
+        return "0"
+    return "(" + " OR ".join(parts) + ")"
 
 
 def electric_sql_clause(*, include: bool) -> str:
@@ -80,5 +141,6 @@ def electric_sql_clause(*, include: bool) -> str:
         AND lower(COALESCE(fuel, '')) NOT LIKE '%petrol%'
         AND lower(COALESCE(fuel, '')) NOT LIKE '%gasoline%'
     )"""
-    expr = f"(COALESCE(manual_electric, 0) = 1 OR {auto})"
+    known = _electric_make_model_sql()
+    expr = f"(COALESCE(manual_electric, 0) = 1 OR {auto} OR {known})"
     return expr if include else f"NOT {expr}"
