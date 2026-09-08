@@ -1475,21 +1475,6 @@ def analytics():
     )
 
 
-@app.get("/instruction")
-def instruction():
-    return render_template("instruction.html")
-
-
-@app.get("/vin-check")
-def vin_check():
-    return render_template("vin_check.html")
-
-
-@app.get("/calculator")
-def customs_calculator():
-    return render_template("calculator.html")
-
-
 @app.get("/catalog")
 def catalog():
     path = require_db()
