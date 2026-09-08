@@ -31,7 +31,7 @@
 
   saveReturnTarget();
 
-  document.querySelectorAll(".tabs .tab").forEach((link) => {
+  document.querySelectorAll(".tabs .tab, .primary-nav .tab").forEach((link) => {
     link.addEventListener("click", () => {
       saveReturnTarget(link.href);
     });

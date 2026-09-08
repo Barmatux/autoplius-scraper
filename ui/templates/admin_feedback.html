@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Сообщения · Кабинет администратора</title>
   {% include "_site_icons.html" %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907a">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260908a">
 </head>
 <body>
   <header class="top">
@@ -13,6 +13,7 @@
     {% set active_tab = "feedback" %}
     <div class="top-main">
       {% include "_brand.html" %}
+      {% include "_primary_nav.html" %}
       {% include "_mobile_nav.html" %}
       <div class="meta top-meta">
         {% include "_admin_bar.html" %}

@@ -13,7 +13,7 @@
 
   function adjustTabCount(hrefPart, delta) {
     const tabCount = document.querySelector(
-      '.tabs a[href*="' + hrefPart + '"] .tab-count'
+      '.tabs a[href*="' + hrefPart + '"] .tab-count, .primary-nav a[href*="' + hrefPart + '"] .tab-count'
     );
     if (!tabCount) {
       return;

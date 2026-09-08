@@ -1186,6 +1186,8 @@ def index():
     passable = _passable_enabled()
     over_3y = _over_3y_enabled()
     tab = _current_tab()
+    if tab == TAB_NO_VOLUME and not _is_admin():
+        return redirect(url_for("index", tab=TAB_ALL, sort=request.args.get("sort", DEFAULT_LIST_SORT)))
     listings_view = _current_listings_view()
     page = max(1, int(request.args.get("page", "1") or "1"))
     min_price_raw = request.args.get("min_price", "").strip()

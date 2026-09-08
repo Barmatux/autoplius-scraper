@@ -40,7 +40,7 @@ body {
 
 .top-main {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   width: 100%;
@@ -53,6 +53,36 @@ body {
   gap: 0.5rem;
   align-items: center;
   justify-content: flex-end;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.primary-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding: 0.1rem 0;
+}
+
+.primary-nav > .tab,
+.primary-nav > .import-presets {
+  flex: 0 0 auto;
+}
+
+.primary-nav .tab {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.92rem;
+}
+
+.brand {
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .mobile-nav-toggle {
@@ -168,6 +198,10 @@ main {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   padding-bottom: 0.15rem;
+}
+
+.admin-tabs {
+  margin-top: 0.15rem;
 }
 
 .tabs > .tab,
@@ -3031,7 +3065,8 @@ body.lightbox-open {
     display: none;
   }
 
-  .desktop-tabs {
+  .desktop-tabs,
+  .desktop-primary-nav {
     display: none;
   }
 
