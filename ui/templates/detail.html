@@ -46,6 +46,7 @@
       <div class="detail-heading-actions">
         {% set favorite_button_label = "В избранное" %}
         {% include "_listing_favorite_button.html" %}
+        {% if not is_admin %}
         <button
           type="button"
           class="feedback-consult-btn detail-consult"
@@ -53,6 +54,7 @@
           data-feedback-listing="{{ item.autoplius_id }}"
           data-feedback-title="{{ item|listing_headline }}"
         >Консультация</button>
+        {% endif %}
       </div>
     </div>
 

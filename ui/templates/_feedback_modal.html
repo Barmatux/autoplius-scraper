@@ -1,3 +1,4 @@
+{% if not is_admin %}
 <button
   type="button"
   class="feedback-fab"
@@ -9,6 +10,7 @@
     <path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9.4L5 20.6V17H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm2.5 5a1 1 0 1 0 0 2h11a1 1 0 1 0 0-2h-11zm0 3.5a1 1 0 1 0 0 2h7a1 1 0 1 0 0-2h-7z"/>
   </svg>
 </button>
+{% endif %}
 
 <div class="feedback-modal" id="feedback-modal" data-feedback-modal hidden>
   <button type="button" class="feedback-modal-backdrop" data-feedback-close aria-label="Закрыть"></button>

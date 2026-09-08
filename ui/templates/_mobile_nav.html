@@ -62,6 +62,7 @@
       href="{{ url_for('customs_calculator') }}"
     >Таможенный калькулятор</a>
 
+    {% if not is_admin %}
     <div class="mobile-nav-messengers" role="group" aria-label="Мессенджеры">
       <a class="mobile-nav-link" href="{{ feedback_whatsapp_url }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
       <a class="mobile-nav-link" href="{{ feedback_telegram_url }}" target="_blank" rel="noopener noreferrer">Telegram</a>
@@ -69,6 +70,7 @@
     </div>
 
     <button type="button" class="mobile-nav-link mobile-nav-button" data-feedback-open="home">Консультация</button>
+    {% endif %}
 
     {% if is_admin %}
     {# Admin session: no guest «Вход»; admin links below. #}

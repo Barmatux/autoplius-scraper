@@ -62,6 +62,7 @@
       href="{{ url_for('customs_calculator') }}"
     ><span class="nav-btn-stack-line">Таможенный</span><span class="nav-btn-stack-line">калькулятор</span></a>
 
+    {% if not is_admin %}
     <a
       class="nav-btn nav-btn-icon nav-btn-wa"
       href="{{ feedback_whatsapp_url }}"
@@ -98,6 +99,7 @@
       class="nav-btn nav-btn-text"
       data-feedback-open="home"
     >Консультация</button>
+    {% endif %}
   </div>
 </nav>
 {% include "_header_auth.html" %}
