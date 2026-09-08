@@ -38,9 +38,9 @@
   </div>
 
   <a
-    class="nav-btn nav-btn-text{% if active_tab is defined and active_tab == 'calculator' %} active{% endif %}"
+    class="nav-btn nav-btn-text nav-btn-stack{% if active_tab is defined and active_tab == 'calculator' %} active{% endif %}"
     href="{{ url_for('customs_calculator') }}"
-  >Таможенный калькулятор</a>
+  ><span class="nav-btn-stack-line">Таможенный</span><span class="nav-btn-stack-line">калькулятор</span></a>
 
   <a
     class="nav-btn nav-btn-icon nav-btn-wa"

@@ -103,6 +103,19 @@ body {
   color: var(--accent);
 }
 
+.nav-btn-stack {
+  flex-direction: column;
+  gap: 0.05rem;
+  white-space: normal;
+  line-height: 1.05;
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
+}
+
+.nav-btn-stack-line {
+  display: block;
+}
+
 .nav-btn-icon {
   width: 2.65rem;
   min-width: 2.65rem;
