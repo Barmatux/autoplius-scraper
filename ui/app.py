@@ -109,6 +109,7 @@ from autoplius.transmission_labels import (
     transmission_short_label,
 )
 from autoplius.import_presets import preset_links
+from autoplius.popular_makes import make_nav_links, top_makes_for_nav
 from autoplius.listing_availability import probe_listing_result
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
@@ -142,7 +143,23 @@ init_request_timing(app)
 
 @app.context_processor
 def inject_import_presets() -> dict[str, Any]:
-    return {"import_presets": preset_links(url_for("index"))}
+    path = db_path()
+    sort = request.args.get("sort", DEFAULT_LIST_SORT)
+    index_url = url_for("index")
+    makes: list[str] = []
+    try:
+        if path.is_file():
+            makes = top_makes_for_nav(path)
+    except Exception:
+        makes = []
+    return {
+        "import_presets": preset_links(index_url),
+        "lithuania_make_links": make_nav_links(
+            index_path=index_url,
+            sort=sort,
+            makes=makes or None,
+        ),
+    }
 
 
 DISPLAY_TZ = ZoneInfo("Europe/Minsk")

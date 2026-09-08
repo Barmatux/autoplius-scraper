@@ -12,6 +12,8 @@
     const rect = trigger.getBoundingClientRect();
     const gap = 6;
     const padding = 8;
+    menu.style.width = "auto";
+    menu.style.maxWidth = `${Math.max(280, window.innerWidth - padding * 2)}px`;
     const menuWidth = Math.min(
       Math.max(menu.offsetWidth || 280, rect.width),
       window.innerWidth - padding * 2
@@ -25,21 +27,31 @@
     }
     menu.style.top = `${Math.round(rect.bottom + gap)}px`;
     menu.style.left = `${Math.round(left)}px`;
-    menu.style.width = `${Math.round(menuWidth)}px`;
   }
 
-  function closeSubmenus(root) {
-    root.querySelectorAll("[data-nav-submenu]").forEach(function (sub) {
-      sub.classList.remove("is-open");
-      const trigger = sub.querySelector("[data-nav-submenu-trigger]");
-      const menu = sub.querySelector("[data-nav-submenu-menu]");
-      if (trigger) {
-        trigger.setAttribute("aria-expanded", "false");
-      }
-      if (menu) {
-        menu.setAttribute("hidden", "");
-      }
+  function closeSides(root) {
+    root.querySelectorAll("[data-nav-side-trigger]").forEach(function (trigger) {
+      trigger.classList.remove("is-active");
+      trigger.setAttribute("aria-expanded", "false");
     });
+    root.querySelectorAll("[data-nav-side]").forEach(function (side) {
+      side.setAttribute("hidden", "");
+    });
+  }
+
+  function openSide(root, key) {
+    closeSides(root);
+    if (!key) {
+      return;
+    }
+    const trigger = root.querySelector('[data-nav-side-trigger="' + key + '"]');
+    const side = root.querySelector('[data-nav-side="' + key + '"]');
+    if (!trigger || !side) {
+      return;
+    }
+    trigger.classList.add("is-active");
+    trigger.setAttribute("aria-expanded", "true");
+    side.removeAttribute("hidden");
   }
 
   function setOpen(root, open) {
@@ -58,7 +70,8 @@
       menu.style.top = "";
       menu.style.left = "";
       menu.style.width = "";
-      closeSubmenus(root);
+      menu.style.maxWidth = "";
+      closeSides(root);
     }
   }
 
@@ -87,24 +100,18 @@
       setOpen(root, willOpen);
     });
 
-    root.querySelectorAll("[data-nav-submenu]").forEach(function (sub) {
-      const subTrigger = sub.querySelector("[data-nav-submenu-trigger]");
-      const subMenu = sub.querySelector("[data-nav-submenu-menu]");
-      if (!subTrigger || !subMenu) {
-        return;
-      }
-      subTrigger.addEventListener("click", function (event) {
+    root.querySelectorAll("[data-nav-side-trigger]").forEach(function (sideTrigger) {
+      sideTrigger.addEventListener("click", function (event) {
         event.preventDefault();
         event.stopPropagation();
-        const willOpen = !sub.classList.contains("is-open");
-        closeSubmenus(root);
-        sub.classList.toggle("is-open", willOpen);
-        subTrigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
-        if (willOpen) {
-          subMenu.removeAttribute("hidden");
+        const key = sideTrigger.getAttribute("data-nav-side-trigger");
+        const isOpen = sideTrigger.getAttribute("aria-expanded") === "true";
+        if (isOpen) {
+          closeSides(root);
         } else {
-          subMenu.setAttribute("hidden", "");
+          openSide(root, key);
         }
+        positionMenu(root, menu);
       });
     });
 

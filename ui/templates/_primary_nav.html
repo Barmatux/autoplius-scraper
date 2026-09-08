@@ -12,29 +12,38 @@
         aria-haspopup="true"
       >Автомобили</button>
       <div class="nav-dropdown-menu" data-nav-dropdown-menu hidden>
-        <a
-          class="nav-dropdown-link{% if active_tab is defined and active_tab == 'all' %} is-active{% endif %}"
-          href="{{ url_for('index', tab='all', sort=nav_sort) }}"
-        >Автомобили из Литвы</a>
-
-        <div class="nav-dropdown-submenu" data-nav-submenu>
+        <div class="nav-dropdown-panel">
           <button
             type="button"
-            class="nav-dropdown-link nav-dropdown-submenu-trigger"
-            data-nav-submenu-trigger
+            class="nav-dropdown-link"
+            data-nav-side-trigger="lithuania"
+            aria-expanded="false"
+          >Автомобили из Литвы</button>
+          <button
+            type="button"
+            class="nav-dropdown-link"
+            data-nav-side-trigger="popular"
             aria-expanded="false"
           >Популярные автомобили</button>
-          <div class="nav-dropdown-flyout" data-nav-submenu-menu hidden>
-            {% for preset in import_presets %}
-            <a href="{{ preset.href }}" class="nav-dropdown-link">{{ preset.label }}</a>
+          <a
+            class="nav-dropdown-link{% if active_tab is defined and active_tab == 'electric' %} is-active{% endif %}"
+            href="{{ url_for('index', tab='electric', sort=nav_sort) }}"
+          >Электромобили из Литвы{% if electric_count is defined and electric_count is not none %} <span class="tab-count">{{ electric_count }}</span>{% endif %}</a>
+        </div>
+
+        <div class="nav-dropdown-side" data-nav-side="lithuania" hidden>
+          <div class="nav-make-grid" role="group" aria-label="Популярные марки">
+            {% for item in lithuania_make_links %}
+            <a href="{{ item.href }}" class="nav-make-grid-item{% if loop.first %} is-all{% endif %}">{{ item.label }}</a>
             {% endfor %}
           </div>
         </div>
 
-        <a
-          class="nav-dropdown-link{% if active_tab is defined and active_tab == 'electric' %} is-active{% endif %}"
-          href="{{ url_for('index', tab='electric', sort=nav_sort) }}"
-        >Электромобили из Литвы{% if electric_count is defined and electric_count is not none %} <span class="tab-count">{{ electric_count }}</span>{% endif %}</a>
+        <div class="nav-dropdown-side nav-dropdown-side-list" data-nav-side="popular" hidden>
+          {% for preset in import_presets %}
+          <a href="{{ preset.href }}" class="nav-dropdown-link">{{ preset.label }}</a>
+          {% endfor %}
+        </div>
       </div>
     </div>
 
@@ -92,4 +101,4 @@
   </div>
 </nav>
 {% include "_header_auth.html" %}
-<script src="{{ url_for('static', filename='header_nav.js') }}?v=20260908h" defer></script>
+<script src="{{ url_for('static', filename='header_nav.js') }}?v=20260908i" defer></script>

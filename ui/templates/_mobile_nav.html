@@ -18,10 +18,18 @@
         Автомобили
       </button>
       <div class="mobile-nav-submenu" data-mobile-nav-submenu hidden>
-        <a
-          class="mobile-nav-sublink{% if active_tab is defined and active_tab == 'all' %} is-active{% endif %}"
-          href="{{ url_for('index', tab='all', sort=nav_sort) }}"
-        >Автомобили из Литвы</a>
+        <div class="mobile-nav-group" data-mobile-nav-group>
+          <button type="button" class="mobile-nav-sublink mobile-nav-group-trigger" data-mobile-nav-group-trigger aria-expanded="false">
+            Автомобили из Литвы
+          </button>
+          <div class="mobile-nav-submenu" data-mobile-nav-submenu hidden>
+            <div class="nav-make-grid mobile-nav-make-grid" role="group" aria-label="Популярные марки">
+              {% for item in lithuania_make_links %}
+              <a href="{{ item.href }}" class="nav-make-grid-item{% if loop.first %} is-all{% endif %}">{{ item.label }}</a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
         <div class="mobile-nav-group" data-mobile-nav-group>
           <button type="button" class="mobile-nav-sublink mobile-nav-group-trigger" data-mobile-nav-group-trigger aria-expanded="false">
             Популярные автомобили
