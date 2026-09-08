@@ -14,7 +14,6 @@
   <header class="top">
     {% set brand_sub_html %}
       <a href="{{ back_url }}" data-back-to-list>← к списку</a>
-      · {{ item|listing_headline }} · #{{ item.autoplius_id }}
     {% endset %}
     <div class="top-main">
       {% include "_brand.html" %}
@@ -22,9 +21,6 @@
       {% include "_mobile_nav.html" %}
       <div class="meta top-meta">
         {% include "_admin_bar.html" %}
-        <div class="pill accent">{{ render_price_lt(item) }}</div>
-        {% if item.phone %}<div class="pill">{{ item.phone }}</div>{% endif %}
-        {% if item.vin_masked %}<div class="pill mono">{{ item.vin_masked }}</div>{% endif %}
         {% if item.status == 'archived' %}<div class="pill">Архив</div>{% endif %}
         {% include "_listing_favorite_button.html" %}
         {% if is_admin and item.status != 'archived' %}
