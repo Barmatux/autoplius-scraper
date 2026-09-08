@@ -22,6 +22,7 @@ def test_is_ai_bot_user_agent():
     assert is_ai_bot_user_agent("Mozilla/5.0 (compatible; GPTBot/1.0; +https://openai.com/gptbot)")
     assert is_ai_bot_user_agent("ClaudeBot/1.0")
     assert not is_ai_bot_user_agent("Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)")
+    assert not is_ai_bot_user_agent("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")
     assert not is_ai_bot_user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0")
 
 

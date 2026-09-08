@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install nginx shared page cache + AI-bot media block / rate limits.
+# Install nginx shared page cache + safe AI-bot denylist (not Google/Yandex).
 # Never replaces the whole site file (preserves Certbot SSL).
 set -euo pipefail
 
@@ -15,12 +15,14 @@ fi
 LIMIT_SRC="$ROOT/deploy/nginx-conf.d/autoplius-bot-limit.conf"
 MEDIA_SNIP_SRC="$ROOT/deploy/nginx-snippets/autoplius-bot-media.conf"
 HTML_LIMIT_SRC="$ROOT/deploy/nginx-snippets/autoplius-bot-html-limit.conf"
+ALLOW_SNIP_SRC="$ROOT/deploy/nginx-snippets/autoplius-bot-allowlist.conf"
 
 ZONE_DST="/etc/nginx/conf.d/autoplius-cache.conf"
 LIMIT_DST="/etc/nginx/conf.d/autoplius-bot-limit.conf"
 SNIP_DST="/etc/nginx/snippets/autoplius-proxy-cache.conf"
 MEDIA_SNIP_DST="/etc/nginx/snippets/autoplius-bot-media.conf"
 HTML_LIMIT_DST="/etc/nginx/snippets/autoplius-bot-html-limit.conf"
+ALLOW_SNIP_DST="/etc/nginx/snippets/autoplius-bot-allowlist.conf"
 SITE="/etc/nginx/sites-available/autoplius-ui"
 LOGROTATE_SRC="$ROOT/deploy/logrotate-autoplius.conf"
 
@@ -30,6 +32,7 @@ sudo cp "$SNIP_SRC" "$SNIP_DST"
 [[ -f "$LIMIT_SRC" ]] && sudo cp "$LIMIT_SRC" "$LIMIT_DST"
 [[ -f "$MEDIA_SNIP_SRC" ]] && sudo cp "$MEDIA_SNIP_SRC" "$MEDIA_SNIP_DST"
 [[ -f "$HTML_LIMIT_SRC" ]] && sudo cp "$HTML_LIMIT_SRC" "$HTML_LIMIT_DST"
+[[ -f "$ALLOW_SNIP_SRC" ]] && sudo cp "$ALLOW_SNIP_SRC" "$ALLOW_SNIP_DST"
 if [[ -f /etc/nginx/conf.d/autoplius-bot-cache.conf ]]; then
   sudo rm -f /etc/nginx/conf.d/autoplius-bot-cache.conf
 fi
@@ -61,12 +64,9 @@ if "snippets/autoplius-bot-proxy-cache.conf" in text:
     )
     changed = True
 
-media_line = "    include snippets/autoplius-bot-media.conf;\n"
-html_limit_line = "        include snippets/autoplius-bot-html-limit.conf;\n"
-cache_line = "        include snippets/autoplius-proxy-cache.conf;\n"
-
 lines = text.splitlines(keepends=True)
 out: list[str] = []
+injected_allow = 0
 injected_media = 0
 injected_html = 0
 injected_cache = 0
@@ -74,22 +74,19 @@ i = 0
 while i < len(lines):
     line = lines[i]
     if line.strip() == "location / {":
-        # Ensure media include sits immediately before this location /
-        prev = out[-1] if out else ""
-        if "autoplius-bot-media.conf" not in prev and "location /media/" not in prev:
-            # walk back over blank lines
-            j = len(out) - 1
-            while j >= 0 and out[j].strip() == "":
-                j -= 1
-            already = j >= 0 and "autoplius-bot-media.conf" in out[j]
-            if not already:
-                indent = line[: len(line) - len(line.lstrip())]
-                out.append(f"{indent}include snippets/autoplius-bot-media.conf;\n")
-                injected_media += 1
-                changed = True
+        indent = line[: len(line) - len(line.lstrip())]
+        lookback = "".join(out[-20:])
+        if "autoplius-bot-allowlist.conf" not in lookback:
+            out.append(f"{indent}include snippets/autoplius-bot-allowlist.conf;\n")
+            injected_allow += 1
+            changed = True
+        if "autoplius-bot-media.conf" not in lookback and "location /media/" not in lookback:
+            out.append(f"{indent}include snippets/autoplius-bot-media.conf;\n")
+            injected_media += 1
+            changed = True
         out.append(line)
-        window = "".join(lines[i : i + 10])
-        indent_inner = line[: len(line) - len(line.lstrip())] + "    "
+        window = "".join(lines[i : i + 12])
+        indent_inner = indent + "    "
         if "autoplius-bot-html-limit.conf" not in window:
             out.append(f"{indent_inner}include snippets/autoplius-bot-html-limit.conf;\n")
             injected_html += 1
@@ -120,8 +117,9 @@ if timing not in text:
 else:
     print("timing access_log already present")
 
+print(f"injected allowlist include: {injected_allow}")
 print(f"injected media include: {injected_media}")
-print(f"injected html-limit include: {injected_html}")
+print(f"injected html-deny include: {injected_html}")
 print(f"injected proxy-cache include: {injected_cache}")
 
 if changed:
@@ -133,7 +131,7 @@ PY
 
 if sudo nginx -t; then
   sudo systemctl reload nginx
-  echo "nginx reloaded with page cache + AI bot limits"
+  echo "nginx reloaded with page cache + safe AI bot deny"
 else
   echo "WARNING: nginx -t failed after bot-limit install — check sites-available/autoplius-ui"
   exit 1

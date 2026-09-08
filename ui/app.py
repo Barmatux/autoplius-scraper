@@ -438,6 +438,17 @@ def _parse_usd_input(raw: str | None) -> float:
 
 
 @app.before_request
+def block_ai_scraper_bots():
+    """Deny AI training crawlers; allow robots.txt so they honor Disallow."""
+    if not is_ai_bot_user_agent(request.headers.get("User-Agent")):
+        return None
+    path = request.path or ""
+    if path in {"/robots.txt", "/favicon.ico"} or path.startswith("/static/"):
+        return None
+    abort(403)
+
+
+@app.before_request
 def require_admin_auth():
     if not request.path.startswith("/admin"):
         return None
