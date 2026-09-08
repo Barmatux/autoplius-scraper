@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>EuroHUB. Авто из Европы в Беларусь</title>
+<title>EuroHUB. Авто из Европы в Беларусь</title>
   {% include "_meta_brand.html" %}
+  {% include "_site_icons.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907e">
 </head>
 {% macro view_qs() -%}
@@ -325,7 +326,7 @@
             <td class="photo">
               {% if list_photos %}
               <div class="list-gallery" data-list-gallery data-photos='{{ list_photos|tojson }}'>
-                <img data-list-photo src="{{ list_photos[0] }}" alt="" loading="eager" decoding="async">
+                <img data-list-photo src="{{ list_photos[0] }}" alt="" loading="lazy" decoding="async">
                 {% if list_photos|length > 1 %}
                 <button type="button" class="list-photo-nav list-photo-prev" data-list-photo-prev aria-label="Предыдущее фото">‹</button>
                 <button type="button" class="list-photo-nav list-photo-next" data-list-photo-next aria-label="Следующее фото">›</button>
@@ -350,6 +351,13 @@
               <div class="muted body-type-line">{{ line }}</div>
               {% endfor %}
               {% endif %}
+                <button
+                  type="button"
+                  class="feedback-consult-btn"
+                  data-feedback-open="home"
+                  data-feedback-listing="{{ item.autoplius_id }}"
+                  data-feedback-title="{{ item|listing_headline }}"
+                >Консультация</button>
                 </div>
               </div>
             </td>
@@ -446,5 +454,7 @@
   {% if current_user %}
   <script src="{{ url_for('static', filename='favorite_toggle.js') }}" defer></script>
   {% endif %}
+  {% include "_feedback_modal.html" %}
+  {% include '_yandex_metrika.html' %}
 </body>
 </html>

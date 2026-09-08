@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Редактирование #{{ item.autoplius_id }} · EuroHUB</title>
+<title>Редактирование #{{ item.autoplius_id }} · EuroHUB</title>
   {% include "_meta_brand.html" %}
+  {% include "_site_icons.html" %}
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260907e">
   <script defer src="{{ url_for('static', filename='admin.js') }}"></script>
 </head>
@@ -185,5 +186,7 @@
       {% endif %}
     </div>
   </main>
+  {% include "_feedback_modal.html" %}
+  {% include '_yandex_metrika.html' %}
 </body>
 </html>

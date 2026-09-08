@@ -43,10 +43,27 @@ echo "=== media cache dir ==="
 mkdir -p /var/lib/autoplius-scraper/media-cache
 chown autoplius:autoplius /var/lib/autoplius-scraper/media-cache
 
+if [[ -f deploy/ensure-nginx-bot-cache.sh ]]; then
+  echo "=== nginx bot cache ==="
+  bash deploy/ensure-nginx-bot-cache.sh || echo "WARNING: bot cache install failed"
+fi
+
 if [[ -f deploy/nginx-autoplius-ui.conf ]]; then
   echo "=== nginx config ==="
-  sudo cp deploy/nginx-autoplius-ui.conf /etc/nginx/sites-available/autoplius-ui
-  sudo ln -sf /etc/nginx/sites-available/autoplius-ui /etc/nginx/sites-enabled/autoplius-ui
+  CONF="deploy/nginx-autoplius-ui.conf"
+  SITE="/etc/nginx/sites-available/autoplius-ui"
+  # Never wipe a live Certbot HTTPS site with a partial/HTTP-only stub.
+  if [[ -d /etc/letsencrypt/live/eu2.by ]] && [[ -f "$SITE" ]] && grep -qE 'listen[[:space:]]+\[?::\]?:?443|listen[[:space:]]+443' "$SITE"; then
+    echo "SSL cert + live :443 site present — leaving $SITE unchanged"
+    if ! grep -qE 'listen[[:space:]]+\[?::\]?:?443|listen[[:space:]]+443' "$CONF"; then
+      echo "WARNING: $CONF is HTTP-only stub; not installing it. Keep full SSL conf in deploy/."
+    fi
+  elif grep -qE 'listen[[:space:]]+\[?::\]?:?443|listen[[:space:]]+443' "$CONF"; then
+    sudo cp "$CONF" "$SITE"
+    sudo ln -sf "$SITE" /etc/nginx/sites-enabled/autoplius-ui
+  else
+    echo "WARNING: refusing to install HTTP-only $CONF while production needs HTTPS"
+  fi
   if sudo nginx -t; then
     sudo systemctl reload nginx
   else
