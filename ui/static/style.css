@@ -97,15 +97,15 @@ body {
   justify-content: center;
   gap: 0.35rem;
   box-sizing: border-box;
-  height: 2.65rem;
-  min-height: 2.65rem;
-  padding: 0 0.85rem;
+  height: 2.85rem;
+  min-height: 2.85rem;
+  padding: 0 0.9rem;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 1.02rem;
   font-weight: 600;
   line-height: 1.1;
   text-decoration: none;
@@ -139,17 +139,17 @@ body {
 }
 
 .nav-btn-icon {
-  width: 2.65rem;
-  min-width: 2.65rem;
-  max-width: 2.65rem;
+  width: 2.85rem;
+  min-width: 2.85rem;
+  max-width: 2.85rem;
   padding: 0;
-  flex: 0 0 2.65rem;
+  flex: 0 0 2.85rem;
   border-radius: 999px;
 }
 
 .nav-btn-icon svg {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.35rem;
+  height: 1.35rem;
   display: block;
 }
 
@@ -200,7 +200,7 @@ body {
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-size: 0.92rem;
+  font-size: 1.02rem;
   font-weight: 600;
   line-height: 1.35;
   text-align: left;
@@ -253,15 +253,15 @@ body {
 
 @media (max-width: 1200px) {
   .nav-btn-text {
-    font-size: 0.78rem;
-    padding: 0 0.55rem;
+    font-size: 0.9rem;
+    padding: 0 0.6rem;
   }
 }
 
 @media (max-width: 980px) {
   .nav-btn-text {
-    font-size: 0.72rem;
-    padding: 0 0.4rem;
+    font-size: 0.84rem;
+    padding: 0 0.45rem;
   }
 }
 
@@ -316,7 +316,7 @@ body {
 
 .brand-name {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 1.85rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -333,7 +333,7 @@ body {
 .brand-sub {
   margin: 0.25rem 0 0;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 1.05rem;
 }
 
 .brand-tagline {
@@ -369,7 +369,7 @@ body {
 
 .brand-sub-extra {
   margin-top: 0.15rem;
-  font-size: 0.88rem;
+  font-size: 0.98rem;
 }
 
 .meta {
@@ -3247,11 +3247,11 @@ body.lightbox-open {
   }
 
   .brand-name {
-    font-size: 1.15rem;
+    font-size: 1.35rem;
   }
 
   .brand-sub {
-    font-size: 0.78rem;
+    font-size: 0.9rem;
     line-height: 1.25;
   }
 
@@ -3331,12 +3331,13 @@ body.lightbox-open {
     justify-content: space-between;
     gap: 0.5rem;
     width: 100%;
-    padding: 0.7rem 0.8rem;
+    padding: 0.75rem 0.85rem;
     border: 0;
     border-radius: 0.7rem;
     background: transparent;
     color: var(--ink);
     font: inherit;
+    font-size: 1.05rem;
     font-weight: 600;
     text-align: left;
     text-decoration: none;
