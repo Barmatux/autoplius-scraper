@@ -1,6 +1,6 @@
 (function () {
   const STORAGE_KEY = "listings-return-v1";
-  const LIST_PATHS = new Set(["/", "/catalog", "/analytics"]);
+  const LIST_PATHS = new Set(["/", "/catalog", "/analytics", "/calculator"]);
 
   function saveReturnTarget(url) {
     try {
@@ -31,7 +31,7 @@
 
   saveReturnTarget();
 
-  document.querySelectorAll(".tabs .tab, .primary-nav .tab").forEach((link) => {
+  document.querySelectorAll(".tabs .tab, .site-header-nav a.nav-btn, .nav-dropdown-link").forEach((link) => {
     link.addEventListener("click", () => {
       saveReturnTarget(link.href);
     });

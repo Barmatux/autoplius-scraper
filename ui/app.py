@@ -469,7 +469,7 @@ def inject_feedback_contacts():
     # Temporary stubs until real chat links are set in .env
     telegram = (os.environ.get("FEEDBACK_TELEGRAM_URL") or "").strip() or "https://t.me/"
     whatsapp = (os.environ.get("FEEDBACK_WHATSAPP_URL") or "").strip()
-    viber = (os.environ.get("FEEDBACK_VIBER_URL") or "").strip()
+    viber = (os.environ.get("FEEDBACK_VIBER_URL") or "").strip() or "viber://chat?number="
     if not whatsapp:
         phone = re.sub(r"\D", "", os.environ.get("FEEDBACK_WHATSAPP_PHONE") or "")
         whatsapp = f"https://wa.me/{phone}" if phone else "https://wa.me/"
@@ -482,7 +482,7 @@ def inject_feedback_contacts():
     return {
         "feedback_telegram_url": telegram,
         "feedback_whatsapp_url": whatsapp,
-        "feedback_viber_url": viber or None,
+        "feedback_viber_url": viber,
         "feedback_unread_count": unread,
     }
 
@@ -1405,6 +1405,11 @@ def analytics():
         active_tab="analytics",
         no_volume_count=no_volume_count,
     )
+
+
+@app.get("/calculator")
+def customs_calculator():
+    return render_template("calculator.html")
 
 
 @app.get("/catalog")
