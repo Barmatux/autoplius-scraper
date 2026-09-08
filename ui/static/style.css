@@ -76,9 +76,9 @@ body {
   height: 2.65rem;
   min-height: 2.65rem;
   padding: 0 0.85rem;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 999px;
-  background: var(--card);
+  background: transparent;
   color: var(--muted);
   font: inherit;
   font-size: 0.9rem;
@@ -93,14 +93,13 @@ body {
 
 .nav-btn:hover {
   color: var(--accent);
-  border-color: #b7dccb;
+  background: var(--accent-soft);
 }
 
 .nav-btn.active,
 .nav-dropdown.is-open > .nav-btn,
 .nav-dropdown.is-active > .nav-btn {
   background: var(--accent-soft);
-  border-color: #b7dccb;
   color: var(--accent);
 }
 
