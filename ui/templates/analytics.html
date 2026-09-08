@@ -15,6 +15,7 @@
       {% include "_primary_nav.html" %}
       {% include "_mobile_nav.html" %}
       <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
         <div class="pill accent">{{ analytics.totals.runs or 0 }} прогонов</div>
         {% if analytics.recent.runs %}
         <div class="pill">Последние {{ analytics.recent_limit }}: {{ analytics.recent.runs }}</div>

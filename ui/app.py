@@ -235,15 +235,15 @@ def format_time(value: str | None) -> str:
 @app.template_filter("format_duration")
 def format_duration(value: float | int | None) -> str:
     if value is None:
-        return "тАФ"
+        return "—"
     total = int(round(float(value)))
     if total < 60:
-        return f"{total}╤Б"
+        return f"{total} с"
     minutes, seconds = divmod(total, 60)
     if minutes < 60:
-        return f"{minutes}╨╝ {seconds:02d}╤Б"
+        return f"{minutes} м {seconds:02d} с"
     hours, minutes = divmod(minutes, 60)
-    return f"{hours}╤З {minutes:02d}╨╝"
+    return f"{hours} ч {minutes:02d} м"
 
 
 @app.template_filter("engine_volume")

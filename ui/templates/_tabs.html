@@ -16,5 +16,9 @@
     href="{{ url_for('analytics') }}"
     class="tab{% if active_tab == 'analytics' %} active{% endif %}"
   >Аналитика</a>
+  <a
+    href="{{ url_for('logout') }}"
+    class="tab tab-logout"
+  >Выйти</a>
 </nav>
 {% endif %}
