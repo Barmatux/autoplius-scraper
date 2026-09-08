@@ -12,7 +12,7 @@ BLOCKED_MAKES = frozenset(
 )
 
 # Exact make + model prefix (e.g. "207" also matches "207 CC", "207 SW").
-BLOCKED_MAKE_MODELS = frozenset({("Peugeot", "207")})
+BLOCKED_MAKE_MODELS = frozenset({("Peugeot", "207"), ("Toyota", "Mirai")})
 
 
 def is_blocked_make(make: str | None) -> bool:

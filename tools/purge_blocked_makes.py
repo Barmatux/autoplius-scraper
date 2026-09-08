@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Archive blocked makes/models (Aixam, Skoda, Ligier/Microcar, Peugeot 207), pickups and remove them from engine catalog."""
+"""Archive blocked makes/models (Aixam, Skoda, Ligier/Microcar, Peugeot 207, Toyota Mirai), pickups and remove them from engine catalog."""
 from __future__ import annotations
 
 import argparse
