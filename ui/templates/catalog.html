@@ -157,33 +157,8 @@
       </p>
     </section>
 
-    {% if not new_catalog_tree and not catalog_tree and not make_index %}
+    {% if not new_catalog_tree and not catalog_tree %}
     <p class="empty">Каталог пуст. Нажмите «Обновить из объявлений», чтобы собрать марки, модели и двигатели из базы.</p>
-    {% elif not catalog_expanded %}
-    <section class="catalog-make-index-section">
-      <div class="catalog-section-head">
-        <h2 class="catalog-section-title">Выберите марку</h2>
-        <p class="catalog-section-hint">Полный каталог слишком большой для одной страницы — откройте марку, поиск или фильтр «Только без объёма».</p>
-      </div>
-      <ul class="catalog-make-index">
-        {% for item in make_index %}
-        <li>
-          <a
-            class="catalog-make-index-link"
-            href="{{ url_for('catalog', make=item.make, upto_19l='1' if upto_19l else '0') }}"
-          >
-            <span class="catalog-make-index-name">{{ item.make }}</span>
-            <span class="catalog-make-index-meta">
-              {{ item.count }}
-              {% if item.new_count %}
-              <span class="catalog-make-index-new">+{{ item.new_count }} новых</span>
-              {% endif %}
-            </span>
-          </a>
-        </li>
-        {% endfor %}
-      </ul>
-    </section>
     {% else %}
     <div class="catalog-tree">
       {% if new_catalog_tree %}
@@ -198,15 +173,30 @@
 
       {% if catalog_tree %}
       <section class="catalog-main-section">
-        {% if new_catalog_tree %}
+        {% if new_catalog_tree or pages > 1 %}
         <div class="catalog-section-head">
           <h2 class="catalog-section-title">Основной каталог</h2>
+          {% if pages > 1 %}
+          <p class="catalog-section-hint">{{ catalog_page_total }} модификаций · страница {{ page }} / {{ pages }}</p>
+          {% endif %}
         </div>
         {% endif %}
         {{ render_catalog_tree(catalog_tree) }}
       </section>
       {% endif %}
     </div>
+
+    {% if pages > 1 %}
+    <nav class="pager">
+      {% if page > 1 %}
+      <a href="{{ url_for('catalog', q=q or none, make=make_filter or none, model=model_filter or none, missing='1' if only_missing else none, upto_19l='1' if upto_19l else '0', page=page-1) }}">← Назад</a>
+      {% endif %}
+      <span>Страница {{ page }} / {{ pages }}</span>
+      {% if page < pages %}
+      <a href="{{ url_for('catalog', q=q or none, make=make_filter or none, model=model_filter or none, missing='1' if only_missing else none, upto_19l='1' if upto_19l else '0', page=page+1) }}">Вперёд →</a>
+      {% endif %}
+    </nav>
+    {% endif %}
     {% endif %}
   </main>
   <script src="{{ url_for('static', filename='tab_preference.js') }}" defer></script>

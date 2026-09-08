@@ -66,12 +66,12 @@ from ui.photo_urls import is_external_photo_url, photo_display_url, photo_displa
 from ui.table_layout import COL_KEYS, load_table_layout, save_table_layout, validate_layout
 from autoplius.cities_lt import distance_from_vilnius_label, google_maps_url
 from autoplius.engine_catalog import (
+    build_catalog_tree,
     catalog_stats,
     configure_catalog_db,
     filter_catalog_entries_upto_liters,
     invalidate_catalog_cache,
     refresh_engine_catalog,
-    split_catalog_entries,
 )
 from autoplius.detail_display import detail_spec_rows
 from autoplius.labels import resolve_listing_mileage_km
@@ -1495,8 +1495,10 @@ def catalog():
     model_filter = request.args.get("model", "").strip()
     only_missing = request.args.get("missing") == "1"
     upto_19l = _upto_19l_enabled()
-    # Full editable tree is ~3MB HTML; only expand when filtered.
-    catalog_expanded = bool(q or make_filter or model_filter or only_missing)
+    try:
+        page = max(1, int(request.args.get("page") or 1))
+    except ValueError:
+        page = 1
 
     all_entries = filter_catalog_entries_upto_liters(
         fetch_engine_catalog(path),
@@ -1530,25 +1532,34 @@ def catalog():
             key=str.casefold,
         )
 
-    make_index: list[dict[str, Any]] = []
-    if catalog_expanded:
-        catalog_sections = split_catalog_entries(entries)
-        summary_entries = entries
-    else:
-        catalog_sections = {"main_tree": [], "new_tree": [], "new_count": 0}
-        summary_entries = all_entries
-        make_counts = Counter(entry["make"] for entry in all_entries)
-        new_counts = Counter(
-            entry["make"] for entry in all_entries if entry.get("is_new")
+    new_entries = [entry for entry in entries if entry.get("is_new")]
+    main_entries = [entry for entry in entries if not entry.get("is_new")]
+    new_entries.sort(
+        key=lambda row: (
+            row.get("updated_at") or "",
+            row["make"].casefold(),
+            row["model"].casefold(),
+        ),
+        reverse=True,
+    )
+    main_entries.sort(
+        key=lambda row: (
+            row["make"].casefold(),
+            row["model"].casefold(),
+            row["engine_label"].casefold(),
+            (row.get("fuel") or "").casefold(),
         )
-        make_index = [
-            {
-                "make": make,
-                "count": make_counts[make],
-                "new_count": new_counts.get(make, 0),
-            }
-            for make in make_options
-        ]
+    )
+
+    catalog_page_size = 80
+    total_main = len(main_entries)
+    pages = max(1, (total_main + catalog_page_size - 1) // catalog_page_size)
+    page = min(page, pages)
+    start = (page - 1) * catalog_page_size
+    page_main = main_entries[start : start + catalog_page_size]
+
+    new_tree = build_catalog_tree(new_entries)
+    main_tree = build_catalog_tree(page_main)
 
     stats = db_stats(path)
     no_volume_count = count_listings(
@@ -1557,13 +1568,11 @@ def catalog():
     )
     return render_template(
         "catalog.html",
-        catalog_tree=catalog_sections["main_tree"],
-        new_catalog_tree=catalog_sections["new_tree"],
-        new_catalog_count=catalog_sections["new_count"],
-        catalog_entries=entries if catalog_expanded else all_entries,
-        catalog_summary=catalog_stats(summary_entries),
-        catalog_expanded=catalog_expanded,
-        make_index=make_index,
+        catalog_tree=main_tree,
+        new_catalog_tree=new_tree,
+        new_catalog_count=len(new_entries),
+        catalog_entries=entries,
+        catalog_summary=catalog_stats(entries),
         q=q,
         make_filter=make_filter,
         model_filter=model_filter,
@@ -1571,6 +1580,10 @@ def catalog():
         upto_19l=upto_19l,
         make_options=make_options,
         model_options=model_options,
+        page=page,
+        pages=pages,
+        catalog_page_size=catalog_page_size,
+        catalog_page_total=total_main,
         db_stats=stats,
         archived_count=int(stats.get("archived_listings") or 0),
         active_tab="catalog",
