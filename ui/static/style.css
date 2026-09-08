@@ -318,6 +318,37 @@ body {
   font-size: 0.95rem;
 }
 
+.brand-tagline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  line-height: 1.15;
+}
+
+.brand-tagline-domain {
+  flex: 0 0 auto;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.brand-tagline-divider {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 1px;
+  min-height: 1.9em;
+  background: var(--line);
+}
+
+.brand-tagline-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.brand-tagline-line {
+  display: block;
+}
+
 .brand-sub-extra {
   margin-top: 0.15rem;
   font-size: 0.88rem;

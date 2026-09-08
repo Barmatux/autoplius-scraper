@@ -1,6 +1,13 @@
 <div class="brand">
   <p class="brand-name"><a class="brand-link" href="{{ url_for('index', tab='all', sort=nav_sort if nav_sort is defined else 'added_desc') }}">EuroHUB</a></p>
-  <p class="brand-sub">eu2.by · авто из Европы в Беларусь</p>
+  <p class="brand-sub brand-tagline">
+    <span class="brand-tagline-domain">eu2.by</span>
+    <span class="brand-tagline-divider" aria-hidden="true"></span>
+    <span class="brand-tagline-copy">
+      <span class="brand-tagline-line">авто из Европы</span>
+      <span class="brand-tagline-line">в Беларусь</span>
+    </span>
+  </p>
   {% if brand_sub_html is defined and brand_sub_html %}
   <p class="brand-sub brand-sub-extra">{{ brand_sub_html|safe }}</p>
   {% elif brand_sub is defined and brand_sub %}
