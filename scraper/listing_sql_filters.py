@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from autoplius.electric import electric_sql_clause
+from autoplius.localize import expand_filter_value_variants
 from autoplius.make_model_filters import BLOCKED_MAKE_MODELS, BLOCKED_MAKES
 from autoplius.title_sql import title_make_expr, title_model_expr
 
@@ -179,19 +180,22 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
         params.extend(filters.cities)
 
     if filters.body_types:
-        placeholders = ",".join("?" for _ in filters.body_types)
+        body_variants = expand_filter_value_variants(filters.body_types)
+        placeholders = ",".join("?" for _ in body_variants)
         clauses.append(f"trim(COALESCE(body_type, '')) IN ({placeholders})")
-        params.extend(filters.body_types)
+        params.extend(body_variants)
 
     if filters.fuels:
-        placeholders = ",".join("?" for _ in filters.fuels)
+        fuel_variants = expand_filter_value_variants(filters.fuels)
+        placeholders = ",".join("?" for _ in fuel_variants)
         clauses.append(f"trim(COALESCE(fuel, '')) IN ({placeholders})")
-        params.extend(filters.fuels)
+        params.extend(fuel_variants)
 
     if filters.transmissions:
-        placeholders = ",".join("?" for _ in filters.transmissions)
+        transmission_variants = expand_filter_value_variants(filters.transmissions)
+        placeholders = ",".join("?" for _ in transmission_variants)
         clauses.append(f"trim(COALESCE(transmission, '')) IN ({placeholders})")
-        params.extend(filters.transmissions)
+        params.extend(transmission_variants)
 
     active_rows = [
         row

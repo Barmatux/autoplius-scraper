@@ -36,6 +36,20 @@ result = purge_blocked_makes(Settings.from_env().db_path)
 print("purge_blocked_makes:", result)
 PY
 
+echo "=== backfill localize (LT→RU body/fuel/etc) ==="
+sudo -u autoplius "$PY" - <<'PY'
+import sys
+from pathlib import Path
+
+ROOT = Path("/opt/autoplius-scraper")
+sys.path.insert(0, str(ROOT))
+from scraper.config import Settings
+from tools.backfill_localize import backfill
+
+db = Settings.from_env().db_path
+print("backfill_localize:", backfill(db))
+PY
+
 echo "=== exchange rates ==="
 echo "Rates are refreshed by GitHub Actions into SQLite (exchange_rates table)."
 

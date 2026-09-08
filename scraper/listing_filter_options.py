@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from autoplius.localize import unique_localized_options
 from autoplius.spec_filters import (
     TRANSMISSION_FILTER_GROUPS,
     format_volume_option,
@@ -198,8 +199,10 @@ def _load_listing_filter_options(
             "makeCounts": make_counts,
         },
         year_options=[int(row["year_value"]) for row in year_rows],
-        body_type_options=[row["value"] for row in body_rows],
-        fuel_options=[row["value"] for row in fuel_rows],
-        transmission_values=[row["value"] for row in transmission_rows],
+        body_type_options=unique_localized_options([row["value"] for row in body_rows]),
+        fuel_options=unique_localized_options([row["value"] for row in fuel_rows]),
+        transmission_values=unique_localized_options(
+            [row["value"] for row in transmission_rows]
+        ),
         volume_options=[format_volume_option(float(row["liters"])) for row in volume_rows],
     )

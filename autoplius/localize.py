@@ -97,13 +97,19 @@ FIELD_VALUES: dict[str, str] = {
     "Hečbekas": "Хэтчбек",
     "Sedanas": "Седан",
     "Visureigis / Krosoveris": "Внедорожник / Кроссовер",
+    "Visureigis": "Внедорожник",
+    "Krosoveris": "Кроссовер",
     "Vienatūris": "Минивэн",
     "Kupė (Coupe)": "Купе",
     "kupė (coupe)": "Купе",
     "Kabrioletas": "Кабриолет",
+    "Limuzinas": "Лимузин",
     "Pikapas": "Пикап",
     "Komercinis": "Коммерческий",
     "Krovininis furgonas": "Грузовой фургон",
+    "Keleivinis mikroautobusas": "Пассажирский микроавтобус",
+    "Krovininis mikroautobusas": "Грузовой микроавтобус",
+    "Keleivinis ar krovininis mikroautobusas": "Пассажирский / грузовой микроавтобус",
     "Visi varantys (4х4)": "Полный привод (4х4)",
     "Visi varantys (4x4)": "Полный привод (4x4)",
     "Priekiniai varantys": "Передний привод",
@@ -209,3 +215,41 @@ def localize_listing(item: dict[str, Any]) -> dict[str, Any]:
     if isinstance(params, dict) and params:
         row["parameters"] = localize_parameters(params)
     return row
+
+
+def unique_localized_options(values: list[str]) -> list[str]:
+    """Localize raw DB values and collapse LT/RU duplicates for filter dropdowns."""
+    seen: dict[str, str] = {}
+    for raw in values:
+        text = (raw or "").strip()
+        if not text:
+            continue
+        localized = (localize_value(text) or text).strip()
+        if not localized:
+            continue
+        key = localized.casefold()
+        if key not in seen:
+            seen[key] = localized
+    return sorted(seen.values(), key=str.casefold)
+
+
+def expand_filter_value_variants(values: list[str]) -> list[str]:
+    """Expand selected filter values to all known LT/RU synonyms for SQL matching."""
+    by_ru: dict[str, set[str]] = {}
+    for src, dst in FIELD_VALUES.items():
+        bucket = by_ru.setdefault(dst.casefold(), set())
+        bucket.add(src)
+        bucket.add(dst)
+        by_ru.setdefault(src.casefold(), set()).update({src, dst})
+
+    out: set[str] = set()
+    for raw in values:
+        text = (raw or "").strip()
+        if not text:
+            continue
+        out.add(text)
+        localized = (localize_value(text) or text).strip()
+        out.add(localized)
+        for key in (text.casefold(), localized.casefold()):
+            out.update(by_ru.get(key, ()))
+    return sorted(out)
