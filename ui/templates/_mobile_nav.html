@@ -40,6 +40,11 @@
     </div>
 
     <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'instruction' %} is-active{% endif %}"
+      href="{{ url_for('instruction') }}"
+    >Инструкция</a>
+
+    <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'calculator' %} is-active{% endif %}"
       href="{{ url_for('customs_calculator') }}"
     >Таможенный калькулятор</a>

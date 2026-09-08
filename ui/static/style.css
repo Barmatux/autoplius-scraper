@@ -44,8 +44,8 @@ body {
   justify-content: space-between;
   gap: 1rem;
   width: 100%;
-  max-width: 1440px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   position: relative;
 }
 
@@ -56,15 +56,39 @@ body {
   align-items: center;
   justify-content: flex-end;
   flex-shrink: 0;
+  order: 3;
 }
 
 .site-header-nav {
   display: flex;
   align-items: stretch;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.45rem;
   flex: 1 1 auto;
   min-width: 0;
+  order: 2;
+}
+
+.site-header-nav-main {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-evenly;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+.nav-auth {
+  flex: 0 0 auto;
+  order: 4;
+  min-width: 4.5rem;
+}
+
+.brand {
+  flex: 0 1 auto;
+  min-width: 0;
+  order: 1;
 }
 
 .nav-btn {
@@ -208,11 +232,6 @@ body {
   display: none !important;
 }
 
-.brand {
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
 .calculator-panel {
   max-width: 40rem;
   margin: 1rem auto 0;
@@ -249,6 +268,7 @@ body {
 .mobile-nav-toggle {
   display: none;
   flex-shrink: 0;
+  order: 5;
   width: 2.5rem;
   height: 2.5rem;
   margin-left: auto;

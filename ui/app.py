@@ -1408,6 +1408,11 @@ def analytics():
     )
 
 
+@app.get("/instruction")
+def instruction():
+    return render_template("instruction.html")
+
+
 @app.get("/calculator")
 def customs_calculator():
     return render_template("calculator.html")
