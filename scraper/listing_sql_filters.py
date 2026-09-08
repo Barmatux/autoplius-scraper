@@ -6,8 +6,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from autoplius.electric import electric_sql_clause
-from autoplius.make_model_filters import BLOCKED_MAKES
-from autoplius.title_sql import title_make_expr
+from autoplius.make_model_filters import BLOCKED_MAKE_MODELS, BLOCKED_MAKES
+from autoplius.title_sql import title_make_expr, title_model_expr
 
 MIN_CATALOG_YEAR = 2008
 PICKUP_BODY_MARKERS = ("%pikap%", "%pickup%", "%пикап%")
@@ -33,6 +33,10 @@ def _age_months_expr() -> str:
 
 def _title_make_expr() -> str:
     return f"lower({title_make_expr()})"
+
+
+def _title_model_expr() -> str:
+    return f"lower({title_model_expr()})"
 
 
 def _pickup_clause() -> str:
@@ -112,6 +116,13 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
         )
         clauses.append(f"({blocked_checks})")
         params.extend(f"{make.casefold()}%" for make in BLOCKED_MAKES)
+        model_expr = _title_model_expr()
+        for make, model in sorted(BLOCKED_MAKE_MODELS, key=lambda pair: pair[0].casefold()):
+            clauses.append(
+                f"NOT ({_title_make_expr()} = ? AND ({model_expr} = ? OR {model_expr} LIKE ?))"
+            )
+            folded_model = model.casefold()
+            params.extend([make.casefold(), folded_model, f"{folded_model} %"])
 
     if filters.catalog_filter:
         year_expr = _reg_year_expr()

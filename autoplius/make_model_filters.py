@@ -11,6 +11,9 @@ BLOCKED_MAKES = frozenset(
     {"Aixam", "Ligier", "Microcar", "Skoda", "Chatenet", "BYD", "Daihatsu"}
 )
 
+# Exact make + model prefix (e.g. "207" also matches "207 CC", "207 SW").
+BLOCKED_MAKE_MODELS = frozenset({("Peugeot", "207")})
+
 
 def is_blocked_make(make: str | None) -> bool:
     text = (make or "").strip()
@@ -20,9 +23,36 @@ def is_blocked_make(make: str | None) -> bool:
     return any(blocked.casefold() == folded for blocked in BLOCKED_MAKES)
 
 
+def _model_matches_blocked(model: str, blocked_model: str) -> bool:
+    folded = model.strip().casefold()
+    target = blocked_model.strip().casefold()
+    if not folded or not target:
+        return False
+    # Titles may keep ", 2010" in the model part when year wasn't stripped.
+    if "," in folded:
+        folded = folded.split(",", 1)[0].strip()
+    if folded == target:
+        return True
+    return folded.startswith(f"{target} ")
+
+
+def is_blocked_make_model(make: str | None, model: str | None) -> bool:
+    make_text = (make or "").strip()
+    model_text = (model or "").strip()
+    if not make_text or make_text == "—" or not model_text:
+        return False
+    make_folded = make_text.casefold()
+    for blocked_make, blocked_model in BLOCKED_MAKE_MODELS:
+        if make_folded != blocked_make.casefold():
+            continue
+        if _model_matches_blocked(model_text, blocked_model):
+            return True
+    return False
+
+
 def is_blocked_listing(item: dict[str, Any]) -> bool:
-    make, _model = listing_make_model(item)
-    return is_blocked_make(make)
+    make, model = listing_make_model(item)
+    return is_blocked_make(make) or is_blocked_make_model(make, model)
 
 
 def exclude_blocked_makes(listings: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -34,7 +64,12 @@ def exclude_blocked_makes(listings: list[dict[str, Any]]) -> list[dict[str, Any]
 
 
 def exclude_blocked_catalog_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [entry for entry in entries if not is_blocked_make(entry.get("make"))]
+    return [
+        entry
+        for entry in entries
+        if not is_blocked_make(entry.get("make"))
+        and not is_blocked_make_model(entry.get("make"), entry.get("model"))
+    ]
 
 
 def parse_optional_year(value: str | None) -> int | None:
@@ -81,7 +116,7 @@ def sanitize_vehicle_rows(
     for row in rows:
         make = (row.get("make") or "").strip()
         model = (row.get("model") or "").strip()
-        if is_blocked_make(make):
+        if is_blocked_make(make) or is_blocked_make_model(make, model):
             continue
         if make and make not in valid_makes:
             make = ""
@@ -104,10 +139,10 @@ def build_make_model_options(listings: list[dict[str, Any]]) -> dict[str, Any]:
 
     for item in listings:
         make, model = listing_make_model(item)
-        if not make or make == "—" or is_blocked_make(make):
+        if not make or make == "—" or is_blocked_make(make) or is_blocked_make_model(make, model):
             continue
         make_counts[make] += 1
-        if model:
+        if model and not is_blocked_make_model(make, model):
             model_map.setdefault(make, set()).add(model)
 
     makes = sorted(make_counts.keys(), key=str.casefold)

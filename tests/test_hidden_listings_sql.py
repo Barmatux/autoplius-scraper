@@ -23,7 +23,7 @@ def test_vehicle_filter_make_only_matches_space_or_comma():
     assert "volvo,%" in params
 
 
-def test_no_volume_tab_sql_excludes_skoda_and_pickups():
+def test_no_volume_tab_sql_excludes_skoda_pickups_and_peugeot_207():
     filters = ListingFilters(engine_volume_missing=True, catalog_filter=False)
     where, params = build_listing_where(filters)
     sql = " AND ".join(where)
@@ -31,6 +31,9 @@ def test_no_volume_tab_sql_excludes_skoda_and_pickups():
     assert "manual_electric" in sql
     assert "лектр" in sql
     assert "skoda%" in params
+    assert "peugeot" in params
+    assert "207" in params
+    assert "207 %" in params
     assert "pikap" in sql.lower() or "pickup" in sql.lower()
 
 

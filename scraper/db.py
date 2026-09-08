@@ -11,7 +11,7 @@ from autoplius.engine_volume import engine_volume_liters
 from autoplius.listing_titles import is_invalid_listing_title, resolve_listing_title
 from autoplius.passable_age import is_older_than_years, is_passable_age
 from autoplius.catalog_filters import is_catalog_visible, is_pickup_body_type, is_pickup_listing, listing_year, MIN_CATALOG_YEAR
-from autoplius.make_model_filters import BLOCKED_MAKES, is_blocked_listing
+from autoplius.make_model_filters import BLOCKED_MAKE_MODELS, BLOCKED_MAKES, is_blocked_listing
 from autoplius.localize import localize_listing
 from autoplius.photo_urls import normalize_photo_list
 from scraper.listing_sync import (
@@ -1237,7 +1237,7 @@ def set_listing_archived(
 
 
 def purge_blocked_makes(db_path: Path) -> dict[str, int]:
-    """Archive hidden listings (blocked makes, pickups) and drop their catalog rows."""
+    """Archive hidden listings (blocked makes/models, pickups) and drop their catalog rows."""
     init_db(db_path)
     catalog_removed = 0
     with connect(db_path) as conn:
@@ -1245,6 +1245,19 @@ def purge_blocked_makes(db_path: Path) -> dict[str, int]:
             cur = conn.execute(
                 "DELETE FROM engine_catalog WHERE lower(make) = lower(?)",
                 (blocked,),
+            )
+            catalog_removed += int(cur.rowcount or 0)
+        for make, model in BLOCKED_MAKE_MODELS:
+            cur = conn.execute(
+                """
+                DELETE FROM engine_catalog
+                WHERE lower(make) = lower(?)
+                  AND (
+                    lower(COALESCE(model, '')) = lower(?)
+                    OR lower(COALESCE(model, '')) LIKE lower(?) || ' %'
+                  )
+                """,
+                (make, model, model),
             )
             catalog_removed += int(cur.rowcount or 0)
 
