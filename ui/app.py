@@ -1489,31 +1489,66 @@ def analytics():
 @app.get("/catalog")
 def catalog():
     path = require_db()
-    refresh_engine_catalog(path)
-    invalidate_catalog_cache()
 
     q = request.args.get("q", "").strip()
     make_filter = request.args.get("make", "").strip()
     model_filter = request.args.get("model", "").strip()
     only_missing = request.args.get("missing") == "1"
     upto_19l = _upto_19l_enabled()
+    # Full editable tree is ~3MB HTML; only expand when filtered.
+    catalog_expanded = bool(q or make_filter or model_filter or only_missing)
 
-    entries = fetch_engine_catalog(path, q=q, make=make_filter, model=model_filter)
+    all_entries = filter_catalog_entries_upto_liters(
+        fetch_engine_catalog(path),
+        enabled=upto_19l,
+    )
+    make_options = sorted({entry["make"] for entry in all_entries}, key=str.casefold)
+
+    entries = all_entries
+    if make_filter:
+        entries = [entry for entry in entries if entry["make"] == make_filter]
+    if model_filter:
+        entries = [entry for entry in entries if entry["model"] == model_filter]
+    if q:
+        needle = q.casefold()
+        entries = [
+            entry
+            for entry in entries
+            if needle in (entry.get("make") or "").casefold()
+            or needle in (entry.get("model") or "").casefold()
+            or needle in (entry.get("engine_label") or "").casefold()
+            or needle in (entry.get("fuel") or "").casefold()
+            or needle in (entry.get("notes") or "").casefold()
+        ]
     if only_missing:
         entries = [entry for entry in entries if entry.get("customs_cm3") is None]
-    entries = filter_catalog_entries_upto_liters(entries, enabled=upto_19l)
-    catalog_sections = split_catalog_entries(entries)
 
-    make_options = sorted({entry["make"] for entry in fetch_engine_catalog(path)}, key=str.casefold)
     model_options: list[str] = []
     if make_filter:
         model_options = sorted(
-            {
-                entry["model"]
-                for entry in fetch_engine_catalog(path, make=make_filter)
-            },
+            {entry["model"] for entry in all_entries if entry["make"] == make_filter},
             key=str.casefold,
         )
+
+    make_index: list[dict[str, Any]] = []
+    if catalog_expanded:
+        catalog_sections = split_catalog_entries(entries)
+        summary_entries = entries
+    else:
+        catalog_sections = {"main_tree": [], "new_tree": [], "new_count": 0}
+        summary_entries = all_entries
+        make_counts = Counter(entry["make"] for entry in all_entries)
+        new_counts = Counter(
+            entry["make"] for entry in all_entries if entry.get("is_new")
+        )
+        make_index = [
+            {
+                "make": make,
+                "count": make_counts[make],
+                "new_count": new_counts.get(make, 0),
+            }
+            for make in make_options
+        ]
 
     stats = db_stats(path)
     no_volume_count = count_listings(
@@ -1525,8 +1560,10 @@ def catalog():
         catalog_tree=catalog_sections["main_tree"],
         new_catalog_tree=catalog_sections["new_tree"],
         new_catalog_count=catalog_sections["new_count"],
-        catalog_entries=entries,
-        catalog_summary=catalog_stats(entries),
+        catalog_entries=entries if catalog_expanded else all_entries,
+        catalog_summary=catalog_stats(summary_entries),
+        catalog_expanded=catalog_expanded,
+        make_index=make_index,
         q=q,
         make_filter=make_filter,
         model_filter=model_filter,
