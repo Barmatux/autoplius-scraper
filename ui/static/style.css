@@ -96,9 +96,7 @@ body {
   background: var(--accent-soft);
 }
 
-.nav-btn.active,
-.nav-dropdown.is-open > .nav-btn,
-.nav-dropdown.is-active > .nav-btn {
+.nav-btn.active {
   background: var(--accent-soft);
   color: var(--accent);
 }
