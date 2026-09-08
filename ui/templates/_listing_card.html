@@ -75,16 +75,6 @@
   <p class="listing-card-date muted">{{ item.first_seen_at|format_date }} · {{ item.first_seen_at|format_time }}</p>
   {% endif %}
 
-  <div class="listing-card-consult">
-    <button
-      type="button"
-      class="feedback-consult-btn"
-      data-feedback-open="home"
-      data-feedback-listing="{{ item.autoplius_id }}"
-      data-feedback-title="{{ item|listing_headline }}"
-    >Консультация</button>
-  </div>
-
   {% set price_lines = item|catalog_price_lines %}
   {% set has_vat = price_lines and price_lines|length >= 2 and price_lines[0].label %}
   {% set net_tip = "Уточните у продавца возможность покупки авто на экспорт по цене нетто (без НДС)" %}
