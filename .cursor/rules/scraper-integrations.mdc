@@ -1,0 +1,13 @@
+---
+description: Scraper, SQLite, and auto160 catalog integration
+globs: scraper/**/*.py,autoplius/**/*.py,tests/**/*.py
+alwaysApply: false
+---
+
+# Scraper / DB / auto160
+
+- SQLite schema changes go through `scraper/db.py` `init_db` migrations (`ALTER` if column missing). Keep helpers next to the table they touch.
+- After scrape: engine catalog refresh is separate from optional `reconcile_engine_catalog_with_auto160` — wrap reconcile in try/except; skip if `AUTO160_CATALOG_*` unset.
+- auto160 client: `scraper/auto160_catalog_client.py`. Match is modification-level; volume checks need listing fields (year/fuel/hp/liters), not only coarse `engine_catalog` keys. Do not treat fuzzy make+model alone as a reliable volume verification.
+- Prefer small focused tests under `tests/` for DB helpers and client payload shaping (no live network in unit tests).
+- Avoid blocking Autoplius scrape on external API latency; retries belong in the client.

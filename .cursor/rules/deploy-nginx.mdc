@@ -1,0 +1,14 @@
+---
+description: Nginx and VM deploy safety (preserve HTTPS, bot limits)
+globs: deploy/**
+alwaysApply: false
+---
+
+# Deploy / nginx
+
+- Production deploy of `deploy/**` goes **only through the Git pipeline** (push to `main`). Do not hand-copy nginx snippets to the VM as the normal release path.
+- **Never overwrite** `/etc/nginx/sites-available/autoplius-ui` with an HTTP-only stub when Let's Encrypt certs exist for `eu2.by`. Prefer inject/patch scripts (`ensure-nginx-bot-cache.sh`) over blind `cp` of a truncated conf.
+- Full SSL-aware reference: `deploy/nginx-autoplius-ui.conf` must keep `listen 443 ssl` + certbot paths. Keep the same full file under `/opt/.../deploy/` so pipeline post-deploy cannot reinstall an HTTP-only stub.
+- `post-deploy-vm.sh` / `deploy-ui-full.sh` must refuse HTTP-only installs when a live `:443` site + certs are present.
+- AI crawlers: block `/media/` (403) and rate-limit HTML via `autoplius-bot-limit.conf` + snippets; keep Yandex/Google usable except `Disallow: /media/` in robots.
+- After nginx edits: `nginx -t` then `reload`. If `-t` fails, restore the previous site file — do not leave broken nginx.

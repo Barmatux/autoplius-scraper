@@ -1,0 +1,15 @@
+---
+description: Core project constraints for eu2.by / autoplius-scraper
+alwaysApply: true
+---
+
+# autoplius-scraper core
+
+- Prod site: **https://eu2.by**. VM app root: `/opt/autoplius-scraper`. UI service: `autoplius-ui` (gunicorn → `:8080`, nginx `:80`/`:443`).
+- **Deploy only via the Git pipeline.** Ship by commit + push to `main` (CI → `rsync` / `deploy-from-git.sh` / post-deploy). Do **not** treat ad-hoc `scp`/`rsync` of random files as the production deploy path — that drifts from `main` and gets wiped on the next pipeline run.
+- Hotfix on the VM is allowed only for emergencies; the same change must be committed and pushed to `main` immediately after, or it will disappear.
+- Prefer **paired changes in one commit**: if `ui/app.py` imports new symbols from `scraper/db.py` (or vice versa), land **both** together. Partial trees cause ImportError / 502.
+- **Never** commit secrets (`.env`, keys, `data/*.db`), `__pycache__`, `.tmp_*`, `_tmp_*`, or ad-hoc `deploy/_*.py` smoke scripts.
+- After pipeline deploy that touches templates/static: ensure `autoplius-ui` restarted; purge `/var/cache/nginx/autoplius` when stale HTML is suspected.
+- Keep parse persistence separate from optional integrations (e.g. auto160 catalog reconcile) so an outage does not lose listings.
+- Do not invent nav routes without matching Flask endpoints (`url_for` must resolve or pages 500).

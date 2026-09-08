@@ -1,0 +1,14 @@
+---
+description: Flask UI and template conventions
+globs: ui/**/*.{py,html,js,css}
+alwaysApply: false
+---
+
+# UI / Flask
+
+- Templates live under `ui/templates/`; shared chrome in `_*.html` partials. New nav links need real `@app.get` routes or `url_for` BuildError → 500.
+- Anonymous HTML cache: `ui/page_cache.py` + nginx `proxy_cache`. Prefer cache-friendly anonymous pages; do not break session/admin bypass.
+- Media is expensive on the gunicorn worker: `/media/object` and `/media/proxy` must keep AI-bot 403 (nginx + Flask). Do not remove without a CDN/offload plan.
+- Feedback: modal `_feedback_modal.html`, FAB, listing «Консультация»; admin inbox `/admin/feedback`. Messenger URLs from env (`FEEDBACK_*`); stubs OK until real chats are set.
+- Static cache-bust with `?v=` on CSS/JS when shipping visual changes.
+- Match existing visual tokens (`--bg`, `--accent` in `style.css`); avoid unrelated redesign unless asked.
