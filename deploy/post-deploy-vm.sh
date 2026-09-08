@@ -50,6 +50,10 @@ db = Settings.from_env().db_path
 print("backfill_localize:", backfill(db))
 PY
 
+echo "=== backfill description_ru (targeted + small missing batch) ==="
+sudo -u autoplius "$PY" backfill_descriptions_ru.py --ids 32064212 || echo "WARNING: targeted description backfill failed"
+sudo -u autoplius "$PY" backfill_descriptions_ru.py --limit 40 || echo "WARNING: description backfill batch failed"
+
 echo "=== exchange rates ==="
 echo "Rates are refreshed by GitHub Actions into SQLite (exchange_rates table)."
 

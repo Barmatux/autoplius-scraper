@@ -46,6 +46,12 @@ def looks_russian(text: str, *, threshold: float = 0.45) -> bool:
     return cyrillic_ratio(text) >= threshold
 
 
+def is_usable_russian_text(text: str | None, *, threshold: float = 0.45) -> bool:
+    if not text or is_translation_error(text):
+        return False
+    return looks_russian(text, threshold=threshold)
+
+
 def _call_translator(text: str) -> str | None:
     from deep_translator import GoogleTranslator
 
@@ -85,8 +91,15 @@ def translate_to_russian(
         finally:
             _LAST_CALL_AT = time.monotonic()
 
-        if translated:
+        if translated and looks_russian(translated):
             return translated
+        if translated and not looks_russian(translated):
+            logger.warning(
+                "Description translation attempt %s/%s did not look Russian",
+                attempt,
+                _MAX_ATTEMPTS,
+            )
+            translated = None
 
         if attempt < _MAX_ATTEMPTS:
             time.sleep(wait)

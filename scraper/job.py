@@ -102,11 +102,12 @@ def merge_preview_and_detail(
         promote_parameters(row, params)
         original_description = row.get("description")
         if settings and original_description:
-            row["description_ru"] = translate_to_russian(
+            translated = translate_to_russian(
                 original_description,
                 enabled=settings.translate_descriptions,
                 min_delay_sec=settings.translate_delay_sec,
             )
+            row["description_ru"] = translated
         row["detail_scraped"] = True
         row["detail_error"] = None
     else:

@@ -35,6 +35,37 @@ def test_seller_description_filters_invalid_stored_text():
     assert seller_description(item) == (None, None)
 
 
+def test_seller_description_ignores_lithuanian_description_ru():
+    original = (
+        "Parduodamas labai geros būklės automobilis, pilna serviso istorija, "
+        "antras ratų komplektas, važiuoja be priekaištų kiekvieną dieną."
+    )
+    item = {"description": original, "description_ru": original}
+    primary, extra = seller_description(item)
+    assert primary == original
+    assert extra is None
+
+
+def test_needs_description_translation():
+    from autoplius.listing_description import needs_description_translation
+
+    original = (
+        "Parduodamas labai geros būklės automobilis, pilna serviso istorija, "
+        "antras ratų komplektas, važiuoja be priekaištų kiekvieną dieną."
+    )
+    assert needs_description_translation({"description": original, "description_ru": None})
+    assert needs_description_translation({"description": original, "description_ru": original})
+    assert not needs_description_translation(
+        {
+            "description": original,
+            "description_ru": (
+                "Продается автомобиль в отличном состоянии, полная история сервиса, "
+                "второй комплект колес, ездит без нареканий каждый день."
+            ),
+        }
+    )
+
+
 def test_rejects_autoplius_spec_summary_dump():
     text = (
         "Renault Captur, Внедорожник / Кроссовер. Первая регистрация 2018-06, "

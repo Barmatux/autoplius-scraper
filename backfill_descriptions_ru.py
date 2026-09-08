@@ -23,6 +23,11 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=0, help="Limit listings (0 = all missing)")
     parser.add_argument("--force", action="store_true", help="Re-translate even if description_ru exists")
     parser.add_argument(
+        "--ids",
+        default="",
+        help="Comma-separated listing IDs to translate (skips missing-only filter)",
+    )
+    parser.add_argument(
         "--repair-errors",
         action="store_true",
         help="Re-translate rows where description_ru contains translator error text",
@@ -33,17 +38,43 @@ def main() -> None:
     settings = Settings.from_env()
     init_db(settings.db_path)
 
-    with connect(settings.db_path) as conn:
-        rows = conn.execute(
-            "SELECT autoplius_id, description, description_ru FROM listings "
-            "WHERE description IS NOT NULL AND description != '' "
-            "ORDER BY autoplius_id"
-        ).fetchall()
+    id_filter: list[int] = []
+    if args.ids.strip():
+        for part in args.ids.split(","):
+            part = part.strip()
+            if part.isdigit():
+                id_filter.append(int(part))
 
-    if args.repair_errors:
+    with connect(settings.db_path) as conn:
+        if id_filter:
+            placeholders = ",".join("?" for _ in id_filter)
+            rows = conn.execute(
+                f"""
+                SELECT autoplius_id, description, description_ru FROM listings
+                WHERE autoplius_id IN ({placeholders})
+                  AND description IS NOT NULL AND description != ''
+                ORDER BY autoplius_id
+                """,
+                id_filter,
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT autoplius_id, description, description_ru FROM listings "
+                "WHERE description IS NOT NULL AND description != '' "
+                "ORDER BY autoplius_id"
+            ).fetchall()
+
+    if id_filter:
+        from autoplius.translate import is_usable_russian_text
+
+        if not args.force:
+            rows = [row for row in rows if not is_usable_russian_text(row["description_ru"])]
+    elif args.repair_errors:
         rows = [row for row in rows if is_translation_error(row["description_ru"])]
     elif not args.force:
-        rows = [row for row in rows if not row["description_ru"]]
+        from autoplius.translate import is_usable_russian_text
+
+        rows = [row for row in rows if not is_usable_russian_text(row["description_ru"])]
 
     if args.limit and args.limit > 0:
         rows = rows[: args.limit]

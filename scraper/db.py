@@ -1030,6 +1030,23 @@ def fetch_listing(db_path: Path, listing_id: int) -> dict[str, Any] | None:
         return row_to_listing(row) if row else None
 
 
+def update_listing_description_ru(
+    db_path: Path,
+    listing_id: int,
+    description_ru: str | None,
+) -> None:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE listings
+            SET description_ru = ?, updated_at = ?
+            WHERE autoplius_id = ?
+            """,
+            (description_ru, _utc_now(), int(listing_id)),
+        )
+
+
 def fetch_sitemap_listings(db_path: Path, *, limit: int = 45000) -> list[dict[str, Any]]:
     """Active listings for sitemap.xml (id + lastmod)."""
     if not db_path.is_file():

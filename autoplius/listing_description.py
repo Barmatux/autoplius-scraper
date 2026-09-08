@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from autoplius.translate import is_translation_error
+from autoplius.translate import is_usable_russian_text
 
 _PARAM_LINE_RE = re.compile(r"^[^:：]{1,48}[:：]\s*.+", re.M)
 _LISTING_META_PREFIXES = (
@@ -83,7 +83,7 @@ def seller_description(item: dict[str, Any]) -> tuple[str | None, str | None]:
     """Return (primary_text, original_text) when text looks like a seller description."""
     original = item.get("description")
     translated = item.get("description_ru")
-    if is_translation_error(translated):
+    if not is_usable_russian_text(translated):
         translated = None
     if translated and is_seller_description(translated):
         show_original = original if original and original != translated and is_seller_description(original) else None
@@ -91,3 +91,13 @@ def seller_description(item: dict[str, Any]) -> tuple[str | None, str | None]:
     if is_seller_description(original):
         return original, None
     return None, None
+
+
+def needs_description_translation(item: dict[str, Any]) -> bool:
+    """True when seller text exists but a usable Russian translation is missing."""
+    original = item.get("description")
+    if not is_seller_description(original):
+        return False
+    if is_usable_russian_text(original):
+        return False
+    return not is_usable_russian_text(item.get("description_ru"))

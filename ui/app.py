@@ -75,6 +75,7 @@ from autoplius.engine_catalog import (
 from autoplius.detail_display import detail_spec_rows
 from autoplius.labels import resolve_listing_mileage_km
 from autoplius.listing_description import seller_description
+from autoplius.ensure_description_ru import ensure_listing_description_ru
 from autoplius.price_display import catalog_price_lines, price_lt_lines
 from autoplius.engine_volume import (
     engine_volume_from_listing,
@@ -1584,6 +1585,7 @@ def listing_detail(listing_id: int):
     item = fetch_listing(path, listing_id)
     if item is None:
         abort(404, "listing not found in database")
+    item = ensure_listing_description_ru(path, item, SETTINGS)
     photos = listing_photos_filter(item)
     # Prefer clean /listing/<id> URLs; return path is restored via localStorage
     # (data-save-return / data-back-to-list). Optional ?next= still works.
