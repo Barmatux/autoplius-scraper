@@ -45,6 +45,11 @@
     >Инструкция</a>
 
     <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'vin_check' %} is-active{% endif %}"
+      href="{{ url_for('vin_check') }}"
+    >Проверка VIN</a>
+
+    <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'calculator' %} is-active{% endif %}"
       href="{{ url_for('customs_calculator') }}"
     >Таможенный калькулятор</a>

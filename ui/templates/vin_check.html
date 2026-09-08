@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Проверка VIN · EuroHUB</title>
+  {% include "_meta_brand.html" %}
+  {% include "_site_icons.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260908g">
+</head>
+<body>
+  <header class="top">
+    {% set active_tab = "vin_check" %}
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_primary_nav.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+      </div>
+    </div>
+  </header>
+
+  <main>
+    {% include "_tabs.html" %}
+    <section class="auth-panel calculator-panel">
+      <h1 class="auth-title">Проверка VIN</h1>
+      <p class="auth-lead">
+        Скоро здесь появится проверка истории автомобиля по VIN. Пока можно открыть карточку объявления
+        и посмотреть доступные данные.
+      </p>
+      <p>
+        <a class="nav-btn nav-btn-text" href="{{ url_for('index', tab='all', sort=nav_sort) }}">Смотреть автомобили</a>
+      </p>
+    </section>
+  </main>
+
+  {% include "_feedback_modal.html" %}
+</body>
+</html>

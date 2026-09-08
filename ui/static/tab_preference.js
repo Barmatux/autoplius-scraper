@@ -1,6 +1,6 @@
 (function () {
   const STORAGE_KEY = "listings-return-v1";
-  const LIST_PATHS = new Set(["/", "/catalog", "/analytics", "/calculator", "/instruction"]);
+  const LIST_PATHS = new Set(["/", "/catalog", "/analytics", "/calculator", "/instruction", "/vin-check"]);
 
   function saveReturnTarget(url) {
     try {

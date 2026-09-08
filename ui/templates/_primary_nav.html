@@ -44,6 +44,11 @@
     >Инструкция</a>
 
     <a
+      class="nav-btn nav-btn-text nav-btn-stack{% if active_tab is defined and active_tab == 'vin_check' %} active{% endif %}"
+      href="{{ url_for('vin_check') }}"
+    ><span class="nav-btn-stack-line">Проверка</span><span class="nav-btn-stack-line">VIN</span></a>
+
+    <a
       class="nav-btn nav-btn-text nav-btn-stack{% if active_tab is defined and active_tab == 'calculator' %} active{% endif %}"
       href="{{ url_for('customs_calculator') }}"
     ><span class="nav-btn-stack-line">Таможенный</span><span class="nav-btn-stack-line">калькулятор</span></a>
