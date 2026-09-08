@@ -481,6 +481,17 @@ main {
 
 .admin-tabs {
   margin-top: 0.15rem;
+  flex-wrap: wrap;
+  overflow-x: visible;
+  row-gap: 0.45rem;
+}
+
+.catalog-summary-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0 0 1rem;
 }
 
 .tabs > .tab,

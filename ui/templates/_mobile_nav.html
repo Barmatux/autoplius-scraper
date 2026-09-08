@@ -70,7 +70,9 @@
 
     <button type="button" class="mobile-nav-link mobile-nav-button" data-feedback-open="home">Консультация</button>
 
-    {% if current_user %}
+    {% if is_admin %}
+    {# Admin session: no guest «Вход»; admin links below. #}
+    {% elif current_user %}
     <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'cabinet' %} is-active{% endif %}"
       href="{{ url_for('cabinet') }}"
@@ -82,10 +84,12 @@
     >Вход</a>
     {% endif %}
 
+    {% if not is_admin %}
     <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'favorites' %} is-active{% endif %}"
       href="{{ url_for('cabinet') }}"
     >Избранные</a>
+    {% endif %}
 
     {% if is_admin %}
     <a

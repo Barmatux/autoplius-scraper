@@ -1,4 +1,6 @@
-{% if current_user %}
+{% if is_admin %}
+{# Admin already has «Выйти» in _admin_bar — no guest «Вход». #}
+{% elif current_user %}
 <a class="nav-btn nav-btn-text nav-auth desktop-primary-nav" href="{{ url_for('cabinet') }}">Кабинет</a>
 {% else %}
 <a

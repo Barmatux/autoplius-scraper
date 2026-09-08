@@ -6,7 +6,7 @@
 <title>Каталог двигателей · EuroHUB</title>
   {% include "_meta_brand.html" %}
   {% include "_site_icons.html" %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260908i">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260908j">
 </head>
 {% macro render_catalog_tree(catalog_tree, section_class='') %}
   {% for make_group in catalog_tree %}
@@ -80,21 +80,25 @@
       {% include "_mobile_nav.html" %}
       <div class="meta top-meta">
         {% include "_admin_bar.html" %}
-        <div class="pill accent">{{ catalog_summary.total }} модификаций</div>
-        {% if catalog_summary.new %}
-        <div class="pill warn">Новые: {{ catalog_summary.new }}</div>
-        {% endif %}
-        <div class="pill">Заполнено: {{ catalog_summary.filled }}</div>
-        <div class="pill">Вручную: {{ catalog_summary.manual }}</div>
-        {% if catalog_summary.missing %}
-        <div class="pill warn">Без объёма: {{ catalog_summary.missing }}</div>
-        {% endif %}
       </div>
     </div>
   </header>
 
   <main>
+    {% set active_tab = "catalog" %}
     {% include "_tabs.html" %}
+
+    <div class="catalog-summary-pills" aria-label="Сводка каталога">
+      <div class="pill accent">{{ catalog_summary.total }} модификаций</div>
+      {% if catalog_summary.new %}
+      <div class="pill warn">Новые: {{ catalog_summary.new }}</div>
+      {% endif %}
+      <div class="pill">Заполнено: {{ catalog_summary.filled }}</div>
+      <div class="pill">Вручную: {{ catalog_summary.manual }}</div>
+      {% if catalog_summary.missing %}
+      <div class="pill warn">Без объёма: {{ catalog_summary.missing }}</div>
+      {% endif %}
+    </div>
 
     {% if request.args.get('synced') %}
     <p class="flash ok">Каталог обновлён из объявлений: добавлено {{ request.args.get('inserted', 0) }}, обновлено {{ request.args.get('updated', 0) }}.</p>
