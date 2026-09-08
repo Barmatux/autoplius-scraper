@@ -1332,18 +1332,22 @@ def purge_blocked_makes(db_path: Path) -> dict[str, int]:
             )
             catalog_removed += int(cur.rowcount or 0)
         for make, model in BLOCKED_MAKE_MODELS:
-            cur = conn.execute(
-                """
-                DELETE FROM engine_catalog
-                WHERE lower(make) = lower(?)
-                  AND (
-                    lower(COALESCE(model, '')) = lower(?)
-                    OR lower(COALESCE(model, '')) LIKE lower(?) || ' %'
-                  )
-                """,
-                (make, model, model),
-            )
-            catalog_removed += int(cur.rowcount or 0)
+            variants = [model]
+            if model.endswith("+") and not model[:-1].endswith(" "):
+                variants.append(f"{model[:-1]} +")
+            for variant in variants:
+                cur = conn.execute(
+                    """
+                    DELETE FROM engine_catalog
+                    WHERE lower(make) = lower(?)
+                      AND (
+                        lower(COALESCE(model, '')) = lower(?)
+                        OR lower(COALESCE(model, '')) LIKE lower(?) || ' %'
+                      )
+                    """,
+                    (make, variant, variant),
+                )
+                catalog_removed += int(cur.rowcount or 0)
 
     archived_blocked = 0
     archived_pickups = 0

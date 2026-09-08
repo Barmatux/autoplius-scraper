@@ -117,12 +117,18 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
         clauses.append(f"({blocked_checks})")
         params.extend(f"{make.casefold()}%" for make in BLOCKED_MAKES)
         model_expr = _title_model_expr()
-        for make, model in sorted(BLOCKED_MAKE_MODELS, key=lambda pair: pair[0].casefold()):
-            clauses.append(
-                f"NOT ({_title_make_expr()} = ? AND ({model_expr} = ? OR {model_expr} LIKE ?))"
-            )
+        for make, model in sorted(BLOCKED_MAKE_MODELS, key=lambda pair: (pair[0].casefold(), pair[1].casefold())):
             folded_model = model.casefold()
-            params.extend([make.casefold(), folded_model, f"{folded_model} %"])
+            model_checks = [f"{model_expr} = ?", f"{model_expr} LIKE ?"]
+            model_params: list[Any] = [folded_model, f"{folded_model} %"]
+            if folded_model.endswith("+") and not folded_model[:-1].endswith(" "):
+                spaced = f"{folded_model[:-1]} +"
+                model_checks.extend([f"{model_expr} = ?", f"{model_expr} LIKE ?"])
+                model_params.extend([spaced, f"{spaced} %"])
+            clauses.append(
+                f"NOT ({_title_make_expr()} = ? AND ({' OR '.join(model_checks)}))"
+            )
+            params.extend([make.casefold(), *model_params])
 
     if filters.catalog_filter:
         year_expr = _reg_year_expr()

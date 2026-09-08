@@ -34,6 +34,8 @@ def test_no_volume_tab_sql_excludes_skoda_pickups_and_peugeot_207():
     assert "peugeot" in params
     assert "207" in params
     assert "207 %" in params
+    assert "206+" in params
+    assert "206 +" in params
     assert "pikap" in sql.lower() or "pickup" in sql.lower()
 
 

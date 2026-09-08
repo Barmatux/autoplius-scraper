@@ -16,6 +16,7 @@ def test_blocked_makes_include_aixam_ligier_microcar_skoda_chatenet_byd_and_daih
     assert "BYD" in BLOCKED_MAKES
     assert "Daihatsu" in BLOCKED_MAKES
     assert ("Peugeot", "207") in BLOCKED_MAKE_MODELS
+    assert ("Peugeot", "206+") in BLOCKED_MAKE_MODELS
     assert ("Toyota", "Mirai") in BLOCKED_MAKE_MODELS
     assert is_blocked_make("Aixam")
     assert is_blocked_make("aixam")
@@ -35,6 +36,9 @@ def test_blocked_makes_include_aixam_ligier_microcar_skoda_chatenet_byd_and_daih
     assert is_blocked_make_model("Peugeot", "207")
     assert is_blocked_make_model("peugeot", "207 CC")
     assert is_blocked_make_model("Peugeot", "207 SW")
+    assert is_blocked_make_model("Peugeot", "206+")
+    assert is_blocked_make_model("Peugeot", "206 +")
+    assert not is_blocked_make_model("Peugeot", "206")
     assert not is_blocked_make_model("Peugeot", "3008")
     assert not is_blocked_make_model("Peugeot", "208")
     assert is_blocked_make_model("Toyota", "Mirai")
@@ -130,6 +134,22 @@ def test_blocked_listings_hidden_from_catalog(tmp_path):
     upsert_listing_item(
         db_path,
         {
+            "autoplius_id": 213,
+            "title": "Peugeot 206+, 2012",
+            "price_eur": 3200,
+        },
+    )
+    upsert_listing_item(
+        db_path,
+        {
+            "autoplius_id": 214,
+            "title": "Peugeot 206, 2008",
+            "price_eur": 2500,
+        },
+    )
+    upsert_listing_item(
+        db_path,
+        {
             "autoplius_id": 211,
             "title": "Toyota Mirai, 2021",
             "price_eur": 28000,
@@ -144,7 +164,7 @@ def test_blocked_listings_hidden_from_catalog(tmp_path):
         },
     )
     listings = fetch_listings(db_path)
-    assert {item["autoplius_id"] for item in listings} == {203, 210, 212}
+    assert {item["autoplius_id"] for item in listings} == {203, 210, 212, 214}
     assert is_blocked_listing({"title": "Ligier JS50, 2020"})
     assert is_blocked_listing({"title": "Microcar M.Go, 2019"})
     assert is_blocked_listing({"title": "Aixam Crossover, 2022"})
@@ -153,6 +173,8 @@ def test_blocked_listings_hidden_from_catalog(tmp_path):
     assert is_blocked_listing({"title": "Daihatsu Terios, 2018"})
     assert is_blocked_listing({"title": "Peugeot 207, 2010"})
     assert is_blocked_listing({"title": "Peugeot 207 CC, 2011"})
+    assert is_blocked_listing({"title": "Peugeot 206+, 2012"})
+    assert not is_blocked_listing({"title": "Peugeot 206, 2008"})
     assert not is_blocked_listing({"title": "Peugeot 3008, 2019"})
     assert is_blocked_listing({"title": "Toyota Mirai, 2021"})
     assert not is_blocked_listing({"title": "Toyota Corolla, 2019"})
@@ -201,6 +223,20 @@ def test_purge_blocked_makes_archives_existing_rows(tmp_path):
         )
         conn.execute(
             """
+            INSERT INTO listings (
+                autoplius_id, title, price_eur, status, first_seen_at, last_seen_at, detail_scraped
+            ) VALUES (306, 'Peugeot 206+, 2012', 3200, 'active', datetime('now'), datetime('now'), 0)
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO listings (
+                autoplius_id, title, price_eur, status, first_seen_at, last_seen_at, detail_scraped
+            ) VALUES (307, 'Peugeot 206, 2008', 2500, 'active', datetime('now'), datetime('now'), 0)
+            """
+        )
+        conn.execute(
+            """
             INSERT INTO engine_catalog (
                 make, model, engine_label, fuel, listing_count, is_manual, is_new, updated_at
             ) VALUES ('Ligier', 'JS50', '0.5 l', 'Benzinas', 1, 0, 0, datetime('now'))
@@ -218,6 +254,20 @@ def test_purge_blocked_makes_archives_existing_rows(tmp_path):
             INSERT INTO engine_catalog (
                 make, model, engine_label, fuel, listing_count, is_manual, is_new, updated_at
             ) VALUES ('Peugeot', '207 CC', '1.6 l', 'Benzinas', 1, 0, 0, datetime('now'))
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO engine_catalog (
+                make, model, engine_label, fuel, listing_count, is_manual, is_new, updated_at
+            ) VALUES ('Peugeot', '206+', '1.4 l', 'Benzinas', 1, 0, 0, datetime('now'))
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO engine_catalog (
+                make, model, engine_label, fuel, listing_count, is_manual, is_new, updated_at
+            ) VALUES ('Peugeot', '206', '1.4 l', 'Benzinas', 1, 0, 0, datetime('now'))
             """
         )
         conn.execute(
@@ -243,9 +293,9 @@ def test_purge_blocked_makes_archives_existing_rows(tmp_path):
         )
 
     result = purge_blocked_makes(db_path)
-    assert result["archived_listings"] == 3
-    assert result["catalog_removed"] == 4
+    assert result["archived_listings"] == 4
+    assert result["catalog_removed"] == 5
     remaining = fetch_listings(db_path)
-    assert {item["autoplius_id"] for item in remaining} == {303, 305}
+    assert {item["autoplius_id"] for item in remaining} == {303, 305, 307}
     catalog = {(row["make"], row["model"]) for row in fetch_engine_catalog(db_path)}
-    assert catalog == {("Peugeot", "3008"), ("Toyota", "Corolla")}
+    assert catalog == {("Peugeot", "3008"), ("Peugeot", "206"), ("Toyota", "Corolla")}
