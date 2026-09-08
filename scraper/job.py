@@ -312,13 +312,18 @@ def scrape_search_pages(
             new_previews = [p for p in preview_list if p.autoplius_id not in known_ids]
 
             if settings.enrich_details:
-                if settings.enrich_new_only and incremental and not target_mode:
+                if enrich_only:
+                    # pending list already filtered in fetch_listings_pending_detail
+                    to_enrich = list(preview_list)
+                    if settings.enrich_limit > 0:
+                        to_enrich = to_enrich[: settings.enrich_limit]
+                elif settings.enrich_new_only and incremental and not target_mode:
                     to_enrich = [
                         p
                         for p in preview_list
                         if p.autoplius_id not in detail_scraped_ids
                     ]
-                elif target_mode or enrich_only:
+                elif target_mode:
                     to_enrich = [
                         p
                         for p in preview_list
@@ -471,6 +476,22 @@ def scrape_search_pages(
     except Exception:
         logger.exception("Engine catalog refresh failed")
 
+    try:
+        from scraper.auto160_catalog_reconcile import reconcile_engine_catalog_with_auto160
+
+        auto160_match = reconcile_engine_catalog_with_auto160(settings.db_path)
+        payload["auto160_catalog_match"] = auto160_match
+        if not auto160_match.get("skipped"):
+            logger.info(
+                "auto160 catalog match: candidates=%s matched=%s not_found=%s error=%s",
+                auto160_match.get("candidates"),
+                auto160_match.get("matched"),
+                auto160_match.get("not_found"),
+                auto160_match.get("error"),
+            )
+    except Exception:
+        logger.exception("auto160 catalog reconcile failed")
+
     photo_sync = sync_run_photos(settings, listings)
     payload["photo_sync"] = photo_sync
 
@@ -490,6 +511,12 @@ def scrape_search_pages(
         photo_sync.get("uploaded", 0),
     )
     invalidate_query_cache()
+    try:
+        from ui.page_cache import invalidate_page_cache
+
+        invalidate_page_cache()
+    except ImportError:
+        pass
     return ScrapeRunResult(payload=payload, snapshot_path=str(snapshot_path), diff=diff)
 
 

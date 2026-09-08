@@ -276,6 +276,10 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
             WHERE customs_cm3 IS NULL AND is_manual = 0
             """
         )
+    if "auto160_catalog_item_id" not in catalog_cols:
+        conn.execute(
+            "ALTER TABLE engine_catalog ADD COLUMN auto160_catalog_item_id INTEGER"
+        )
 
     conn.execute(
         """
@@ -1654,6 +1658,7 @@ def scrape_runs_analytics(db_path: Path, *, recent_limit: int = 24) -> dict[str,
 
 
 def _row_to_engine_catalog(row: sqlite3.Row) -> dict[str, Any]:
+    keys = set(row.keys())
     return {
         "id": row["id"],
         "make": row["make"],
@@ -1664,9 +1669,12 @@ def _row_to_engine_catalog(row: sqlite3.Row) -> dict[str, Any]:
         "suggested_cm3": row["suggested_cm3"],
         "listing_count": row["listing_count"],
         "is_manual": bool(row["is_manual"]),
-        "is_new": bool(row["is_new"]) if "is_new" in row.keys() else False,
+        "is_new": bool(row["is_new"]) if "is_new" in keys else False,
         "notes": row["notes"],
         "updated_at": row["updated_at"],
+        "auto160_catalog_item_id": (
+            row["auto160_catalog_item_id"] if "auto160_catalog_item_id" in keys else None
+        ),
     }
 
 
@@ -1836,6 +1844,34 @@ def update_engine_catalog_entry(
             WHERE id = ?
             """,
             (customs_cm3, notes, customs_cm3, customs_cm3, _utc_now(), entry_id),
+        )
+    return True
+
+
+def set_engine_catalog_auto160_item_id(
+    db_path: Path,
+    entry_id: int,
+    *,
+    catalog_item_id: int | None,
+) -> bool:
+    if not db_path.is_file():
+        return False
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT id FROM engine_catalog WHERE id = ?",
+            (entry_id,),
+        ).fetchone()
+        if row is None:
+            return False
+        conn.execute(
+            """
+            UPDATE engine_catalog
+            SET auto160_catalog_item_id = ?,
+                updated_at = ?
+            WHERE id = ?
+            """,
+            (catalog_item_id, _utc_now(), entry_id),
         )
     return True
 

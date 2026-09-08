@@ -55,6 +55,7 @@ from ui.media_serve import (
 from ui.page_cache import (
     get_cached_html,
     home_cache_ttl,
+    is_ai_bot_user_agent,
     is_bot_user_agent,
     listing_bot_cache_ttl,
     make_cache_key,
@@ -607,8 +608,36 @@ def _sitemap_lastmod(value: str | None) -> str | None:
 def robots_txt():
     base = _public_site_base()
     body = (
+        "User-agent: GPTBot\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: ChatGPT-User\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: OAI-SearchBot\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: ClaudeBot\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: anthropic-ai\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: Bytespider\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: CCBot\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: Google-Extended\n"
+        "Disallow: /\n"
+        "\n"
+        "User-agent: Amazonbot\n"
+        "Disallow: /\n"
+        "\n"
         "User-agent: *\n"
         "Allow: /\n"
+        "Disallow: /media/\n"
         "Disallow: /login\n"
         "Disallow: /register\n"
         "Disallow: /cabinet\n"
@@ -617,6 +646,7 @@ def robots_txt():
         "\n"
         "User-agent: Yandex\n"
         "Crawl-delay: 2\n"
+        "Disallow: /media/\n"
         "Disallow: /login\n"
         "Disallow: /register\n"
         "Disallow: /cabinet\n"
@@ -1090,6 +1120,8 @@ def _fetch_index_listings(
 
 @app.get("/media/object")
 def media_object():
+    if is_ai_bot_user_agent(request.headers.get("User-Agent")):
+        abort(403)
     key = request.args.get("key", "").strip()
     if not key or ".." in key or key.startswith("/"):
         abort(400, "Invalid object key")
@@ -1101,6 +1133,8 @@ def media_object():
 
 @app.get("/media/proxy")
 def media_proxy():
+    if is_ai_bot_user_agent(request.headers.get("User-Agent")):
+        abort(403)
     url = request.args.get("url", "").strip()
     if not is_external_photo_url(url):
         abort(400, "Invalid photo URL")
@@ -1394,6 +1428,21 @@ def save_table_layout_api():
         return jsonify({"error": f"widths must include: {', '.join(COL_KEYS)}"}), 400
     saved = save_table_layout(app.config["DATA_DIR"], widths, source="ui")
     return jsonify(saved)
+
+
+@app.get("/instruction")
+def instruction():
+    return render_template("instruction.html")
+
+
+@app.get("/vin-check")
+def vin_check():
+    return render_template("vin_check.html")
+
+
+@app.get("/calculator")
+def customs_calculator():
+    return render_template("calculator.html")
 
 
 @app.get("/analytics")
