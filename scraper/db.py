@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
 from contextlib import contextmanager
@@ -462,6 +463,101 @@ def _archive_listings(
     return int(cur.rowcount)
 
 
+def archive_listings_by_ids(
+    db_path: Path,
+    autoplius_ids: list[int],
+    *,
+    archived_at: str | None = None,
+) -> int:
+    """Archive active listings by id. Returns rows updated."""
+    if not autoplius_ids:
+        return 0
+    when = archived_at or _utc_now()
+    with connect(db_path) as conn:
+        return _archive_listings(conn, list(dict.fromkeys(int(i) for i in autoplius_ids)), archived_at=when)
+
+
+def archive_active_missing_from_search(
+    db_path: Path,
+    *,
+    seen_ids: set[int],
+    pages_scraped: int,
+    listing_count: int,
+    run_started_at: str,
+) -> int:
+    """Archive active rows absent from a deep search, with safety gates.
+
+    Only runs when the nightly search looked complete enough; never archives
+    listings that were refreshed during this run.
+    """
+    min_pages = max(1, int(os.environ.get("NIGHTLY_ARCHIVE_MIN_PAGES", "20") or "20"))
+    min_listings = max(1, int(os.environ.get("NIGHTLY_ARCHIVE_MIN_LISTINGS", "500") or "500"))
+    max_archive = max(0, int(os.environ.get("NIGHTLY_ARCHIVE_MAX", "3000") or "3000"))
+    if pages_scraped < min_pages or listing_count < min_listings:
+        return 0
+    if max_archive <= 0:
+        return 0
+
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT autoplius_id
+            FROM listings
+            WHERE COALESCE(status, 'active') = 'active'
+              AND (last_seen_at IS NULL OR last_seen_at < ?)
+            ORDER BY last_seen_at IS NOT NULL, last_seen_at ASC
+            """,
+            (run_started_at,),
+        ).fetchall()
+        missing = [int(row["autoplius_id"]) for row in rows if int(row["autoplius_id"]) not in seen_ids]
+        if not missing:
+            return 0
+        missing = missing[:max_archive]
+        return _archive_listings(conn, missing, archived_at=_utc_now())
+
+
+def fetch_stale_active_listings_for_probe(
+    db_path: Path,
+    *,
+    older_than_hours: float,
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Active listings not seen recently, for live URL probing."""
+    if limit <= 0:
+        return []
+    cutoff = datetime.now(timezone.utc).timestamp() - max(1.0, older_than_hours) * 3600.0
+    cutoff_iso = datetime.fromtimestamp(cutoff, tz=timezone.utc).isoformat()
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT *
+            FROM listings
+            WHERE COALESCE(status, 'active') = 'active'
+              AND url IS NOT NULL
+              AND trim(url) != ''
+              AND (last_seen_at IS NULL OR last_seen_at < ?)
+            ORDER BY last_seen_at IS NOT NULL, last_seen_at ASC, autoplius_id ASC
+            LIMIT ?
+            """,
+            (cutoff_iso, int(limit)),
+        ).fetchall()
+    return [row_to_listing(row) for row in rows]
+
+
+def touch_listing_last_seen(db_path: Path, listing_id: int, *, seen_at: str | None = None) -> None:
+    when = seen_at or _utc_now()
+    with connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE listings
+            SET last_seen_at = ?, updated_at = ?
+            WHERE autoplius_id = ?
+              AND COALESCE(status, 'active') = 'active'
+            """,
+            (when, _utc_now(), int(listing_id)),
+        )
+
+
 def _normalize_listing_title(row: dict[str, Any]) -> None:
     row["title"] = resolve_listing_title(
         title=row.get("title"),
@@ -647,7 +743,7 @@ def save_payload_to_db(
 
         archived_count = 0
         if (
-            payload.get("scrape_mode") in {"full", "target"}
+            payload.get("scrape_mode") in {"full", "target", "nightly_full"}
             and payload.get("archive_removed", True)
         ):
             archived_count = _archive_listings(

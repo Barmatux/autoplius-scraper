@@ -142,13 +142,21 @@ def scrape_search_pages(
     update_latest_snapshot: bool = True,
     archive_removed: bool | None = None,
     enrich_only: bool = False,
+    nightly: bool = False,
 ) -> ScrapeRunResult:
     started_at = datetime.now(timezone.utc)
     previous_ids = load_latest_ids(settings.data_dir) if update_latest_snapshot else set()
     known_ids = load_known_ids(settings.db_path)
     detail_scraped_ids = load_detail_scraped_ids(settings.db_path)
     target_mode = bool(queries) or enrich_only
-    if target_mode and not enrich_only:
+    if nightly:
+        incremental = False
+        mode_reason = "nightly deep search (paginate until empty)"
+        paginate_until_empty = True
+        if archive_removed is None:
+            archive_removed = True
+        update_latest_snapshot = True
+    elif target_mode and not enrich_only:
         incremental = False
         mode_reason = f"target batch ({len(queries)} queries)"
         paginate_until_empty = True
@@ -166,11 +174,15 @@ def scrape_search_pages(
         if archive_removed is None:
             archive_removed = settings.archive_removed_on_full_scrape
     configure_base_url(settings.autoplius_base_url)
-    newest_first = settings.search_newest_first and incremental and not target_mode
+    newest_first = settings.search_newest_first and incremental and not target_mode and not nightly
 
     logger.info(
         "Scrape mode: %s (%s)",
-        "target" if target_mode else ("incremental" if incremental else "full"),
+        (
+            "nightly_full"
+            if nightly
+            else ("target" if target_mode else ("incremental" if incremental else "full"))
+        ),
         mode_reason,
     )
 
@@ -434,9 +446,13 @@ def scrape_search_pages(
     payload: dict[str, Any] = {
         "mode": "target" if target_mode else ("test" if settings.test_mode else "prod"),
         "scrape_mode": (
-            "target_resume"
-            if enrich_only
-            else ("target" if target_mode else ("incremental" if incremental else "full"))
+            "nightly_full"
+            if nightly
+            else (
+                "target_resume"
+                if enrich_only
+                else ("target" if target_mode else ("incremental" if incremental else "full"))
+            )
         ),
         "scrape_mode_reason": mode_reason,
         "target_queries": [q.label for q in queries] if queries else None,
@@ -468,6 +484,20 @@ def scrape_search_pages(
         payload,
         snapshot_path=str(snapshot_path),
     )
+
+    if nightly:
+        from scraper.db import archive_active_missing_from_search
+
+        extra_archived = archive_active_missing_from_search(
+            settings.db_path,
+            seen_ids=current_ids,
+            pages_scraped=pages_scraped,
+            listing_count=len(listings),
+            run_started_at=started_at.isoformat(),
+        )
+        archived_count += extra_archived
+        payload["archived_missing_from_search"] = extra_archived
+        payload["archived_total"] = archived_count
 
     try:
         from autoplius.engine_catalog import refresh_engine_catalog

@@ -62,8 +62,14 @@ sudo cp "$APP/deploy/autoplius-ui.service" /etc/systemd/system/
 if [[ -f "$APP/deploy/autoplius-target-resume.service" ]]; then
   sudo cp "$APP/deploy/autoplius-target-resume.service" "$APP/deploy/autoplius-target-resume.timer" /etc/systemd/system/
 fi
+if [[ -f "$APP/deploy/autoplius-nightly-reconcile.service" ]]; then
+  sudo cp "$APP/deploy/autoplius-nightly-reconcile.service" "$APP/deploy/autoplius-nightly-reconcile.timer" /etc/systemd/system/
+fi
 sudo systemctl daemon-reload
 sudo systemctl enable autoplius-scraper.timer autoplius-ui.service
+if [[ -f /etc/systemd/system/autoplius-nightly-reconcile.timer ]]; then
+  sudo systemctl enable --now autoplius-nightly-reconcile.timer
+fi
 
 if [[ -f "$APP/deploy/post-deploy-vm.sh" ]]; then
   echo "=== post-deploy ==="

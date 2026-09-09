@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Autoplius nightly reconcile at 02:30 Europe/Minsk
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+Timezone=Europe/Minsk
+Persistent=true
+RandomizedDelaySec=180
+
+[Install]
+WantedBy=timers.target

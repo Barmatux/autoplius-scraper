@@ -46,6 +46,9 @@ copy .env.example .env
 | `SEARCH_NEWEST_FIRST` | `true` | `order_by=3&order_direction=DESC` на Autoplius |
 | `FULL_SCRAPE_INTERVAL_HOURS` | `12` | Как часто делать полный прогон 10 страниц |
 | `ARCHIVE_REMOVED_ON_FULL_SCRAPE` | `true` | При полном прогоне помечать исчезнувшие объявления как `archived` |
+| Nightly reconcile | `02:30 Europe/Minsk` | `autoplius-nightly-reconcile.timer`: deep search (A) + live-probe stale actives (B) |
+| `NIGHTLY_MAX_PAGES` | `500` | Верхняя граница страниц ночного deep search |
+| `NIGHTLY_STALE_HOURS` / `NIGHTLY_PROBE_LIMIT` | `36` / `250` | Кого probe’ить и сколько за ночь |
 | `ENRICH_DETAILS` | `true` | Заходить в каждое объявление за полной карточкой |
 | `ENRICH_LIMIT` | `0` | Лимит detail-страниц (`0` = все) |
 | `DETAIL_DELAY_SEC` | `2` | Пауза между detail-запросами |
@@ -54,8 +57,12 @@ copy .env.example .env
 | `AUTO_CAPTCHA` | `true` | 2Captcha для Cloudflare Turnstile |
 | `CAPTCHA_2CAPTCHA_API_KEY` | — | Ключ 2Captcha |
 | `HEADLESS` | `true` | Headless Chrome |
-| `SYNC_PHOTOS_AFTER_SCRAPE` | `true` | Upload photos to MinIO after each run (current run only) |
+| `SYNC_PHOTOS_AFTER_SCRAPE` | `true` | Upload photos to Yandex Object Storage after each run (current run only) |
 | `SYNC_PHOTOS_TIMEOUT_SEC` | `25` | HTTP timeout for photo download |
+| `S3_ENDPOINT_URL` | `https://storage.yandexcloud.net` | Yandex Object Storage S3 API |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | — | Static access key from Yandex Cloud |
+| `S3_BUCKET` | `autoplius-media` | Private bucket (served via `/media/object`) |
+| `S3_REGION` | `ru-central1` | Object Storage region |
 | `AUTOPLIUS_BASE_URL` | `https://ru.autoplius.lt` | Russian Autoplius source |
 | `TRANSLATE_DESCRIPTIONS` | `true` | Translate seller descriptions to Russian |
 | `TRANSLATE_DELAY_SEC` | `0.15` | Pause between translation API calls |
@@ -119,6 +126,11 @@ sudo -u autoplius /opt/autoplius-scraper/.venv/bin/python tools/purge_blocked_ma
 
 - JSON-снимки: `data/latest.json`, `data/test/snapshots/...`
 - SQLite: `data/autoplius.db` (таблицы `listings`, `scrape_runs`, `run_listings`)
+- Фото объявлений: **Yandex Object Storage** (`S3_BUCKET=autoplius-media`), отдача через `/media/object?key=...`
+  - Инфра (SA, бакеты, CORS, ключи): [`infra/yandex-storage`](infra/yandex-storage/README.md) (`terraform apply`)
+  - Создать бакеты/CORS вручную: `bash deploy/setup-yandex-buckets.sh`
+  - Миграция с локального MinIO: `bash deploy/migrate-minio-to-yandex.sh`
+  - Локальный MinIO deprecated (`deploy/setup-minio.sh` только с `ALLOW_LEGACY_MINIO=1`)
 
 ### Синхронизация объявлений (как av.by)
 

@@ -1,0 +1,23 @@
+[Unit]
+Description=Autoplius nightly reconcile (deep search + live probe archive)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/autoplius-scraper
+EnvironmentFile=-/opt/autoplius-scraper/.env
+ExecStart=/opt/autoplius-scraper/deploy/run-nightly-reconcile.sh
+User=autoplius
+Group=autoplius
+# Long job: deep search can take hours; probe adds more.
+TimeoutStartSec=6h
+
+Environment=PROFILE_DIR=/var/lib/autoplius-scraper/browser-profile
+Environment=DATA_DIR=/var/lib/autoplius-scraper/data
+Environment=LOGS_DIR=/var/log/autoplius-scraper
+Environment=SCRAPE_LOCK_FILE=/var/lib/autoplius-scraper/scraper.lock
+Environment=LISTING_LIVE_BROWSER=1
+
+[Install]
+WantedBy=multi-user.target
