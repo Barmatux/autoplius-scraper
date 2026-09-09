@@ -11,9 +11,15 @@ BLOCKED_MAKES = frozenset(
     {"Aixam", "Ligier", "Microcar", "Skoda", "Chatenet", "BYD", "Daihatsu"}
 )
 
-# Exact make + model prefix (e.g. "207" also matches "207 CC", "207 SW").
+# Exact make + model prefix (e.g. "207" also matches "207 CC", "207 SW";
+# "Prius" also matches "Prius V", "Prius+", "Prius C").
 BLOCKED_MAKE_MODELS = frozenset(
-    {("Peugeot", "207"), ("Peugeot", "206+"), ("Toyota", "Mirai")}
+    {
+        ("Peugeot", "207"),
+        ("Peugeot", "206+"),
+        ("Toyota", "Mirai"),
+        ("Toyota", "Prius"),
+    }
 )
 
 
@@ -36,6 +42,13 @@ def _model_matches_blocked(model: str, blocked_model: str) -> bool:
     if folded == target:
         return True
     if folded.startswith(f"{target} "):
+        return True
+    # "Prius+", "Prius-...", etc. — target prefix then a non-alphanumeric boundary.
+    if (
+        folded.startswith(target)
+        and len(folded) > len(target)
+        and not folded[len(target)].isalnum()
+    ):
         return True
     # Allow "206 +" style spacing around trailing +
     if target.endswith("+") and folded.replace(" ", "") == target.replace(" ", ""):

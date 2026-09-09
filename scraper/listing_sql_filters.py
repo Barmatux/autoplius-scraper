@@ -121,12 +121,42 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
         model_expr = _title_model_expr()
         for make, model in sorted(BLOCKED_MAKE_MODELS, key=lambda pair: (pair[0].casefold(), pair[1].casefold())):
             folded_model = model.casefold()
-            model_checks = [f"{model_expr} = ?", f"{model_expr} LIKE ?"]
-            model_params: list[Any] = [folded_model, f"{folded_model} %"]
+            model_checks = [
+                f"{model_expr} = ?",
+                f"{model_expr} LIKE ?",
+                (
+                    f"({model_expr} LIKE ? AND length({model_expr}) > ? "
+                    f"AND substr({model_expr}, ? , 1) NOT GLOB '[a-z0-9]')"
+                ),
+            ]
+            model_params: list[Any] = [
+                folded_model,
+                f"{folded_model} %",
+                f"{folded_model}%",
+                len(folded_model),
+                len(folded_model) + 1,
+            ]
             if folded_model.endswith("+") and not folded_model[:-1].endswith(" "):
                 spaced = f"{folded_model[:-1]} +"
-                model_checks.extend([f"{model_expr} = ?", f"{model_expr} LIKE ?"])
-                model_params.extend([spaced, f"{spaced} %"])
+                model_checks.extend(
+                    [
+                        f"{model_expr} = ?",
+                        f"{model_expr} LIKE ?",
+                        (
+                            f"({model_expr} LIKE ? AND length({model_expr}) > ? "
+                            f"AND substr({model_expr}, ? , 1) NOT GLOB '[a-z0-9]')"
+                        ),
+                    ]
+                )
+                model_params.extend(
+                    [
+                        spaced,
+                        f"{spaced} %",
+                        f"{spaced}%",
+                        len(spaced),
+                        len(spaced) + 1,
+                    ]
+                )
             clauses.append(
                 f"NOT ({_title_make_expr()} = ? AND ({' OR '.join(model_checks)}))"
             )

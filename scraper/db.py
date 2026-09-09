@@ -1460,9 +1460,15 @@ def purge_blocked_makes(db_path: Path) -> dict[str, int]:
                       AND (
                         lower(COALESCE(model, '')) = lower(?)
                         OR lower(COALESCE(model, '')) LIKE lower(?) || ' %'
+                        OR (
+                          lower(COALESCE(model, '')) LIKE lower(?) || '%'
+                          AND length(lower(COALESCE(model, ''))) > length(lower(?))
+                          AND substr(lower(COALESCE(model, '')), length(lower(?)) + 1, 1)
+                              NOT GLOB '[a-z0-9]'
+                        )
                       )
                     """,
-                    (make, variant, variant),
+                    (make, variant, variant, variant, variant, variant),
                 )
                 catalog_removed += int(cur.rowcount or 0)
         from autoplius.electric import ELECTRIC_MAKE_MODELS
