@@ -18,6 +18,7 @@ def test_blocked_makes_include_aixam_ligier_microcar_skoda_chatenet_byd_and_daih
     assert ("Peugeot", "207") in BLOCKED_MAKE_MODELS
     assert ("Peugeot", "206+") in BLOCKED_MAKE_MODELS
     assert ("Toyota", "Mirai") in BLOCKED_MAKE_MODELS
+    assert ("Toyota", "Prius") in BLOCKED_MAKE_MODELS
     assert is_blocked_make("Aixam")
     assert is_blocked_make("aixam")
     assert is_blocked_make("Ligier")
@@ -43,7 +44,13 @@ def test_blocked_makes_include_aixam_ligier_microcar_skoda_chatenet_byd_and_daih
     assert not is_blocked_make_model("Peugeot", "208")
     assert is_blocked_make_model("Toyota", "Mirai")
     assert is_blocked_make_model("toyota", "Mirai")
+    assert is_blocked_make_model("Toyota", "Prius")
+    assert is_blocked_make_model("Toyota", "Prius V")
+    assert is_blocked_make_model("Toyota", "Prius C")
+    assert is_blocked_make_model("Toyota", "Prius+")
+    assert is_blocked_make_model("toyota", "Prius Plug-in")
     assert not is_blocked_make_model("Toyota", "Corolla")
+    assert not is_blocked_make_model("Toyota", "Priusma")
 
 
 def test_blocked_listings_hidden_from_catalog(tmp_path):
@@ -163,6 +170,22 @@ def test_blocked_listings_hidden_from_catalog(tmp_path):
             "price_eur": 14000,
         },
     )
+    upsert_listing_item(
+        db_path,
+        {
+            "autoplius_id": 215,
+            "title": "Toyota Prius, 2015",
+            "price_eur": 9000,
+        },
+    )
+    upsert_listing_item(
+        db_path,
+        {
+            "autoplius_id": 216,
+            "title": "Toyota Prius V, 2014",
+            "price_eur": 8500,
+        },
+    )
     listings = fetch_listings(db_path)
     assert {item["autoplius_id"] for item in listings} == {203, 210, 212, 214}
     assert is_blocked_listing({"title": "Ligier JS50, 2020"})
@@ -177,6 +200,8 @@ def test_blocked_listings_hidden_from_catalog(tmp_path):
     assert not is_blocked_listing({"title": "Peugeot 206, 2008"})
     assert not is_blocked_listing({"title": "Peugeot 3008, 2019"})
     assert is_blocked_listing({"title": "Toyota Mirai, 2021"})
+    assert is_blocked_listing({"title": "Toyota Prius, 2015"})
+    assert is_blocked_listing({"title": "Toyota Prius V, 2014"})
     assert not is_blocked_listing({"title": "Toyota Corolla, 2019"})
 
 
@@ -219,6 +244,13 @@ def test_purge_blocked_makes_archives_existing_rows(tmp_path):
             INSERT INTO listings (
                 autoplius_id, title, price_eur, status, first_seen_at, last_seen_at, detail_scraped
             ) VALUES (305, 'Toyota Corolla, 2019', 14000, 'active', datetime('now'), datetime('now'), 0)
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO listings (
+                autoplius_id, title, price_eur, status, first_seen_at, last_seen_at, detail_scraped
+            ) VALUES (308, 'Toyota Prius+, 2013', 7800, 'active', datetime('now'), datetime('now'), 0)
             """
         )
         conn.execute(
@@ -291,10 +323,24 @@ def test_purge_blocked_makes_archives_existing_rows(tmp_path):
             ) VALUES ('Toyota', 'Corolla', '1.6 l', 'Benzinas', 1, 0, 0, datetime('now'))
             """
         )
+        conn.execute(
+            """
+            INSERT INTO engine_catalog (
+                make, model, engine_label, fuel, listing_count, is_manual, is_new, updated_at
+            ) VALUES ('Toyota', 'Prius', '1.8 l', 'Benzinas / elektra', 1, 0, 0, datetime('now'))
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO engine_catalog (
+                make, model, engine_label, fuel, listing_count, is_manual, is_new, updated_at
+            ) VALUES ('Toyota', 'Prius V', '1.8 l', 'Benzinas / elektra', 1, 0, 0, datetime('now'))
+            """
+        )
 
     result = purge_blocked_makes(db_path)
-    assert result["archived_listings"] == 4
-    assert result["catalog_removed"] == 5
+    assert result["archived_listings"] == 5
+    assert result["catalog_removed"] == 7
     remaining = fetch_listings(db_path)
     assert {item["autoplius_id"] for item in remaining} == {303, 305, 307}
     catalog = {(row["make"], row["model"]) for row in fetch_engine_catalog(db_path)}

@@ -54,6 +54,9 @@ echo "=== backfill description_ru (targeted + small missing batch) ==="
 sudo -u autoplius "$PY" backfill_descriptions_ru.py --ids 32064212 || echo "WARNING: targeted description backfill failed"
 sudo -u autoplius "$PY" backfill_descriptions_ru.py --limit 40 || echo "WARNING: description backfill batch failed"
 
+echo "=== hybrid make+model report ==="
+sudo -u autoplius "$PY" tools/list_hybrid_models.py || echo "WARNING: hybrid list failed"
+
 echo "=== exchange rates ==="
 echo "Rates are refreshed by GitHub Actions into SQLite (exchange_rates table)."
 
