@@ -92,6 +92,7 @@ html[data-theme="docs"] .admin-mode-link {
 html[data-theme="docs"] .admin-enter-link {
   border-color: #c4b49a;
   color: #efe8dc;
+  background: transparent;
 }
 
 html[data-theme="docs"] .admin-enter-link:hover {

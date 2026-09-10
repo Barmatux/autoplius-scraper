@@ -49,9 +49,10 @@ body {
 
 .top-main {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: flex-start;
+  gap: 0.65rem 1rem;
   width: 100%;
   max-width: none;
   margin: 0;
@@ -64,7 +65,8 @@ body {
   gap: 0.5rem;
   align-items: center;
   justify-content: flex-end;
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-width: min(100%, 18rem);
   order: 3;
 }
 
@@ -73,7 +75,7 @@ body {
   align-items: stretch;
   justify-content: flex-start;
   gap: 0.45rem;
-  flex: 1 1 auto;
+  flex: 1 1 16rem;
   min-width: 0;
   order: 2;
 }
@@ -81,8 +83,9 @@ body {
 .site-header-nav-main {
   display: flex;
   align-items: stretch;
-  justify-content: space-evenly;
-  gap: 0.75rem;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
@@ -1691,15 +1694,23 @@ td.col-price-lt .price-vat-label-text {
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
   border: 1px solid var(--accent);
+  background: transparent;
   color: var(--accent);
+  font: inherit;
   font-weight: 600;
   text-decoration: none;
   font-size: 0.82rem;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .admin-enter-link:hover {
   background: var(--accent-soft);
+}
+
+button.admin-enter-link {
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .admin-mode-pill {
@@ -1713,6 +1724,27 @@ td.col-price-lt .price-vat-label-text {
   color: inherit;
   text-decoration: underline;
   font-weight: 600;
+}
+
+@media (min-width: 701px) {
+  .top-main:has(.admin-mode-pill) {
+    row-gap: 0.55rem;
+  }
+
+  .top-main:has(.admin-mode-pill) .site-header-nav {
+    flex: 1 1 auto;
+  }
+
+  .top-main:has(.admin-mode-pill) .nav-auth {
+    margin-left: auto;
+  }
+
+  .top-main:has(.admin-mode-pill) .top-meta {
+    flex: 1 0 100%;
+    order: 5;
+    justify-content: flex-end;
+    min-width: 0;
+  }
 }
 
 tbody tr {
