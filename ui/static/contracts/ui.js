@@ -203,8 +203,7 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
   const filtered = rows.filter((row) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    const kind =
-      row.payload?.docType === "commission" || row.doc_type === "commission" ? "комиссия" : "подбор";
+    const kind = row.doc_kind === "commission" ? "комиссия" : "подбор";
     return `${row.contract_number || ""} ${row.client_name || ""} ${row.created_by || ""} ${kind}`
       .toLowerCase()
       .includes(q);
