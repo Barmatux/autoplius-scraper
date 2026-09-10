@@ -275,6 +275,81 @@ html[data-theme="docs"] .catalog.listings-feed {
   }
 }
 
+/* Docs: legal / requisites pages — light text on pine page chrome */
+html[data-theme="docs"] .legal-page,
+html[data-theme="docs"] .legal-page .auth-title,
+html[data-theme="docs"] .legal-page .auth-lead,
+html[data-theme="docs"] .legal-section h2,
+html[data-theme="docs"] .legal-section p,
+html[data-theme="docs"] .legal-section li,
+html[data-theme="docs"] .legal-note,
+html[data-theme="docs"] .legal-disclaimer,
+html[data-theme="docs"] .legal-links a,
+html[data-theme="docs"] .legal-page a {
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .legal-page .auth-lead,
+html[data-theme="docs"] .legal-note,
+html[data-theme="docs"] .legal-disclaimer {
+  color: #cbbca3;
+}
+
+html[data-theme="docs"] .legal-page a:hover {
+  color: #fff;
+}
+
+html[data-theme="docs"] .legal-dl > div {
+  background: #fffcf7;
+  border-color: #d3c6b0;
+  color: #1c1916;
+}
+
+html[data-theme="docs"] .legal-dl dt {
+  color: #6b645b;
+}
+
+html[data-theme="docs"] .legal-dl dd,
+html[data-theme="docs"] .legal-dl dd a {
+  color: #1c1916;
+}
+
+html[data-theme="docs"] .legal-dl dd a:hover {
+  color: #1a3c34;
+}
+
+html[data-theme="docs"] .legal-placeholder {
+  color: #9a7b4f;
+}
+
+html[data-theme="docs"] .legal-banner {
+  background: rgba(255, 252, 247, 0.1);
+  border-color: rgba(196, 180, 154, 0.45);
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .site-footer {
+  background: #0e241f;
+  border-top-color: rgba(196, 180, 154, 0.35);
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .site-footer-name,
+html[data-theme="docs"] .site-footer-nav a {
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .site-footer-meta,
+html[data-theme="docs"] .site-footer-hint,
+html[data-theme="docs"] .site-footer-meta a {
+  color: #cbbca3;
+}
+
+html[data-theme="docs"] .site-footer-nav a:hover,
+html[data-theme="docs"] .site-footer-meta a:hover {
+  color: #fff;
+}
+
 /* 2) Пергамент — светлый бумажный фон, pine + золото */
 html[data-theme="parchment"] {
   --bg: #f6f1e6;
