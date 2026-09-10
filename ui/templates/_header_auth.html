@@ -1,5 +1,7 @@
 {% if is_admin %}
 {# Admin already has «Выйти» in _admin_bar — no guest «Вход». #}
+{% elif is_contract_user %}
+{# Contract staff — link in _admin_bar. #}
 {% elif current_user %}
 <a class="nav-btn nav-btn-text nav-auth desktop-primary-nav" href="{{ url_for('cabinet') }}">Кабинет</a>
 {% else %}

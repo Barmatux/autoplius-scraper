@@ -11,14 +11,17 @@ from zoneinfo import ZoneInfo
 
 from flask import Flask, abort, jsonify, make_response, redirect, render_template, request, Response, session, url_for
 
+from autoplius.contract_staff import check_contract_credentials
 from scraper.config import Settings
 from scraper.db import (
     count_scrape_runs,
     count_unread_feedback,
     create_feedback_message,
+    create_service_contract,
     create_user,
     db_stats,
     default_db_path,
+    delete_service_contract,
     fetch_engine_catalog,
     fetch_feedback_messages,
     fetch_listing,
@@ -27,14 +30,17 @@ from scraper.db import (
     fetch_scrape_runs,
     fetch_sitemap_listings,
     fetch_user_favorite_ids,
+    get_service_contract,
     get_user_by_id,
     init_db,
     engine_catalog_missing_count,
     engine_catalog_new_count,
+    list_service_contracts,
     scrape_runs_analytics,
     set_feedback_status,
     toggle_user_favorite,
     update_listing_admin,
+    update_service_contract,
     update_user_rb_extras,
     set_listing_archived,
     set_listing_engine_volume,
@@ -392,8 +398,31 @@ def _check_admin_form_credentials(username: str, password: str) -> bool:
     return username == admin_user and password == admin_password
 
 
+def _check_contract_form_credentials(username: str, password: str) -> str | None:
+    return check_contract_credentials(username, password)
+
+
 def _is_admin() -> bool:
     return _check_admin_auth() or session.get("admin") is True
+
+
+def _is_contract_user() -> bool:
+    return bool(session.get("contract_user"))
+
+
+def _can_access_contracts() -> bool:
+    return _is_admin() or _is_contract_user()
+
+
+def _is_contracts_admin_path(path: str) -> bool:
+    return path == "/admin/contracts" or path.startswith("/admin/api/contracts")
+
+
+def _contracts_actor() -> str:
+    if _is_contract_user():
+        return str(session.get("contract_user") or "staff")
+    admin_user, _ = _admin_credentials()
+    return admin_user or "admin"
 
 
 def _current_user() -> dict[str, Any] | None:
@@ -468,6 +497,10 @@ def require_admin_auth():
         )
     if _is_admin():
         return None
+    if _is_contract_user() and _is_contracts_admin_path(request.path):
+        return None
+    if _is_contract_user():
+        return redirect(url_for("admin_contracts"))
     return redirect(url_for("login", next=_current_request_path()))
 
 
@@ -477,6 +510,8 @@ def require_cabinet_auth():
         return None
     if _is_admin():
         return redirect(url_for("index", sort=DEFAULT_LIST_SORT))
+    if _is_contract_user():
+        return redirect(url_for("admin_contracts"))
     if _current_user() is not None:
         return None
     return redirect(url_for("login", next=_current_request_path()))
@@ -492,7 +527,12 @@ def inject_nav_helpers():
 
 @app.context_processor
 def inject_admin():
-    return {"is_admin": _is_admin()}
+    return {
+        "is_admin": _is_admin(),
+        "is_contract_user": _is_contract_user(),
+        "can_access_contracts": _can_access_contracts(),
+        "contract_username": session.get("contract_user") or "",
+    }
 
 
 @app.context_processor
@@ -732,6 +772,8 @@ def login():
     if request.method == "GET":
         if _is_admin():
             return redirect(_safe_redirect_target(next_url or url_for("index", sort=DEFAULT_LIST_SORT)))
+        if _is_contract_user():
+            return redirect(_safe_redirect_target(next_url or url_for("admin_contracts")))
         if _current_user() is not None:
             return redirect(_safe_redirect_target(next_url or url_for("cabinet")))
 
@@ -747,8 +789,22 @@ def login():
             session["admin"] = True
             session.pop("user_id", None)
             session.pop("username", None)
+            session.pop("contract_user", None)
             return redirect(_safe_redirect_target(next_url or url_for("index", sort=DEFAULT_LIST_SORT)))
         else:
+            contract_login = _check_contract_form_credentials(username, password)
+            if contract_login:
+                session.permanent = True
+                session["contract_user"] = contract_login
+                session.pop("admin", None)
+                session.pop("user_id", None)
+                session.pop("username", None)
+                target = next_url if next_url and _is_contracts_admin_path(
+                    (next_url.split("?", 1)[0] or "")
+                ) else None
+                return redirect(
+                    _safe_redirect_target(target or url_for("admin_contracts"))
+                )
             try:
                 user = verify_user_password(require_db(), username, password)
             except Exception:
@@ -760,6 +816,7 @@ def login():
                 session["user_id"] = user["id"]
                 session["username"] = user["username"]
                 session.pop("admin", None)
+                session.pop("contract_user", None)
                 return redirect(_safe_redirect_target(next_url or url_for("cabinet")))
 
     return render_template("login.html", error=error, next=next_url)
@@ -769,6 +826,8 @@ def login():
 def register():
     if _is_admin():
         return redirect(url_for("index", sort=DEFAULT_LIST_SORT))
+    if _is_contract_user():
+        return redirect(url_for("admin_contracts"))
     if _current_user() is not None:
         return redirect(url_for("cabinet"))
 
@@ -818,6 +877,7 @@ def logout():
     session.pop("user_id", None)
     session.pop("username", None)
     session.pop("admin", None)
+    session.pop("contract_user", None)
     return redirect(url_for("index", tab=TAB_ALL, sort=DEFAULT_LIST_SORT))
 
 
@@ -891,6 +951,109 @@ def admin_feedback_status(message_id: int):
     if next_status in {"new", "read", "done"}:
         return redirect(url_for("admin_feedback", status=next_status))
     return redirect(url_for("admin_feedback"))
+
+
+def _director_short(full_name: str) -> str:
+    parts = [p for p in (full_name or "").split() if p]
+    if len(parts) >= 3:
+        return f"{parts[0]} {parts[1][0]}.{parts[2][0]}."
+    if len(parts) == 2:
+        return f"{parts[0]} {parts[1][0]}."
+    return full_name
+
+
+def _contract_defaults() -> dict[str, str]:
+    company = load_company_info()
+    director = company.get("director") or ""
+    bank_parts = [
+        company.get("bank_name") or "",
+        company.get("bank_bic") or "",
+    ]
+    bank = ", ".join(p for p in bank_parts if p)
+    genitive = (os.environ.get("COMPANY_DIRECTOR_GENITIVE") or "").strip()
+    short = (os.environ.get("COMPANY_DIRECTOR_SHORT") or "").strip() or _director_short(director)
+    return {
+        "executorName": company.get("full_name") or "EuroHUB",
+        "executorShort": company.get("short_name") or "EuroHUB",
+        "executorUnp": company.get("unp") or "",
+        "executorAddress": company.get("legal_address") or "",
+        "executorEmail": company.get("email") or "",
+        "executorPhone": company.get("phone") or "",
+        "executorDirector": director,
+        "executorDirectorShort": short,
+        "executorDirectorGenitive": genitive,
+        "executorAccount": company.get("bank_account") or "",
+        "executorBank": bank,
+        "executorSwift": (os.environ.get("COMPANY_BANK_SWIFT") or "").strip(),
+        "executorBankUnp": (os.environ.get("COMPANY_BANK_UNP") or "").strip(),
+        "executorOkpo": (os.environ.get("COMPANY_OKPO") or "").strip(),
+    }
+
+
+@app.get("/admin/contracts")
+def admin_contracts():
+    return render_template(
+        "admin_contracts.html",
+        active_tab="contracts",
+        contract_defaults=_contract_defaults(),
+    )
+
+
+@app.get("/admin/api/contracts")
+def admin_api_contracts_list():
+    rows = list_service_contracts(require_db())
+    return jsonify(rows)
+
+
+@app.post("/admin/api/contracts")
+def admin_api_contracts_create():
+    body = request.get_json(silent=True) or {}
+    payload = body.get("payload")
+    if not isinstance(payload, dict):
+        payload = {}
+    row = create_service_contract(
+        require_db(),
+        contract_number=body.get("contract_number"),
+        client_name=body.get("client_name"),
+        amount=body.get("amount"),
+        payload=payload,
+        created_by=_contracts_actor(),
+    )
+    return jsonify(row), 201
+
+
+@app.get("/admin/api/contracts/<int:contract_id>")
+def admin_api_contracts_get(contract_id: int):
+    row = get_service_contract(require_db(), contract_id)
+    if row is None:
+        return jsonify({"error": "Договор не найден."}), 404
+    return jsonify(row)
+
+
+@app.patch("/admin/api/contracts/<int:contract_id>")
+def admin_api_contracts_patch(contract_id: int):
+    body = request.get_json(silent=True) or {}
+    payload = body.get("payload")
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Ожидается payload объекта договора."}), 400
+    row = update_service_contract(
+        require_db(),
+        contract_id,
+        contract_number=body.get("contract_number"),
+        client_name=body.get("client_name"),
+        amount=body.get("amount"),
+        payload=payload,
+    )
+    if row is None:
+        return jsonify({"error": "Договор не найден."}), 404
+    return jsonify(row)
+
+
+@app.delete("/admin/api/contracts/<int:contract_id>")
+def admin_api_contracts_delete(contract_id: int):
+    if not delete_service_contract(require_db(), contract_id):
+        return jsonify({"error": "Договор не найден."}), 404
+    return "", 204
 
 
 @app.get("/cabinet")

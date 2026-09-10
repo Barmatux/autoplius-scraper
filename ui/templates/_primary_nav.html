@@ -62,7 +62,7 @@
       href="{{ url_for('customs_calculator') }}"
     ><span class="nav-btn-stack-line">Таможенный</span><span class="nav-btn-stack-line">калькулятор</span></a>
 
-    {% if not is_admin %}
+    {% if not is_admin and not is_contract_user %}
     <a
       class="nav-btn nav-btn-icon nav-btn-wa"
       href="{{ feedback_whatsapp_url }}"

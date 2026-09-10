@@ -62,7 +62,7 @@
       href="{{ url_for('customs_calculator') }}"
     >Таможенный калькулятор</a>
 
-    {% if not is_admin %}
+    {% if not is_admin and not is_contract_user %}
     <div class="mobile-nav-messengers" role="group" aria-label="Мессенджеры">
       <a class="mobile-nav-link" href="{{ feedback_whatsapp_url }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
       <a class="mobile-nav-link" href="{{ feedback_telegram_url }}" target="_blank" rel="noopener noreferrer">Telegram</a>
@@ -72,8 +72,8 @@
     <button type="button" class="mobile-nav-link mobile-nav-button" data-feedback-open="home">Консультация</button>
     {% endif %}
 
-    {% if is_admin %}
-    {# Admin session: no guest «Вход»; admin links below. #}
+    {% if is_admin or is_contract_user %}
+    {# Staff session: no guest «Вход»; links below. #}
     {% elif current_user %}
     <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'cabinet' %} is-active{% endif %}"
@@ -86,7 +86,7 @@
     >Вход</a>
     {% endif %}
 
-    {% if not is_admin %}
+    {% if not is_admin and not is_contract_user %}
     <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'favorites' %} is-active{% endif %}"
       href="{{ url_for('cabinet') }}"
@@ -114,6 +114,16 @@
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'feedback' %} is-active{% endif %}"
       href="{{ url_for('admin_feedback') }}"
     >Сообщения{% if feedback_unread_count %} <span class="tab-count">{{ feedback_unread_count }}</span>{% endif %}</a>
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'contracts' %} is-active{% endif %}"
+      href="{{ url_for('admin_contracts') }}"
+    >Договоры</a>
+    {% elif is_contract_user %}
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'contracts' %} is-active{% endif %}"
+      href="{{ url_for('admin_contracts') }}"
+    >Договоры</a>
+    <a class="mobile-nav-link" href="{{ url_for('logout') }}">Выйти</a>
     {% endif %}
   </nav>
 </div>

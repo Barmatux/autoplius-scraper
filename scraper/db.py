@@ -153,6 +153,19 @@ CREATE TABLE IF NOT EXISTS feedback_messages (
 CREATE INDEX IF NOT EXISTS idx_feedback_messages_created ON feedback_messages(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_feedback_messages_status ON feedback_messages(status, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS service_contracts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    contract_number TEXT,
+    client_name TEXT,
+    amount TEXT,
+    payload TEXT NOT NULL,
+    created_by TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_service_contracts_updated ON service_contracts(updated_at DESC);
+
 CREATE TABLE IF NOT EXISTS exchange_rates (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     pair TEXT NOT NULL,
@@ -321,6 +334,24 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_feedback_messages_status ON feedback_messages(status, created_at DESC)"
+    )
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS service_contracts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            contract_number TEXT,
+            client_name TEXT,
+            amount TEXT,
+            payload TEXT NOT NULL,
+            created_by TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_service_contracts_updated ON service_contracts(updated_at DESC)"
     )
 
     user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
@@ -2445,4 +2476,140 @@ def set_feedback_status(
             (int(message_id),),
         ).fetchone()
     return dict(row) if row else None
+
+
+def _service_contract_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    data = dict(row)
+    payload = data.get("payload")
+    if isinstance(payload, str):
+        try:
+            data["payload"] = json.loads(payload) if payload else {}
+        except json.JSONDecodeError:
+            data["payload"] = {}
+    elif payload is None:
+        data["payload"] = {}
+    data["id"] = int(data["id"])
+    return data
+
+
+def list_service_contracts(db_path: Path, *, limit: int = 500) -> list[dict[str, Any]]:
+    init_db(db_path)
+    limit = max(1, min(2000, int(limit)))
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT id, contract_number, client_name, amount, created_at, updated_at, created_by
+            FROM service_contracts
+            ORDER BY updated_at DESC, id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    return [dict(row) | {"id": int(row["id"])} for row in rows]
+
+
+def get_service_contract(db_path: Path, contract_id: int) -> dict[str, Any] | None:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM service_contracts WHERE id = ?",
+            (int(contract_id),),
+        ).fetchone()
+    return _service_contract_row(row)
+
+
+def create_service_contract(
+    db_path: Path,
+    *,
+    contract_number: str | None = None,
+    client_name: str | None = None,
+    amount: str | None = None,
+    payload: dict[str, Any] | None = None,
+    created_by: str | None = None,
+) -> dict[str, Any]:
+    init_db(db_path)
+    now = _utc_now()
+    payload_obj = payload if isinstance(payload, dict) else {}
+    with connect(db_path) as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO service_contracts (
+                contract_number, client_name, amount, payload, created_by, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                (contract_number or "").strip() or None,
+                (client_name or "").strip() or None,
+                (amount or "").strip() or None,
+                json.dumps(payload_obj, ensure_ascii=False),
+                (created_by or "").strip() or None,
+                now,
+                now,
+            ),
+        )
+        cid = int(cur.lastrowid)
+        row = conn.execute(
+            "SELECT * FROM service_contracts WHERE id = ?",
+            (cid,),
+        ).fetchone()
+    out = _service_contract_row(row)
+    return out or {
+        "id": cid,
+        "payload": payload_obj,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+
+def update_service_contract(
+    db_path: Path,
+    contract_id: int,
+    *,
+    contract_number: str | None = None,
+    client_name: str | None = None,
+    amount: str | None = None,
+    payload: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    init_db(db_path)
+    now = _utc_now()
+    payload_obj = payload if isinstance(payload, dict) else {}
+    with connect(db_path) as conn:
+        existing = conn.execute(
+            "SELECT id FROM service_contracts WHERE id = ?",
+            (int(contract_id),),
+        ).fetchone()
+        if existing is None:
+            return None
+        conn.execute(
+            """
+            UPDATE service_contracts
+            SET contract_number = ?, client_name = ?, amount = ?, payload = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                (contract_number or "").strip() or None,
+                (client_name or "").strip() or None,
+                (amount or "").strip() or None,
+                json.dumps(payload_obj, ensure_ascii=False),
+                now,
+                int(contract_id),
+            ),
+        )
+        row = conn.execute(
+            "SELECT * FROM service_contracts WHERE id = ?",
+            (int(contract_id),),
+        ).fetchone()
+    return _service_contract_row(row)
+
+
+def delete_service_contract(db_path: Path, contract_id: int) -> bool:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        cur = conn.execute(
+            "DELETE FROM service_contracts WHERE id = ?",
+            (int(contract_id),),
+        )
+        return cur.rowcount > 0
 

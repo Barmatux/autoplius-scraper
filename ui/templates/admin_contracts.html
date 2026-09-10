@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Договоры · EuroHUB</title>
+  {% include "_site_icons.html" %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260910a">
+  <link rel="stylesheet" href="{{ url_for('static', filename='contracts/index.css') }}?v=20260910a">
+</head>
+<body>
+  <header class="top no-print">
+    {% set brand_sub = "Договоры" %}
+    {% set active_tab = "contracts" %}
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_primary_nav.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+      </div>
+    </div>
+  </header>
+
+  <div class="contracts-app">
+    <div class="app" id="shell">
+      <aside class="rail">
+        <div class="brand">
+          <span class="brand-mark">EH</span>
+          <div>
+            <strong>EuroHUB</strong>
+            <em>Договоры подбора</em>
+          </div>
+        </div>
+        <nav>
+          <button data-tab="archive" type="button" id="nav-archive" class="active">Архив</button>
+          <button data-tab="contract" type="button">Договор</button>
+          <button data-tab="act" type="button">Акт услуг</button>
+          <button data-tab="analysis" type="button">Разбор образца</button>
+        </nav>
+        <div class="rail-note">
+          <span>К оплате исполнителю</span>
+          <b id="amount-box"></b>
+          <span id="save-status" class="save-status"></span>
+          <span id="user-label">{% if is_contract_user %}{{ contract_username }}{% else %}админ{% endif %}</span>
+        </div>
+      </aside>
+      <div class="stage">
+        <header class="toolbar">
+          <div class="toolbar-title">
+            <h1 id="toolbar-title">Архив договоров</h1>
+            <p id="toolbar-lead">Общий список для администраторов.</p>
+          </div>
+          <div class="toolbar-actions no-print" id="toolbar-actions">
+            <button type="button" class="ghost" data-action="sample" id="btn-sample" hidden>Пример</button>
+            <span id="doc-actions" hidden>
+              <button type="button" data-action="print" id="btn-print">Печать / PDF</button>
+              <button type="button" data-action="word" id="btn-word">Скачать Word</button>
+              <button type="button" class="primary" data-action="both" id="btn-both">Договор + акт</button>
+            </span>
+          </div>
+        </header>
+        <main class="split" id="workspace" hidden>
+          <div class="form-pane no-print" id="form-pane"></div>
+          <div class="preview-pane" id="preview-pane"></div>
+        </main>
+        <main class="single" id="single-pane"></main>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.__CONTRACT_DEFAULTS__ = {{ contract_defaults|tojson }};
+  </script>
+  <script type="module" src="{{ url_for('static', filename='contracts/app.js') }}?v=20260910a"></script>
+  {% include "_feedback_modal.html" %}
+</body>
+</html>
