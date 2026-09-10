@@ -1,0 +1,198 @@
+<main>
+  <form id="f" autocomplete="off">
+
+  <!-- ====== БЛОК: КОМИТЕНТ ====== -->
+  <section class="card">
+    <h2>Комитент</h2>
+    <div class="grid">
+      <div class="field full">
+        <label>ФИО полностью (как в паспорте)</label>
+        <input id="komitent_fio" placeholder="Иванов Иван Иванович" required>
+      </div>
+      <div class="field">
+        <label>Пол</label>
+        <select id="komitent_sex">
+          <option value="m">мужской — «именуемый»</option>
+          <option value="f">женский — «именуемая»</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Контактный телефон</label>
+        <input id="komitent_phone" placeholder="+375 XX XXX-XX-XX">
+      </div>
+      <div class="field full">
+        <label>Адрес регистрации</label>
+        <input id="komitent_addr" placeholder="г. Минск, ул. ..., д. ..., кв. ...">
+      </div>
+      <div class="field">
+        <label>Серия и номер паспорта</label>
+        <input id="komitent_passport" placeholder="ВМ1234567">
+      </div>
+      <div class="field">
+        <label>Кем и когда выдан</label>
+        <input id="komitent_passport_issued" placeholder="01.01.2020 ... РУВД ... области">
+      </div>
+      <div class="field full">
+        <label>Идентификационный номер</label>
+        <input id="komitent_id" placeholder="3220291Е026РВ7">
+      </div>
+      <div class="field">
+        <label>Расчётный счёт (IBAN)</label>
+        <input id="komitent_account" placeholder="BY__ ____ ____ ____ ____ ____ ____">
+      </div>
+      <div class="field">
+        <label>Банк</label>
+        <input id="komitent_bank" placeholder="ОАО «Беларусбанк»">
+      </div>
+      <div class="field">
+        <label>BIC</label>
+        <input id="komitent_bic" placeholder="AKBBBY2X">
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== БЛОК: АВТОМОБИЛЬ ====== -->
+  <section class="card">
+    <h2>Автомобиль</h2>
+    <div class="grid">
+      <div class="field">
+        <label>VIN / номер кузова</label>
+        <input id="car_vin" maxlength="17" placeholder="17 символов" style="text-transform:uppercase">
+        <small class="err" id="vin_err"></small>
+      </div>
+      <div class="field">
+        <label>Марка, модель</label>
+        <input id="car_make_model" placeholder="FORD GRAND C-MAX">
+      </div>
+      <div class="field">
+        <label>Год выпуска</label>
+        <input id="car_year" type="number" min="1950" max="2100" placeholder="2010">
+      </div>
+      <div class="field">
+        <label>Государственный регистрационный знак</label>
+        <input id="car_plate" placeholder="8АКТ0105">
+      </div>
+      <div class="field full">
+        <label>Серия, номер и дата выдачи СТС</label>
+        <input id="car_sts" placeholder="7TC0224207, выдано 14.04.2026">
+      </div>
+      <div class="field">
+        <label>Двигатель</label>
+        <input id="car_engine" placeholder="1.6 л, дизель">
+      </div>
+      <div class="field">
+        <label>КПП</label>
+        <select id="car_gearbox">
+          <option>МКПП</option><option>АКПП</option><option>Робот</option><option>Вариатор</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Привод</label>
+        <select id="car_drive">
+          <option>Передний</option><option>Задний</option><option>Полный</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Цвет</label>
+        <input id="car_color" placeholder="Серый">
+      </div>
+      <div class="field">
+        <label>Тип ТС / тип кузова</label>
+        <input id="car_type" placeholder="Легковой автомобиль, минивэн">
+      </div>
+      <div class="field">
+        <label>Количество ключей</label>
+        <input id="car_keys" type="number" min="1" max="5" value="2">
+      </div>
+      <div class="field">
+        <label>Пробег, км</label>
+        <input id="car_mileage" type="number" placeholder="270000">
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== БЛОК: УСЛОВИЯ ====== -->
+  <section class="card">
+    <h2>Условия сделки</h2>
+    <div class="grid three">
+      <div class="field">
+        <label>Дата договора</label>
+        <input id="dog_date" type="date" required>
+        <small class="hint" id="dog_num_preview">№ договора: —</small>
+      </div>
+      <div class="field">
+        <label>Комиссионная цена, BYN</label>
+        <input id="price_num" type="number" min="0" step="0.01" placeholder="30000.00">
+        <small class="hint" id="price_words_preview">прописью: —</small>
+      </div>
+      <div class="field">
+        <label>Комиссионное вознаграждение, BYN</label>
+        <input id="fee_num" type="number" min="0" step="0.01" placeholder="900.00">
+        <small class="hint" id="fee_words_preview">прописью: —</small>
+      </div>
+      <div class="field">
+        <label>№ договора (можно изменить вручную)</label>
+        <input id="dog_num">
+      </div>
+      <div class="field">
+        <label>№ акта (можно изменить вручную)</label>
+        <input id="akt_num">
+      </div>
+      <div class="field">
+        <label>Уровень топлива при приёмке</label>
+        <input id="fuel_level" placeholder="1/4 бака">
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== БЛОК: КОМПЛЕКТНОСТЬ И ОСМОТР ====== -->
+  <section class="card">
+    <h2>Комплектность и осмотр</h2>
+    <div class="options-row">
+      <label class="checkbox"><input type="checkbox" id="has_service_book"> сервисная книжка</label>
+      <label class="checkbox"><input type="checkbox" id="has_spare" checked> запасное колесо</label>
+      <label class="checkbox"><input type="checkbox" id="has_jack" checked> домкрат</label>
+      <label class="checkbox"><input type="checkbox" id="has_wrench" checked> балонный ключ</label>
+      <label class="checkbox"><input type="checkbox" id="has_firstaid" checked> аптечка</label>
+      <label class="checkbox"><input type="checkbox" id="has_ext" checked> огнетушитель</label>
+      <label class="checkbox"><input type="checkbox" id="has_sign" checked> знак аварийной остановки</label>
+    </div>
+    <div class="grid" style="margin-top:14px">
+      <div class="field">
+        <label>Замер толщины ЛКП</label>
+        <select id="lkp_measured">
+          <option>не производился</option><option>произведён, отклонений не выявлено</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Компьютерная диагностика</label>
+        <select id="diag_done">
+          <option>не проводилась</option><option>проведена, ошибок не выявлено</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label>Описание видимых дефектов и особенностей</label>
+        <textarea id="defects" placeholder="Видимых дефектов кузова и салона, кроме нормального эксплуатационного износа, не выявлено."></textarea>
+      </div>
+      <div class="field">
+        <label>Член комиссии №1 (от Комиссионера)</label>
+        <input id="commission_member_1" value="Герасимец М.С.">
+      </div>
+    </div>
+  </section>
+
+  <div class="row-actions">
+    <button type="button" class="primary" id="gen_dogovor">Скачать договор</button>
+    <button type="button" class="primary" id="gen_akt">Скачать акт</button>
+    <button type="button" class="secondary" id="gen_both">Скачать оба (ZIP)</button>
+    <span style="flex:1"></span>
+    <button type="button" class="secondary" id="save_local">Сохранить черновик</button>
+    <button type="button" class="secondary" id="load_example">Пример</button>
+    <button type="button" class="danger" id="reset">Очистить</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  </form>
+</main>
+
+<!-- Внешние библиотеки -->

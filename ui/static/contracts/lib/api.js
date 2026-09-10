@@ -22,6 +22,14 @@ async function apiFetch(path, { method = "GET", body } = {}) {
 }
 
 function metaFromPayload(payload) {
+  if (payload?.docType === "commission") {
+    return {
+      contract_number: payload.dog_num || "",
+      client_name: payload.komitent_fio || "",
+      amount: String(payload.fee_num || payload.price_num || ""),
+      payload,
+    };
+  }
   const clientName =
     payload.clientType === "legal" ? payload.clientCompany || "" : payload.clientName || "";
   return {

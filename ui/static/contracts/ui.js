@@ -203,16 +203,20 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
   const filtered = rows.filter((row) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    return `${row.contract_number || ""} ${row.client_name || ""} ${row.created_by || ""}`
+    const kind =
+      row.payload?.docType === "commission" || row.doc_type === "commission" ? "комиссия" : "подбор";
+    return `${row.contract_number || ""} ${row.client_name || ""} ${row.created_by || ""} ${kind}`
       .toLowerCase()
       .includes(q);
   });
   const body = filtered.length
     ? filtered
-        .map(
-          (row) => `
+        .map((row) => {
+          const label = row.doc_kind === "commission" ? "Комиссия" : "Подбор ЕС";
+          return `
         <tr data-action="open" data-id="${escapeHtml(row.id)}">
           <td>${escapeHtml(row.contract_number || "—")}</td>
+          <td>${escapeHtml(label)}</td>
           <td>${escapeHtml(row.client_name || "Без клиента")}</td>
           <td>${escapeHtml(row.amount ? `${row.amount} BYN` : "—")}</td>
           <td>${escapeHtml(row.created_by || "—")}</td>
@@ -220,10 +224,10 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
           <td class="archive-actions">
             <button type="button" data-action="delete" data-id="${escapeHtml(row.id)}">Удалить</button>
           </td>
-        </tr>`,
-        )
+        </tr>`;
+        })
         .join("")
-    : `<tr><td colspan="6" class="archive-empty">${
+    : `<tr><td colspan="7" class="archive-empty">${
         rows.length
           ? "Ничего не найдено."
           : "Архив пуст. Создайте первый договор — он появится у всех администраторов."
@@ -233,13 +237,15 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
     <div class="archive">
       <div class="archive-bar">
         <input name="search" value="${escapeHtml(query)}" placeholder="Поиск по клиенту, номеру или пользователю" data-action="search" />
-        <button type="button" class="primary" data-action="new">Новый договор</button>
+        <button type="button" class="primary" data-action="new">Новый подбор</button>
+        <button type="button" class="ghost" data-action="new-commission">Новая комиссия</button>
       </div>
       ${error ? `<p class="gate-error">${escapeHtml(error)}</p>` : ""}
       <table class="archive-table">
         <thead>
           <tr>
             <th>Номер</th>
+            <th>Тип</th>
             <th>Клиент</th>
             <th>Сумма</th>
             <th>Пользователь</th>

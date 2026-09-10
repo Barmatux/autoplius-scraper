@@ -73,6 +73,8 @@ export function createDefaultData() {
     executorSwift: ex.executorSwift || "ALFABY2X",
     executorBankUnp: ex.executorBankUnp || "101541947",
     executorOkpo: ex.executorOkpo || "37526626",
+
+    docType: "selection",
   };
 }
 

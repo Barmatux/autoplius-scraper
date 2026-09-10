@@ -2500,14 +2500,29 @@ def list_service_contracts(db_path: Path, *, limit: int = 500) -> list[dict[str,
     with connect(db_path) as conn:
         rows = conn.execute(
             """
-            SELECT id, contract_number, client_name, amount, created_at, updated_at, created_by
+            SELECT id, contract_number, client_name, amount, created_at, updated_at, created_by, payload
             FROM service_contracts
             ORDER BY updated_at DESC, id DESC
             LIMIT ?
             """,
             (limit,),
         ).fetchall()
-    return [dict(row) | {"id": int(row["id"])} for row in rows]
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        item = dict(row)
+        item["id"] = int(item["id"])
+        payload_raw = item.pop("payload", None)
+        doc_kind = "selection"
+        if isinstance(payload_raw, str) and payload_raw:
+            try:
+                payload_obj = json.loads(payload_raw)
+                if isinstance(payload_obj, dict) and payload_obj.get("docType") == "commission":
+                    doc_kind = "commission"
+            except json.JSONDecodeError:
+                pass
+        item["doc_kind"] = doc_kind
+        out.append(item)
+    return out
 
 
 def get_service_contract(db_path: Path, contract_id: int) -> dict[str, Any] | None:

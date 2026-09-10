@@ -28,7 +28,18 @@ def test_service_contracts_crud(tmp_path: Path):
     listed = list_service_contracts(db)
     assert len(listed) == 1
     assert listed[0]["contract_number"] == "П100926"
+    assert listed[0]["doc_kind"] == "selection"
     assert "payload" not in listed[0]
+
+    commission = create_service_contract(
+        db,
+        contract_number="001-060526",
+        client_name="Маркова",
+        amount="900",
+        payload={"docType": "commission", "dog_num": "001-060526", "komitent_fio": "Маркова"},
+    )
+    kinds = {row["contract_number"]: row["doc_kind"] for row in list_service_contracts(db)}
+    assert kinds["001-060526"] == "commission"
 
     got = get_service_contract(db, created["id"])
     assert got is not None
@@ -49,4 +60,5 @@ def test_service_contracts_crud(tmp_path: Path):
 
     assert delete_service_contract(db, created["id"]) is True
     assert get_service_contract(db, created["id"]) is None
+    assert delete_service_contract(db, commission["id"]) is True
     assert list_service_contracts(db) == []

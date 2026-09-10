@@ -12,11 +12,16 @@ import {
   listContracts,
   updateContract,
 } from "./lib/api.js";
+import {
+  createCommissionDefaultData,
+  createCommissionRecord,
+  mountCommission,
+} from "./commission.js";
 
 const titles = {
   archive: {
     h: "Архив договоров",
-    p: "Общий список для администраторов. Откройте договор или создайте новый — всё сохраняется на сервере.",
+    p: "Подбор ЕС и комиссия. Откройте договор или создайте новый — всё сохраняется на сервере.",
   },
   contract: {
     h: "Договор подбора ЕС",
@@ -24,11 +29,15 @@ const titles = {
   },
   act: {
     h: "Акт сдачи-приёмки",
-    p: "Акт закрывает услугу для учёта. Он привязан к этому же договору.",
+    p: "Акт закрывает услугу для учёта. Он привязан к этому же договору подбора.",
+  },
+  commission: {
+    h: "Договор комиссии",
+    p: "Бланк комиссии и акта приёма-передачи автомобиля. Скачайте Word после заполнения.",
   },
   analysis: {
     h: "Предложения по договору",
-    p: "Юридические риски XL-шаблона и что изменено в генераторе.",
+    p: "Юридические риски XL-шаблона и что изменено в генераторе подбора.",
   },
 };
 
@@ -42,6 +51,11 @@ let formNeedsPaint = true;
 let archiveError = "";
 let saveState = "";
 let saveTimer = 0;
+let commissionMount = null;
+
+function isCommission(payload = data) {
+  return payload?.docType === "commission";
+}
 
 function setSaveStatus(text) {
   saveState = text;
@@ -50,7 +64,7 @@ function setSaveStatus(text) {
 }
 
 async function persist() {
-  if (!recordId) return;
+  if (!recordId || isCommission()) return;
   try {
     setSaveStatus("Сохранение…");
     await updateContract(recordId, data);
@@ -66,26 +80,37 @@ function scheduleSave() {
   saveTimer = window.setTimeout(() => persist(), 900);
 }
 
-function paint() {
+function amountLabel() {
+  if (isCommission()) {
+    const fee = parseFloat(data.fee_num) || 0;
+    return fee ? moneyPhrase(fee) : moneyPhrase(data.price_num || 0);
+  }
+  return moneyPhrase(data.amount);
+}
+
+async function paint() {
   const workspace = document.getElementById("workspace");
   const single = document.getElementById("single-pane");
   const formPane = document.getElementById("form-pane");
   const preview = document.getElementById("preview-pane");
 
-  document.getElementById("amount-box").textContent = moneyPhrase(data.amount);
-  document.getElementById("save-status").textContent = view === "editor" ? saveState : "";
+  document.getElementById("amount-box").textContent = amountLabel();
+  document.getElementById("save-status").textContent =
+    view === "editor" || tab === "commission" ? saveState : "";
 
   const screen = tab === "archive" ? "archive" : tab;
-  document.getElementById("toolbar-title").textContent = titles[screen].h;
-  document.getElementById("toolbar-lead").textContent = titles[screen].p;
-  document.getElementById("doc-actions").hidden = screen === "archive" || screen === "analysis";
-  document.getElementById("btn-sample").hidden = screen === "archive" || screen === "analysis";
+  document.getElementById("toolbar-title").textContent = titles[screen]?.h || "";
+  document.getElementById("toolbar-lead").textContent = titles[screen]?.p || "";
+  const selectionEditor = tab === "contract" || tab === "act";
+  document.getElementById("doc-actions").hidden = !selectionEditor || isCommission();
+  document.getElementById("btn-sample").hidden = tab !== "contract" || isCommission();
 
   document.querySelectorAll(".rail nav button").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.tab === tab);
   });
 
   if (tab === "archive") {
+    commissionMount = null;
     const activeSearch = document.activeElement?.dataset?.action === "search";
     const caret = activeSearch ? document.activeElement.selectionStart : null;
     workspace.hidden = true;
@@ -100,12 +125,35 @@ function paint() {
   }
 
   if (tab === "analysis") {
+    commissionMount = null;
     workspace.hidden = true;
     single.hidden = false;
     single.innerHTML = renderAnalysis();
     return;
   }
 
+  if (tab === "commission") {
+    workspace.hidden = true;
+    single.hidden = false;
+    view = "editor";
+    setSaveStatus(recordId ? "Сохранено" : "");
+    commissionMount = await mountCommission(single, {
+      data,
+      recordId,
+      onChange: (payload) => {
+        data = payload;
+        document.getElementById("amount-box").textContent = amountLabel();
+        setSaveStatus("Есть несохранённые правки");
+      },
+      onSaved: (id) => {
+        recordId = id;
+        setSaveStatus("Сохранено");
+      },
+    });
+    return;
+  }
+
+  commissionMount = null;
   view = "editor";
   workspace.hidden = false;
   single.hidden = true;
@@ -132,15 +180,21 @@ async function openRecord(id) {
   const row = await getContract(id);
   if (!row) throw new Error("Договор не найден.");
   recordId = row.id;
-  data = { ...createDefaultData(), ...(row.payload || {}) };
-  formNeedsPaint = true;
+  const payload = row.payload || {};
+  if (payload.docType === "commission") {
+    data = { ...createCommissionDefaultData(), ...payload, docType: "commission" };
+    tab = "commission";
+  } else {
+    data = { ...createDefaultData(), ...payload, docType: "selection" };
+    formNeedsPaint = true;
+    tab = "contract";
+  }
   view = "editor";
-  tab = "contract";
   setSaveStatus("Сохранено");
-  paint();
+  await paint();
 }
 
-async function createNew() {
+async function createNewSelection() {
   data = createDefaultData();
   formNeedsPaint = true;
   const row = await createContract(data);
@@ -148,10 +202,22 @@ async function createNew() {
   view = "editor";
   tab = "contract";
   setSaveStatus("Сохранено");
-  paint();
+  await paint();
+}
+
+async function createNewCommission() {
+  data = createCommissionDefaultData();
+  const row = await createCommissionRecord(data);
+  recordId = row.id;
+  data = { ...data, ...(row.payload || {}) };
+  view = "editor";
+  tab = "commission";
+  setSaveStatus("Сохранено");
+  await paint();
 }
 
 document.getElementById("form-pane").addEventListener("input", (e) => {
+  if (isCommission()) return;
   const name = e.target.name;
   if (!name) return;
   const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
@@ -162,6 +228,7 @@ document.getElementById("form-pane").addEventListener("input", (e) => {
 });
 
 document.getElementById("form-pane").addEventListener("change", (e) => {
+  if (isCommission()) return;
   const name = e.target.name;
   if (!name) return;
   const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
@@ -180,17 +247,20 @@ document.querySelectorAll(".rail nav button").forEach((btn) => {
         await loadArchive();
       } else if (tab === "analysis") {
         view = "editor";
+      } else if (tab === "commission") {
+        if (!recordId || !isCommission()) await createNewCommission();
+        else view = "editor";
       } else {
-        if (!recordId) await createNew();
+        if (!recordId || isCommission()) await createNewSelection();
         else {
           view = "editor";
           formNeedsPaint = true;
         }
       }
-      paint();
+      await paint();
     } catch (err) {
       archiveError = err.message;
-      paint();
+      await paint();
     }
   });
 });
@@ -208,7 +278,9 @@ document.body.addEventListener("click", async (e) => {
   const action = btn.dataset.action;
   try {
     if (action === "new") {
-      await createNew();
+      await createNewSelection();
+    } else if (action === "new-commission") {
+      await createNewCommission();
     } else if (action === "open") {
       await openRecord(btn.dataset.id);
     } else if (action === "delete") {
@@ -220,8 +292,9 @@ document.body.addEventListener("click", async (e) => {
       await loadArchive();
       tab = "archive";
       view = "archive";
-      paint();
+      await paint();
     } else if (action === "sample") {
+      if (isCommission()) return;
       const date = data.contractDate || todayIso();
       data = {
         ...data,
@@ -235,7 +308,7 @@ document.body.addEventListener("click", async (e) => {
       formNeedsPaint = true;
       tab = "contract";
       scheduleSave();
-      paint();
+      await paint();
     } else if (action === "print") {
       window.print();
     } else if (action === "word") {
@@ -251,7 +324,7 @@ document.body.addEventListener("click", async (e) => {
     }
   } catch (err) {
     archiveError = err.message;
-    paint();
+    await paint();
   }
 });
 
@@ -263,7 +336,7 @@ async function boot() {
   } catch (err) {
     archiveError = err.message;
   }
-  paint();
+  await paint();
 }
 
 boot();
