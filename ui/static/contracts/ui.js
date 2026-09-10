@@ -203,7 +203,9 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
   const filtered = rows.filter((row) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    return `${row.contract_number || ""} ${row.client_name || ""}`.toLowerCase().includes(q);
+    return `${row.contract_number || ""} ${row.client_name || ""} ${row.created_by || ""}`
+      .toLowerCase()
+      .includes(q);
   });
   const body = filtered.length
     ? filtered
@@ -213,6 +215,7 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
           <td>${escapeHtml(row.contract_number || "—")}</td>
           <td>${escapeHtml(row.client_name || "Без клиента")}</td>
           <td>${escapeHtml(row.amount ? `${row.amount} BYN` : "—")}</td>
+          <td>${escapeHtml(row.created_by || "—")}</td>
           <td>${escapeHtml(formatDateTime(row.updated_at))}</td>
           <td class="archive-actions">
             <button type="button" data-action="delete" data-id="${escapeHtml(row.id)}">Удалить</button>
@@ -220,7 +223,7 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
         </tr>`,
         )
         .join("")
-    : `<tr><td colspan="5" class="archive-empty">${
+    : `<tr><td colspan="6" class="archive-empty">${
         rows.length
           ? "Ничего не найдено."
           : "Архив пуст. Создайте первый договор — он появится у всех администраторов."
@@ -229,7 +232,7 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
   return `
     <div class="archive">
       <div class="archive-bar">
-        <input name="search" value="${escapeHtml(query)}" placeholder="Поиск по клиенту или номеру" data-action="search" />
+        <input name="search" value="${escapeHtml(query)}" placeholder="Поиск по клиенту, номеру или пользователю" data-action="search" />
         <button type="button" class="primary" data-action="new">Новый договор</button>
       </div>
       ${error ? `<p class="gate-error">${escapeHtml(error)}</p>` : ""}
@@ -239,6 +242,7 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
             <th>Номер</th>
             <th>Клиент</th>
             <th>Сумма</th>
+            <th>Пользователь</th>
             <th>Изменён</th>
             <th></th>
           </tr>

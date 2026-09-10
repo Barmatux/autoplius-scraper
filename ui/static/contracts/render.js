@@ -41,27 +41,38 @@ function metaHtml(meta) {
 }
 
 function signsHtml(sig, { showLeftStamp = true, showRightStamp = true } = {}) {
-  const lines = (items) =>
+  const infoLines = (items) =>
     (items || [])
       .filter((line) => line != null && String(line).trim() !== "")
       .map((line) => `<p class="sign-line-text">${escapeHtml(line)}</p>`)
       .join("");
 
-  const col = (title, items, role, sign, showStamp) => `
-    <td class="sign-col" width="48%" valign="top">
-      <p class="sign-title">${escapeHtml(title)}</p>
-      ${lines(items)}
+  const signBlock = (role, sign, showStamp) => `
       <p class="sign-gap">&nbsp;</p>
       <p class="sign-role">${escapeHtml(role)}</p>
       <p class="sign-line">${escapeHtml(sign)}</p>
-      ${showStamp ? `<p class="sign-stamp">М.П. (при использовании печати)</p>` : `<p class="sign-stamp">&nbsp;</p>`}
-    </td>`;
+      ${showStamp ? `<p class="sign-stamp">М.П. (при использовании печати)</p>` : `<p class="sign-stamp">&nbsp;</p>`}`;
 
   return `<table class="signs" width="100%" cellspacing="0" cellpadding="0">
     <tr>
-      ${col(sig.leftTitle, sig.leftLines, sig.leftRole, sig.leftSign, showLeftStamp)}
+      <td class="sign-col" width="48%" valign="top">
+        <p class="sign-title">${escapeHtml(sig.leftTitle)}</p>
+        ${infoLines(sig.leftLines)}
+      </td>
       <td width="4%">&nbsp;</td>
-      ${col(sig.rightTitle, sig.rightLines, sig.rightRole, sig.rightSign, showRightStamp)}
+      <td class="sign-col" width="48%" valign="top">
+        <p class="sign-title">${escapeHtml(sig.rightTitle)}</p>
+        ${infoLines(sig.rightLines)}
+      </td>
+    </tr>
+    <tr>
+      <td class="sign-col sign-col-action" width="48%" valign="bottom">
+        ${signBlock(sig.leftRole, sig.leftSign, showLeftStamp)}
+      </td>
+      <td width="4%">&nbsp;</td>
+      <td class="sign-col sign-col-action" width="48%" valign="bottom">
+        ${signBlock(sig.rightRole, sig.rightSign, showRightStamp)}
+      </td>
     </tr>
   </table>`;
 }
@@ -211,13 +222,12 @@ ${wordFooterPageOnly()}`;
   }
 
   return `
-<div class="Section1">
+<div class="${doc.kind === "act" ? "Section2" : "Section1"}">
   ${headerHtml(doc)}
   ${(doc.blocks || []).map(blockHtml).join("")}
   ${signsHtml(doc.signatures, stamps)}
 </div>
-${wordFooterWithSignatures(doc)}
-${wordFooterPageOnly()}`;
+${doc.kind === "act" ? wordFooterPageOnly() : `${wordFooterWithSignatures(doc)}${wordFooterPageOnly()}`}`;
 }
 
 export function downloadWord(doc, filename) {
