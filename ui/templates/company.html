@@ -152,12 +152,20 @@
             <dd>{% if company.bank_name %}{{ company.bank_name }}{% else %}<span class="legal-placeholder">COMPANY_BANK_NAME</span>{% endif %}</dd>
           </div>
           <div>
-            <dt>БИК / код банка</dt>
-            <dd>{% if company.bank_bic %}{{ company.bank_bic }}{% else %}<span class="legal-placeholder">COMPANY_BANK_BIC</span>{% endif %}</dd>
+            <dt>БИК / SWIFT</dt>
+            <dd>{% if company.bank_swift or company.bank_bic %}{{ company.bank_swift or company.bank_bic }}{% else %}<span class="legal-placeholder">COMPANY_BANK_SWIFT</span>{% endif %}</dd>
           </div>
           <div>
             <dt>Расчётный счёт (IBAN)</dt>
             <dd>{% if company.bank_account %}<span class="mono">{{ company.bank_account }}</span>{% else %}<span class="legal-placeholder">COMPANY_BANK_ACCOUNT</span>{% endif %}</dd>
+          </div>
+          <div>
+            <dt>УНП банка</dt>
+            <dd>{% if company.bank_unp %}{{ company.bank_unp }}{% else %}<span class="legal-placeholder">COMPANY_BANK_UNP</span>{% endif %}</dd>
+          </div>
+          <div>
+            <dt>ОКПО</dt>
+            <dd>{% if company.okpo %}{{ company.okpo }}{% else %}<span class="legal-placeholder">COMPANY_OKPO</span>{% endif %}</dd>
           </div>
         </dl>
       </section>

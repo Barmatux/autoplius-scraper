@@ -158,6 +158,9 @@ export function renderForm(data) {
           ${field("Email", "executorEmail", data)}
           ${field("Расчётный счёт", "executorAccount", data)}
           ${field("Банк", "executorBank", data, { wide: true })}
+          ${field("SWIFT", "executorSwift", data)}
+          ${field("УНП банка", "executorBankUnp", data)}
+          ${field("ОКПО", "executorOkpo", data)}
         </div>
       </details>
     </form>`;

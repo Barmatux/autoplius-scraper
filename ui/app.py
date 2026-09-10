@@ -965,16 +965,11 @@ def _director_short(full_name: str) -> str:
 def _contract_defaults() -> dict[str, str]:
     company = load_company_info()
     director = company.get("director") or ""
-    bank_parts = [
-        company.get("bank_name") or "",
-        company.get("bank_bic") or "",
-    ]
-    bank = ", ".join(p for p in bank_parts if p)
-    genitive = (os.environ.get("COMPANY_DIRECTOR_GENITIVE") or "").strip()
-    short = (os.environ.get("COMPANY_DIRECTOR_SHORT") or "").strip() or _director_short(director)
+    genitive = company.get("director_genitive") or ""
+    short = company.get("director_short") or _director_short(director)
     return {
-        "executorName": company.get("full_name") or "EuroHUB",
-        "executorShort": company.get("short_name") or "EuroHUB",
+        "executorName": company.get("full_name") or "",
+        "executorShort": company.get("short_name") or "",
         "executorUnp": company.get("unp") or "",
         "executorAddress": company.get("legal_address") or "",
         "executorEmail": company.get("email") or "",
@@ -983,10 +978,10 @@ def _contract_defaults() -> dict[str, str]:
         "executorDirectorShort": short,
         "executorDirectorGenitive": genitive,
         "executorAccount": company.get("bank_account") or "",
-        "executorBank": bank,
-        "executorSwift": (os.environ.get("COMPANY_BANK_SWIFT") or "").strip(),
-        "executorBankUnp": (os.environ.get("COMPANY_BANK_UNP") or "").strip(),
-        "executorOkpo": (os.environ.get("COMPANY_OKPO") or "").strip(),
+        "executorBank": company.get("bank_name") or "",
+        "executorSwift": company.get("bank_swift") or "",
+        "executorBankUnp": company.get("bank_unp") or "",
+        "executorOkpo": company.get("okpo") or "",
     }
 
 
