@@ -1,4 +1,8 @@
-"""SQL aggregations for index filter dropdowns (no full listing scan)."""
+"""SQL aggregations for index filter dropdowns (cities + make/model only).
+
+Body / fuel / transmission / volume / year options come from static catalogs
+so cold home does not pay for five GROUP BY / DISTINCT scans.
+"""
 
 from __future__ import annotations
 
@@ -6,10 +10,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from autoplius.localize import unique_localized_options
+from autoplius.filter_catalogs import (
+    static_body_type_options,
+    static_fuel_options,
+    static_transmission_raw_values,
+    static_volume_options,
+    static_year_options,
+)
 from autoplius.spec_filters import (
     TRANSMISSION_FILTER_GROUPS,
-    format_volume_option,
     multi_filter_selection_label,
     transmission_filter_checked_slugs,
     transmission_filter_display_label,
@@ -19,7 +28,6 @@ from scraper.db import connect
 from scraper.listing_sql_filters import (
     BLOCKED_MAKES,
     ListingFilters,
-    _reg_year_expr,
     build_listing_where,
 )
 from scraper.query_cache import cached_listing_filter_options
@@ -72,17 +80,35 @@ def fetch_listing_filter_options(
     )
 
 
+def _static_spec_options() -> dict[str, Any]:
+    return {
+        "year_options": static_year_options(),
+        "body_type_options": static_body_type_options(),
+        "fuel_options": static_fuel_options(),
+        "transmission_values": static_transmission_raw_values(),
+        "volume_options": static_volume_options(),
+    }
+
+
 def _load_listing_filter_options(
     db_path: Path,
     filters: ListingFilters,
 ) -> ListingFilterOptions:
+    static = _static_spec_options()
     if not db_path.is_file():
-        return ListingFilterOptions([], {"makes": [], "modelMap": {}, "makeCounts": {}}, [], [], [], [], [])
+        return ListingFilterOptions(
+            [],
+            {"makes": [], "modelMap": {}, "makeCounts": {}},
+            static["year_options"],
+            static["body_type_options"],
+            static["fuel_options"],
+            static["transmission_values"],
+            static["volume_options"],
+        )
 
     where, params = _where_sql(filters)
     make_expr = title_make_expr()
     model_expr = title_model_expr()
-    year_expr = _reg_year_expr()
     blocked_checks = " AND ".join(f"lower({make_expr}) NOT LIKE ?" for _ in BLOCKED_MAKES)
     blocked_params = [f"{make.casefold()}%" for make in BLOCKED_MAKES]
 
@@ -113,65 +139,6 @@ def _load_listing_filter_options(
             [*params, *blocked_params],
         ).fetchall()
 
-        year_rows = conn.execute(
-            f"""
-            SELECT DISTINCT {year_expr} AS year_value
-            FROM listings
-            {where}
-              {"AND" if where else "WHERE"} {year_expr} IS NOT NULL
-              AND {year_expr} > 1900
-            ORDER BY year_value DESC
-            """,
-            params,
-        ).fetchall()
-
-        body_rows = conn.execute(
-            f"""
-            SELECT trim(COALESCE(body_type, '')) AS value
-            FROM listings
-            {where}
-              {"AND" if where else "WHERE"} trim(COALESCE(body_type, '')) != ''
-            GROUP BY trim(COALESCE(body_type, ''))
-            ORDER BY value COLLATE NOCASE
-            """,
-            params,
-        ).fetchall()
-
-        fuel_rows = conn.execute(
-            f"""
-            SELECT trim(COALESCE(fuel, '')) AS value
-            FROM listings
-            {where}
-              {"AND" if where else "WHERE"} trim(COALESCE(fuel, '')) != ''
-            GROUP BY trim(COALESCE(fuel, ''))
-            ORDER BY value COLLATE NOCASE
-            """,
-            params,
-        ).fetchall()
-
-        transmission_rows = conn.execute(
-            f"""
-            SELECT trim(COALESCE(transmission, '')) AS value
-            FROM listings
-            {where}
-              {"AND" if where else "WHERE"} trim(COALESCE(transmission, '')) != ''
-            GROUP BY trim(COALESCE(transmission, ''))
-            ORDER BY value COLLATE NOCASE
-            """,
-            params,
-        ).fetchall()
-
-        volume_rows = conn.execute(
-            f"""
-            SELECT DISTINCT ROUND(engine_liters, 1) AS liters
-            FROM listings
-            {where}
-              {"AND" if where else "WHERE"} engine_liters IS NOT NULL
-            ORDER BY liters
-            """,
-            params,
-        ).fetchall()
-
     model_map: dict[str, set[str]] = {}
     make_counts: dict[str, int] = {}
     for row in make_rows:
@@ -198,11 +165,9 @@ def _load_listing_filter_options(
             },
             "makeCounts": make_counts,
         },
-        year_options=[int(row["year_value"]) for row in year_rows],
-        body_type_options=unique_localized_options([row["value"] for row in body_rows]),
-        fuel_options=unique_localized_options([row["value"] for row in fuel_rows]),
-        transmission_values=unique_localized_options(
-            [row["value"] for row in transmission_rows]
-        ),
-        volume_options=[format_volume_option(float(row["liters"])) for row in volume_rows],
+        year_options=static["year_options"],
+        body_type_options=static["body_type_options"],
+        fuel_options=static["fuel_options"],
+        transmission_values=static["transmission_values"],
+        volume_options=static["volume_options"],
     )
