@@ -108,6 +108,172 @@ html[data-theme="docs"] .auth-panel {
   box-shadow: var(--shadow);
 }
 
+/* Docs: green chrome; only listing cards stay light */
+html[data-theme="docs"] {
+  --bg: #123028;
+  --bg-glow: #1a3c34;
+  --bg-top: #0e241f;
+  --bg-bottom: #0f2a22;
+}
+
+html[data-theme="docs"] .tabs,
+html[data-theme="docs"] .filters-panel,
+html[data-theme="docs"] .filters,
+html[data-theme="docs"] .summary,
+html[data-theme="docs"] .catalog-summary-pills {
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .filters {
+  background: #0e241f;
+  border-color: rgba(196, 180, 154, 0.35);
+  box-shadow: none;
+}
+
+html[data-theme="docs"] .filters-panel-toggle {
+  background: #0e241f;
+  border-color: rgba(196, 180, 154, 0.45);
+  color: #efe8dc;
+  box-shadow: none;
+}
+
+html[data-theme="docs"] .filters-panel-badge {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #c4b49a;
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .filters label,
+html[data-theme="docs"] .vehicle-hierarchy-label,
+html[data-theme="docs"] .summary,
+html[data-theme="docs"] .cards-sort,
+html[data-theme="docs"] .check {
+  color: #cbbca3;
+}
+
+html[data-theme="docs"] .make-model-filters {
+  border-bottom-color: rgba(196, 180, 154, 0.28);
+}
+
+html[data-theme="docs"] .filters input,
+html[data-theme="docs"] .filters select,
+html[data-theme="docs"] .vehicle-hierarchy-field select,
+html[data-theme="docs"] .cards-sort-select {
+  background: #fffcf7;
+  color: #1c1916;
+  border-color: #c4b49a;
+}
+
+html[data-theme="docs"] .vehicle-hierarchy-field select:disabled {
+  background: #e8e0d2;
+  color: #6b645b;
+}
+
+html[data-theme="docs"] .filters button {
+  background: #1a3c34;
+  border-color: #c4b49a;
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .filters button:hover {
+  filter: brightness(1.08);
+}
+
+html[data-theme="docs"] .tab {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(196, 180, 154, 0.4);
+  color: #d8cebf;
+}
+
+html[data-theme="docs"] .tab:hover {
+  color: #fff;
+  border-color: #c4b49a;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="docs"] .tab.active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #c4b49a;
+  color: #fff;
+  box-shadow: inset 0 -2px 0 #c4b49a;
+}
+
+html[data-theme="docs"] .tab-count {
+  color: #c4b49a;
+}
+
+html[data-theme="docs"] .summary {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: #0e241f;
+  border: 1px solid rgba(196, 180, 154, 0.35);
+}
+
+html[data-theme="docs"] .listings-view-toggle {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(196, 180, 154, 0.4);
+}
+
+html[data-theme="docs"] .listings-view-btn {
+  color: #cbbca3;
+}
+
+html[data-theme="docs"] .listings-view-btn + .listings-view-btn {
+  border-left-color: rgba(196, 180, 154, 0.35);
+}
+
+html[data-theme="docs"] .listings-view-btn.is-active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+html[data-theme="docs"] .listings-view-btn:hover:not(.is-active) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="docs"] .listing-card {
+  background: #fffcf7;
+  color: #1c1916;
+  border-color: #d3c6b0;
+}
+
+html[data-theme="docs"] .listing-card .muted,
+html[data-theme="docs"] .listing-card-meta,
+html[data-theme="docs"] .listing-card-date {
+  color: #6b645b;
+}
+
+html[data-theme="docs"] .catalog.listings-feed {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1400px) {
+  html[data-theme="docs"] .catalog.listings-feed {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  html[data-theme="docs"] .catalog.listings-feed {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  html[data-theme="docs"] .catalog.listings-feed {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  html[data-theme="docs"] .catalog.listings-feed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* 2) Пергамент — светлый бумажный фон, pine + золото */
 html[data-theme="parchment"] {
   --bg: #f6f1e6;
