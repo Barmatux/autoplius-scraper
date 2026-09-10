@@ -158,10 +158,23 @@ function wordStyles() {
 `;
 }
 
-function wordFooterWithSignatures() {
+function footerSignNames(doc) {
+  const fromLine = (sign) => {
+    const m = String(sign || "").match(/\/\s*([^/]+?)\s*\//);
+    const name = (m && m[1].trim()) || "";
+    return name && !/^_+$/.test(name) ? name : "";
+  };
+  return {
+    executor: fromLine(doc.signatures?.leftSign) || "__________",
+    client: fromLine(doc.signatures?.rightSign) || "__________",
+  };
+}
+
+function wordFooterWithSignatures(doc) {
+  const { executor, client } = footerSignNames(doc);
   return `<div style='mso-element:footer' id=f1>
   <p class="MsoFooter">
-    Исполнитель ________________ / __________ /&nbsp;&nbsp;&nbsp;&nbsp;Заказчик ________________ / __________ /
+    Исполнитель ________________ / ${escapeHtml(executor)} /&nbsp;&nbsp;&nbsp;&nbsp;Заказчик ________________ / ${escapeHtml(client)} /
     <span style="mso-tab-count:1"> </span>
     стр.&nbsp;<span style='mso-field-code:" PAGE "'></span>
   </p>
@@ -193,7 +206,7 @@ function wordBodyHtml(doc) {
     ${signsHtml(doc.signatures, stamps)}
   </div>
 </div>
-${wordFooterWithSignatures()}
+${wordFooterWithSignatures(doc)}
 ${wordFooterPageOnly()}`;
   }
 
@@ -203,7 +216,7 @@ ${wordFooterPageOnly()}`;
   ${(doc.blocks || []).map(blockHtml).join("")}
   ${signsHtml(doc.signatures, stamps)}
 </div>
-${wordFooterWithSignatures()}
+${wordFooterWithSignatures(doc)}
 ${wordFooterPageOnly()}`;
 }
 
