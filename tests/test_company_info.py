@@ -12,7 +12,7 @@ def test_company_info_scandi_defaults(monkeypatch):
     assert info["full_name"] == "Общество с ограниченной ответственностью «Сканди Моторс»"
     assert info["short_name"] == "ООО «Сканди Моторс»"
     assert info["unp"] == "193866357"
-    assert info["legal_address"] == "г. Минск, ул. Скрыганова, дом 6, помещение 7"
+    assert info["legal_address"] == "г. Минск, ул. Максима Горецкого, 30"
     assert info["director"] == "Герасимец Максим Сергеевич"
     assert info["director_genitive"] == "Герасимца Максима Сергеевича"
     assert info["email"] == "scandimotorsby@gmail.com"
