@@ -3,12 +3,15 @@ from __future__ import annotations
 import logging
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+from typing import Callable
 
 logger = logging.getLogger(__name__)
 
 _CYRILLIC_RE = re.compile(r"[\u0400-\u04FF]")
 _LAST_CALL_AT = 0.0
-_MAX_ATTEMPTS = 4
+_MAX_ATTEMPTS = 3
+_PER_CALL_TIMEOUT_SEC = 8.0
 _ERROR_MARKERS = (
     "error 500",
     "server error",
@@ -16,6 +19,8 @@ _ERROR_MARKERS = (
     "please try again later",
     "that's all we know",
     "too many requests",
+    "query length limit",
+    "invalid",
 )
 
 
@@ -33,6 +38,7 @@ def sanitize_translation(text: str | None) -> str | None:
     if is_translation_error(cleaned):
         return None
     return cleaned
+
 
 def cyrillic_ratio(text: str) -> float:
     letters = [ch for ch in text if ch.isalpha()]
@@ -52,11 +58,50 @@ def is_usable_russian_text(text: str | None, *, threshold: float = 0.45) -> bool
     return looks_russian(text, threshold=threshold)
 
 
-def _call_translator(text: str) -> str | None:
+def _run_with_timeout(fn: Callable[[], str | None], timeout_sec: float) -> str | None:
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(fn)
+        try:
+            return future.result(timeout=timeout_sec)
+        except FuturesTimeout:
+            future.cancel()
+            logger.warning("Description translation timed out after %.1fs", timeout_sec)
+            return None
+
+
+def _google_translate(text: str, *, source: str) -> str | None:
     from deep_translator import GoogleTranslator
 
-    translated = GoogleTranslator(source="auto", target="ru").translate(text)
+    translated = GoogleTranslator(source=source, target="ru").translate(text)
     return sanitize_translation(translated)
+
+
+def _mymemory_translate(text: str) -> str | None:
+    from deep_translator import MyMemoryTranslator
+
+    # MyMemory free tier is picky about length; translate in chunks.
+    chunks: list[str] = []
+    remaining = text
+    while remaining:
+        piece = remaining[:450]
+        cut = piece.rfind(" ")
+        if cut >= 200:
+            piece = piece[:cut]
+        remaining = remaining[len(piece) :].lstrip()
+        translated = MyMemoryTranslator(source="lt-LT", target="ru-RU").translate(piece)
+        cleaned = sanitize_translation(translated)
+        if not cleaned:
+            return None
+        chunks.append(cleaned)
+    return sanitize_translation(" ".join(chunks))
+
+
+def _backends() -> list[tuple[str, Callable[[str], str | None]]]:
+    return [
+        ("google-lt", lambda text: _google_translate(text, source="lt")),
+        ("google-auto", lambda text: _google_translate(text, source="auto")),
+        ("mymemory-lt", _mymemory_translate),
+    ]
 
 
 def translate_to_russian(
@@ -77,29 +122,42 @@ def translate_to_russian(
         return cleaned
 
     global _LAST_CALL_AT
+    payload = cleaned[:4500]
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         elapsed = time.monotonic() - _LAST_CALL_AT
         wait = min_delay_sec * attempt
         if elapsed < wait:
             time.sleep(wait - elapsed)
 
-        try:
-            translated = _call_translator(cleaned[:4500])
-        except Exception as exc:
-            logger.warning("Description translation failed (attempt %s/%s): %s", attempt, _MAX_ATTEMPTS, exc)
-            translated = None
-        finally:
-            _LAST_CALL_AT = time.monotonic()
+        for backend_name, backend in _backends():
+            try:
+                translated = _run_with_timeout(
+                    lambda backend=backend: backend(payload),
+                    _PER_CALL_TIMEOUT_SEC,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Description translation failed via %s (attempt %s/%s): %s",
+                    backend_name,
+                    attempt,
+                    _MAX_ATTEMPTS,
+                    exc,
+                )
+                translated = None
+            finally:
+                _LAST_CALL_AT = time.monotonic()
 
-        if translated and looks_russian(translated):
-            return translated
-        if translated and not looks_russian(translated):
-            logger.warning(
-                "Description translation attempt %s/%s did not look Russian",
-                attempt,
-                _MAX_ATTEMPTS,
-            )
-            translated = None
+            if translated and looks_russian(translated):
+                if backend_name != "google-lt":
+                    logger.info("Description translated via %s", backend_name)
+                return translated
+            if translated and not looks_russian(translated):
+                logger.warning(
+                    "Description translation via %s attempt %s/%s did not look Russian",
+                    backend_name,
+                    attempt,
+                    _MAX_ATTEMPTS,
+                )
 
         if attempt < _MAX_ATTEMPTS:
             time.sleep(wait)

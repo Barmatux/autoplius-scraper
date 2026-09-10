@@ -1,4 +1,4 @@
-from autoplius.translate import is_usable_russian_text, looks_russian
+from autoplius.translate import _backends, is_usable_russian_text, looks_russian
 
 
 def test_looks_russian_detects_cyrillic():
@@ -14,3 +14,9 @@ def test_is_usable_russian_text_rejects_errors_and_lithuanian():
     assert not is_usable_russian_text(
         "Parduodamas labai geros būklės automobilis su pilna istorija"
     )
+
+
+def test_translation_backends_include_fallbacks():
+    names = [name for name, _fn in _backends()]
+    assert names[0] == "google-lt"
+    assert "mymemory-lt" in names
