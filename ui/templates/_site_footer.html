@@ -11,7 +11,6 @@
         {% if company.unp %}<span>УНП {{ company.unp }}</span>{% endif %}
         {% if company.legal_address %}<span>{{ company.legal_address }}</span>{% endif %}
         {% if company.work_hours %}<span>{{ company.work_hours }}</span>{% endif %}
-        {% if company.phone %}<span><a href="tel:{{ company.phone|replace(' ', '') }}">{{ company.phone }}</a></span>{% endif %}
         {% if company.email %}<span><a href="mailto:{{ company.email }}">{{ company.email }}</a></span>{% endif %}
         {% if company.trade_register_date %}
         <span>Регистрация в Торговом реестре РБ: {{ company.trade_register_date }}</span>

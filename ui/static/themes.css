@@ -147,8 +147,9 @@ html[data-theme="docs"] .filters label,
 html[data-theme="docs"] .vehicle-hierarchy-label,
 html[data-theme="docs"] .summary,
 html[data-theme="docs"] .cards-sort,
-html[data-theme="docs"] .check {
-  color: #cbbca3;
+html[data-theme="docs"] .check,
+html[data-theme="docs"] .check span {
+  color: #efe8dc;
 }
 
 html[data-theme="docs"] .make-model-filters {
