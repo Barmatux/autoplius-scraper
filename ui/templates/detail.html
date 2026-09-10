@@ -45,7 +45,7 @@
         <h1 class="detail-title">
           {% if make and make != '—' %}
           <a class="detail-title-link detail-title-make" href="{{ url_for('index', tab='all', page=1, make=make) }}">{{ make }}</a>{% if model %}
-          <a class="detail-title-link detail-title-model" href="{{ url_for('index', tab='all', page=1, make=make, model=model) }}">{{ model }}</a>{% endif %}
+          <a class="detail-title-link detail-title-model" href="{{ url_for('index', tab='all', page=1, make=make, model=model) }}"> {{ model }}</a>{% endif %}
           {% else %}
           {{ item|listing_headline }}
           {% endif %}
