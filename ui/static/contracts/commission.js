@@ -4,7 +4,7 @@
 import {
   createContract,
   updateContract,
-} from "../lib/api.js";
+} from "./lib/api.js";
 
 const ALL_FIELDS = [
   "komitent_fio",
