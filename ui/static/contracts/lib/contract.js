@@ -482,7 +482,8 @@ export function buildContract(d) {
 
   return {
     kind: "contract",
-    kicker: d.executorShort,
+    clientType: d.clientType || "individual",
+    kicker: "EUROHUB | EU2.BY",
     title: `ДОГОВОР № ${dash(d.contractNumber)}`,
     subtitle: [
       "возмездного оказания информационно-консультационных услуг",

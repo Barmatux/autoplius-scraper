@@ -83,7 +83,8 @@ export function buildAct(d) {
 
   return {
     kind: "act",
-    kicker: "Первичный учётный документ · ст. 10 Закона № 57-З",
+    clientType: d.clientType || "individual",
+    kicker: "EUROHUB | EU2.BY",
     title: `АКТ № ${actNo}`,
     subtitle: ["сдачи-приёмки оказанных услуг", `(к договору № ${dash(d.contractNumber)} от ${formatDateShortSafe(d.contractDate)})`],
     meta: { city: `г. ${dash(d.city, "Минск")}`, date: formatDateLong(d.actDate || d.contractDate) },

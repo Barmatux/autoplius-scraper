@@ -335,7 +335,7 @@ button {
   margin: 0 auto 32px;
   background: var(--sheet);
   color: var(--ink);
-  padding: 18mm 16mm 16mm;
+  padding: 12mm 12mm 14mm;
   font-family: var(--serif);
   font-size: 12px;
   line-height: 1.45;
@@ -345,7 +345,7 @@ button {
 .sheet-kicker {
   text-align: center;
   color: var(--pine);
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   font-size: 10px;
   font-family: var(--ui);
@@ -355,8 +355,8 @@ button {
 .sheet-title {
   text-align: center;
   font-family: var(--display);
-  font-size: 28px;
-  margin: 10px 0 6px;
+  font-size: 24px;
+  margin: 6px 0 4px;
   font-weight: 700;
 }
 
@@ -364,19 +364,35 @@ button {
   text-align: center;
   margin: 0;
   font-style: italic;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .sheet-meta {
-  display: flex;
-  justify-content: space-between;
-  margin: 22px 0 18px;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 10px;
   font-size: 13px;
 }
 
+.sheet-meta td {
+  border: 0;
+  padding: 0;
+  vertical-align: top;
+}
+
+.sheet-meta .meta-city {
+  text-align: left;
+  width: 50%;
+}
+
+.sheet-meta .meta-date {
+  text-align: right;
+  width: 50%;
+}
+
 .sheet-h {
-  font-size: 13px;
-  margin: 18px 0 8px;
+  font-size: 12px;
+  margin: 10px 0 4px;
   letter-spacing: 0.04em;
 }
 
@@ -385,8 +401,9 @@ button {
 }
 
 .sheet-p {
-  margin: 0 0 8px;
+  margin: 0 0 5px;
   text-align: justify;
+  line-height: 1.35;
 }
 
 .sheet-p.preamble {
@@ -394,21 +411,23 @@ button {
 }
 
 .sheet-note {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   font-size: 11px;
   color: var(--muted);
   font-style: italic;
 }
 
 .sheet-space {
-  height: 12px;
+  margin: 2px 0;
+  font-size: 6px;
+  line-height: 6px;
 }
 
 .sheet-kv,
 .sheet-table {
   width: 100%;
   border-collapse: collapse;
-  margin: 8px 0 14px;
+  margin: 6px 0 10px;
   font-size: 12px;
 }
 
@@ -417,7 +436,7 @@ button {
 .sheet-table th,
 .sheet-table td {
   border: 1px solid var(--rule);
-  padding: 6px 8px;
+  padding: 4px 6px;
   vertical-align: top;
 }
 
@@ -443,42 +462,54 @@ button {
 }
 
 .sheet-annex {
-  margin-top: 36px;
-  padding-top: 24px;
+  margin-top: 24px;
+  padding-top: 16px;
   border-top: 1px dashed var(--rule);
   break-before: page;
 }
 
 .signs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 28px;
-  margin-top: 28px;
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
   font-size: 12px;
+}
+
+.signs td {
+  border: 0;
+  padding: 0;
+  vertical-align: top;
 }
 
 .sign-title {
   font-weight: 700;
-  margin-bottom: 8px;
+  margin: 0 0 6px;
   letter-spacing: 0.06em;
 }
 
+.sign-line-text {
+  margin: 0 0 2px;
+}
+
 .sign-gap {
-  height: 28px;
+  margin: 8px 0;
+  font-size: 8px;
+  line-height: 8px;
 }
 
 .sign-role {
   color: var(--muted);
   font-style: italic;
   font-size: 11px;
+  margin: 0;
 }
 
 .sign-line {
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .sign-stamp {
-  margin-top: 8px;
+  margin-top: 4px;
   color: var(--muted);
   font-size: 11px;
 }
