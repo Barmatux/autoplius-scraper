@@ -117,12 +117,12 @@
     <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'contracts' %} is-active{% endif %}"
       href="{{ url_for('admin_contracts') }}"
-    >Договоры</a>
+    >Документы</a>
     {% elif is_contract_user %}
     <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'contracts' %} is-active{% endif %}"
       href="{{ url_for('admin_contracts') }}"
-    >Договоры</a>
+    >Документы</a>
     <a class="mobile-nav-link" href="{{ url_for('logout') }}">Выйти</a>
     {% endif %}
   </nav>
