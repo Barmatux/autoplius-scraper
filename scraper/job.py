@@ -547,6 +547,13 @@ def scrape_search_pages(
         invalidate_page_cache()
     except ImportError:
         pass
+    try:
+        from ui.prewarm import schedule_prewarm_home
+
+        # Fill gunicorn page_cache after DB mtime changes (new cache keys).
+        schedule_prewarm_home()
+    except ImportError:
+        pass
     return ScrapeRunResult(payload=payload, snapshot_path=str(snapshot_path), diff=diff)
 
 

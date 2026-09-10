@@ -82,5 +82,13 @@ sleep 1
 sudo systemctl is-active autoplius-ui.service
 curl -s -o /dev/null -w "ui_http=%{http_code}\n" http://127.0.0.1:8080/ || true
 
+if [[ -f "$APP/deploy/prewarm-home.sh" ]]; then
+  echo "=== prewarm home ==="
+  # Background: cold home can take 10–30s; do not block the rest of deploy/CI.
+  nohup bash "$APP/deploy/prewarm-home.sh" \
+    >>/var/log/autoplius-scraper/prewarm-home.log 2>&1 &
+  echo "prewarm pid=$! (log: /var/log/autoplius-scraper/prewarm-home.log)"
+fi
+
 REV="$(sudo -u autoplius git rev-parse --short HEAD)"
 echo "=== deployed $REV ($BRANCH) ==="

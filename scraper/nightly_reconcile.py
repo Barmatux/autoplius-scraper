@@ -196,6 +196,12 @@ def run_nightly_reconcile(
                 invalidate_page_cache()
             except ImportError:
                 pass
+            try:
+                from ui.prewarm import schedule_prewarm_home
+
+                schedule_prewarm_home()
+            except ImportError:
+                pass
         else:
             summary["phases"]["B"] = {"skipped": True}
 

@@ -1500,13 +1500,7 @@ def index():
         volume_to=volume_to_raw,
     )
 
-    no_volume_count = count_listings(
-        path, ListingFilters(engine_volume_missing=True, catalog_filter=False)
-    )
-    electric_count = count_listings(
-        path, ListingFilters(electric_only=True, catalog_filter=False)
-    )
-
+    # Tab badge counts come from inject_tab_counts (context processor).
     total_in_db = int(stats.get("active_listings") or stats.get("listings") or 0)
     archived_count = int(stats.get("archived_listings") or 0)
     total_filtered = count_listings(path, selected_filters)
@@ -1554,8 +1548,6 @@ def index():
         year_to=year_to if year_to is not None else "",
         tab=tab,
         active_tab=tab,
-        no_volume_count=no_volume_count,
-        electric_count=electric_count,
         page=page,
         pages=pages,
         page_size=PAGE_SIZE,
