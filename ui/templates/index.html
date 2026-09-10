@@ -6,7 +6,7 @@
 <title>EuroHUB. Авто из Европы в Беларусь</title>
   {% include "_meta_brand.html" %}
   {% include "_site_icons.html" %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260908i">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260910a">
 </head>
 {% macro view_qs() -%}
 {%- if listings_view == 'cards' -%}&view=cards{%- endif -%}
@@ -431,6 +431,7 @@
     {% endif %}
     {% endif %}
   </main>
+  {% include "_site_footer.html" %}
   {% if is_admin and tab == 'no_volume' %}
   <script src="{{ url_for('static', filename='no_volume_save.js') }}" defer></script>
   {% endif %}

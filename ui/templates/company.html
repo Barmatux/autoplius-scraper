@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Реквизиты · EuroHUB</title>
+  {% set og_title = 'Реквизиты · EuroHUB' %}
+  {% include "_meta_brand.html" %}
+  {% include "_site_icons.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260910a">
+</head>
+<body>
+  <header class="top">
+    {% set active_tab = "company" %}
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_primary_nav.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <article class="legal-page">
+      <h1 class="auth-title">Сведения об исполнителе</h1>
+      <p class="auth-lead">
+        Информация о юридическом лице, оказывающем услуги через сайт eu2.by (EuroHUB).
+        Сервис предоставляет информационные и организационные услуги; продажа автомобилей
+        третьими лицами на исходных площадках не является продажей ООО, если иное прямо
+        не предусмотрено отдельным договором.
+      </p>
+
+      {% if not company.is_configured %}
+      <p class="legal-banner">
+        Страница готова к заполнению. Укажите фактические данные ООО в переменных
+        окружения на сервере (<span class="mono">COMPANY_*</span>) — см. список полей ниже.
+      </p>
+      {% endif %}
+
+      <section class="legal-section">
+        <h2>1. Идентификация</h2>
+        <dl class="legal-dl">
+          <div>
+            <dt>Полное наименование</dt>
+            <dd>{% if company.full_name %}{{ company.full_name }}{% else %}<span class="legal-placeholder">COMPANY_FULL_NAME — например: Общество с ограниченной ответственностью «…»</span>{% endif %}</dd>
+          </div>
+          <div>
+            <dt>Сокращённое наименование</dt>
+            <dd>{% if company.short_name and company.is_configured %}{{ company.short_name }}{% else %}<span class="legal-placeholder">COMPANY_SHORT_NAME — например: ООО «…»</span>{% endif %}</dd>
+          </div>
+          <div>
+            <dt>УНП</dt>
+            <dd>{% if company.unp %}{{ company.unp }}{% else %}<span class="legal-placeholder">COMPANY_UNP — 9 цифр</span>{% endif %}</dd>
+          </div>
+          <div>
+            <dt>Руководитель</dt>
+            <dd>{% if company.director %}{{ company.director }}{% else %}<span class="legal-placeholder">COMPANY_DIRECTOR — ФИО директора / управляющего</span>{% endif %}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="legal-section">
+        <h2>2. Государственная регистрация</h2>
+        <dl class="legal-dl">
+          <div>
+            <dt>Регистрирующий орган</dt>
+            <dd>{% if company.reg_authority %}{{ company.reg_authority }}{% else %}<span class="legal-placeholder">COMPANY_REG_AUTHORITY — например: Минский горисполком</span>{% endif %}</dd>
+          </div>
+          <div>
+            <dt>Дата регистрации</dt>
+            <dd>{% if company.reg_date %}{{ company.reg_date }}{% else %}<span class="legal-placeholder">COMPANY_REG_DATE — ДД.ММ.ГГГГ</span>{% endif %}</dd>
+          </div>
+          <div>
+            <dt>Регистрационный номер</dt>
+            <dd>{% if company.reg_number %}{{ company.reg_number }}{% else %}<span class="legal-placeholder">COMPANY_REG_NUMBER — при наличии в свидетельстве / ЕГР</span>{% endif %}</dd>
+          </div>
+          <div>
+            <dt>Дата регистрации интернет-магазина в Торговом реестре РБ</dt>
+            <dd>
+              {% if company.trade_register_date %}
+              {{ company.trade_register_date }}
+              {% else %}
+              <span class="legal-placeholder">COMPANY_TRADE_REGISTER_DATE — заполните, если сайт зарегистрирован как интернет-магазин; иначе уточните у юриста необходимость</span>
+              {% endif %}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="legal-section">
+        <h2>3. Адреса</h2>
+        <dl class="legal-dl">
+          <div>
+            <dt>Юридический адрес</dt>
+            <dd>{% if company.legal_address %}{{ company.legal_address }}{% else %}<span class="legal-placeholder">COMPANY_LEGAL_ADDRESS</span>{% endif %}</dd>
+          </div>
+          <div>
+            <dt>Почтовый / фактический адрес</dt>
+            <dd>{% if company.postal_address and company.is_configured %}{{ company.postal_address }}{% else %}<span class="legal-placeholder">COMPANY_POSTAL_ADDRESS — если отличается от юридического</span>{% endif %}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="legal-section">
+        <h2>4. Контакты и режим работы</h2>
+        <dl class="legal-dl">
+          <div>
+            <dt>Телефон</dt>
+            <dd>
+              {% if company.phone %}
+              <a href="tel:{{ company.phone|replace(' ', '') }}">{{ company.phone }}</a>
+              {% else %}
+              <span class="legal-placeholder">COMPANY_PHONE — +375 …</span>
+              {% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt>Электронная почта</dt>
+            <dd>
+              {% if company.email %}
+              <a href="mailto:{{ company.email }}">{{ company.email }}</a>
+              {% else %}
+              <span class="legal-placeholder">COMPANY_EMAIL</span>
+              {% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt>Мессенджер поддержки</dt>
+            <dd>
+              {% if company.support_telegram %}
+              <a href="{{ company.support_telegram }}" target="_blank" rel="noopener noreferrer">Telegram</a>
+              {% else %}
+              <span class="legal-placeholder">COMPANY_SUPPORT_TELEGRAM или FEEDBACK_TELEGRAM_URL</span>
+              {% endif %}
+            </dd>
+          </div>
+          <div>
+            <dt>Режим работы</dt>
+            <dd>{% if company.work_hours %}{{ company.work_hours }}{% else %}<span class="legal-placeholder">COMPANY_WORK_HOURS — например: Пн–Пт 10:00–19:00 (время Минска)</span>{% endif %}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="legal-section">
+        <h2>5. Банковские реквизиты</h2>
+        <p class="muted legal-note">Нужны для счетов, возвратов и публичной оферты. Не публикуйте лишние данные карт клиентов.</p>
+        <dl class="legal-dl">
+          <div>
+            <dt>Банк</dt>
+            <dd>{% if company.bank_name %}{{ company.bank_name }}{% else %}<span class="legal-placeholder">COMPANY_BANK_NAME</span>{% endif %}</dd>
+          </div>
+          <div>
+            <dt>БИК / код банка</dt>
+            <dd>{% if company.bank_bic %}{{ company.bank_bic }}{% else %}<span class="legal-placeholder">COMPANY_BANK_BIC</span>{% endif %}</dd>
+          </div>
+          <div>
+            <dt>Расчётный счёт (IBAN)</dt>
+            <dd>{% if company.bank_account %}<span class="mono">{{ company.bank_account }}</span>{% else %}<span class="legal-placeholder">COMPANY_BANK_ACCOUNT</span>{% endif %}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="legal-section">
+        <h2>6. Документы на сайте</h2>
+        <ul class="legal-links">
+          <li><a href="{{ url_for('public_offer') }}">Публичная оферта</a> — условия услуг EuroHUB</li>
+          <li><a href="{{ url_for('privacy_policy') }}">Политика обработки персональных данных</a></li>
+        </ul>
+      </section>
+
+      <section class="legal-section legal-disclaimer">
+        <h2>Важно</h2>
+        <p>
+          Текст страницы и структура полей подготовлены как рабочий каркас для раскрытия сведений
+          об исполнителе. Это не юридическая консультация. Перед публикацией оферты, политик и
+          режима интернет-торговли согласуйте формулировки с юристом / бухгалтером с учётом
+          фактического ОК ОКД, регистрации в Торговом реестре (если применима) и Закона РБ
+          «О защите прав потребителей», законодательства о торговле и персональных данных.
+        </p>
+      </section>
+    </article>
+  </main>
+
+  {% include "_site_footer.html" %}
+  {% include "_feedback_modal.html" %}
+</body>
+</html>

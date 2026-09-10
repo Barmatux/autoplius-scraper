@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Публичная оферта · EuroHUB</title>
+  {% set og_title = 'Публичная оферта · EuroHUB' %}
+  {% include "_meta_brand.html" %}
+  {% include "_site_icons.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260910a">
+</head>
+<body>
+  <header class="top">
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_primary_nav.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <article class="legal-page">
+      <h1 class="auth-title">Публичная оферта</h1>
+      <p class="auth-lead">
+        Черновик структуры договора об оказании услуг. Замените разделы на согласованный
+        юристом текст до приёма оплат.
+      </p>
+
+      <p class="legal-banner">
+        Исполнитель:
+        {% if company.full_name %}{{ company.full_name }}{% else %}ООО «…»{% endif %}{% if company.unp %}, УНП {{ company.unp }}{% endif %}{% if company.legal_address %}, {{ company.legal_address }}{% endif %}.
+        Акцепт — оплата услуги и/или регистрация с подтверждением согласия с офертой.
+        Применимое право — Республика Беларусь. Язык договора — русский.
+      </p>
+
+      <section class="legal-section">
+        <h2>A. Общие положения</h2>
+        <p>Предмет, стороны, порядок акцепта, изменение оферты, приоритет специальных условий заказа.</p>
+      </section>
+      <section class="legal-section">
+        <h2>B. Термины</h2>
+        <p>Сервис, личный кабинет, лоты (объявления третьих лиц), подрядчик, поручение клиента, возмещаемые расходы.</p>
+      </section>
+      <section class="legal-section">
+        <h2>C. Предмет</h2>
+        <p>
+          Информационные и организационные услуги (доступ к каталогу, расчёт ориентира цены в РБ,
+          организация осмотра / доставки по выбранному SKU). Исполнитель не является продавцом
+          автомобиля и не гарантирует комплектность данных исходной площадки, если иное не
+          оговорено отдельно.
+        </p>
+      </section>
+      <section class="legal-section">
+        <h2>D. Тарифы и оплата</h2>
+        <p>Прайс на сайте / в кабинете; способы оплаты; подписка и разовые услуги; возмещаемые расходы.</p>
+      </section>
+      <section class="legal-section">
+        <h2>E–F. Порядок оказания услуг</h2>
+        <p>Осмотр (S2), организация доставки (S3): шаги, сроки, роли подрядчиков.</p>
+      </section>
+      <section class="legal-section">
+        <h2>G. Ограничение ответственности</h2>
+        <p>Лимит ответственности, исключения (дефекты вне методики осмотра, таможня, курсы, действия продавца лота).</p>
+      </section>
+      <section class="legal-section">
+        <h2>H. Возвраты</h2>
+        <p>Правила возврата по каждому SKU.</p>
+      </section>
+      <section class="legal-section">
+        <h2>I. Персональные данные</h2>
+        <p>Ссылка на <a href="{{ url_for('privacy_policy') }}">политику обработки ПДн</a>.</p>
+      </section>
+      <section class="legal-section">
+        <h2>J. Реквизиты и претензии</h2>
+        <p>
+          Канал претензий:
+          {% if company.email %}<a href="mailto:{{ company.email }}">{{ company.email }}</a>{% else %}укажите COMPANY_EMAIL{% endif %}.
+          Досудебный порядок. Реквизиты — на странице
+          <a href="{{ url_for('company_info_page') }}">«Реквизиты»</a>.
+        </p>
+      </section>
+    </article>
+  </main>
+
+  {% include "_site_footer.html" %}
+  {% include "_feedback_modal.html" %}
+</body>
+</html>

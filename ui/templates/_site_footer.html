@@ -1,0 +1,30 @@
+{# Compact seller/executor identification — keep on public pages (BY disclosure practice). #}
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <div class="site-footer-identity">
+      {% if company.full_name %}
+      <p class="site-footer-name">{{ company.full_name }}</p>
+      {% else %}
+      <p class="site-footer-name">EuroHUB · сведения об исполнителе</p>
+      {% endif %}
+      <p class="site-footer-meta">
+        {% if company.unp %}<span>УНП {{ company.unp }}</span>{% endif %}
+        {% if company.legal_address %}<span>{{ company.legal_address }}</span>{% endif %}
+        {% if company.work_hours %}<span>{{ company.work_hours }}</span>{% endif %}
+        {% if company.phone %}<span><a href="tel:{{ company.phone|replace(' ', '') }}">{{ company.phone }}</a></span>{% endif %}
+        {% if company.email %}<span><a href="mailto:{{ company.email }}">{{ company.email }}</a></span>{% endif %}
+        {% if company.trade_register_date %}
+        <span>Регистрация в Торговом реестре РБ: {{ company.trade_register_date }}</span>
+        {% endif %}
+      </p>
+      {% if not company.is_configured %}
+      <p class="site-footer-hint muted">Заполните реквизиты ООО в переменных окружения (см. страницу «Реквизиты»).</p>
+      {% endif %}
+    </div>
+    <nav class="site-footer-nav" aria-label="Правовая информация">
+      <a href="{{ url_for('company_info_page') }}">Реквизиты</a>
+      <a href="{{ url_for('public_offer') }}">Публичная оферта</a>
+      <a href="{{ url_for('privacy_policy') }}">Персональные данные</a>
+    </nav>
+  </div>
+</footer>

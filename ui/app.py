@@ -112,6 +112,7 @@ from autoplius.transmission_labels import (
 )
 from autoplius.import_presets import preset_links
 from autoplius.popular_makes import make_nav_links, top_makes_for_nav
+from autoplius.company_info import company_info as load_company_info
 from autoplius.listing_availability import probe_listing_result
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
@@ -162,6 +163,11 @@ def inject_import_presets() -> dict[str, Any]:
             makes=makes or None,
         ),
     }
+
+
+@app.context_processor
+def inject_company_info() -> dict[str, Any]:
+    return {"company": load_company_info()}
 
 
 DISPLAY_TZ = ZoneInfo("Europe/Minsk")
@@ -1454,6 +1460,22 @@ def vin_check():
 @app.get("/calculator")
 def customs_calculator():
     return render_template("calculator.html")
+
+
+@app.get("/company")
+@app.get("/rekvizity")
+def company_info_page():
+    return render_template("company.html")
+
+
+@app.get("/offer")
+def public_offer():
+    return render_template("offer.html")
+
+
+@app.get("/privacy")
+def privacy_policy():
+    return render_template("privacy.html")
 
 
 @app.get("/analytics")

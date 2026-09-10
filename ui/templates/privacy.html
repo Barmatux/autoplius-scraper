@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Персональные данные · EuroHUB</title>
+  {% set og_title = 'Персональные данные · EuroHUB' %}
+  {% include "_meta_brand.html" %}
+  {% include "_site_icons.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260910a">
+</head>
+<body>
+  <header class="top">
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_primary_nav.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <article class="legal-page">
+      <h1 class="auth-title">Политика обработки персональных данных</h1>
+      <p class="auth-lead">
+        Каркас политики для согласования с Законом РБ «О защите персональных данных».
+        Замените на финальный текст оператора ПДн.
+      </p>
+
+      <section class="legal-section">
+        <h2>1. Оператор</h2>
+        <p>
+          {% if company.full_name %}{{ company.full_name }}{% else %}ООО «…»{% endif %}{% if company.unp %}, УНП {{ company.unp }}{% endif %}{% if company.legal_address %}, {{ company.legal_address }}{% endif %}.
+          Контакт по вопросам ПДн:
+          {% if company.email %}<a href="mailto:{{ company.email }}">{{ company.email }}</a>{% else %}COMPANY_EMAIL{% endif %}.
+        </p>
+      </section>
+      <section class="legal-section">
+        <h2>2. Какие данные обрабатываем</h2>
+        <ul>
+          <li>учётные данные регистрации (логин, хеш пароля);</li>
+          <li>контакты из обратной связи (имя, телефон, сообщение);</li>
+          <li>избранные объявления, параметры фильтров в кабинете;</li>
+          <li>технические данные (IP, cookie, User-Agent) в объёме, нужном для работы сайта;</li>
+          <li>платёжные идентификаторы провайдера (без хранения полных данных карт на сайте), если подключена оплата.</li>
+        </ul>
+      </section>
+      <section class="legal-section">
+        <h2>3. Цели и правовые основания</h2>
+        <p>Исполнение договора / оферты, обратная связь, безопасность сервиса, исполнение требований законодательства. Согласие — где оно требуется отдельно.</p>
+      </section>
+      <section class="legal-section">
+        <h2>4. Сроки, передача третьим лицам, права субъекта</h2>
+        <p>Сроки хранения, перечень получателей (хостинг, мессенджеры поддержки, платёжный провайдер), порядок отзыва и удаления — заполнить по факту инфраструктуры.</p>
+      </section>
+      <section class="legal-section">
+        <h2>5. Cookies</h2>
+        <p>Сессия входа, предпочтения интерфейса, технические cookie. При подключении аналитики — обновить этот раздел.</p>
+      </section>
+    </article>
+  </main>
+
+  {% include "_site_footer.html" %}
+  {% include "_feedback_modal.html" %}
+</body>
+</html>
