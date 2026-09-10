@@ -1,0 +1,44 @@
+{% if is_admin %}
+<div class="theme-picker-backdrop" data-theme-backdrop hidden>
+  <div class="theme-picker" role="dialog" aria-modal="true" aria-labelledby="theme-picker-title">
+    <div class="theme-picker-head">
+      <div>
+        <h2 id="theme-picker-title">Сменить дизайн</h2>
+        <p>Только у вас в этом браузере. Остальные посетители видят оригинал, пока не выберем тему для всех.</p>
+      </div>
+      <button type="button" class="theme-picker-close" data-theme-close aria-label="Закрыть">×</button>
+    </div>
+    <div class="theme-picker-grid">
+      <button type="button" class="theme-option" data-theme-id="original">
+        <span class="theme-option-swatch" aria-hidden="true"><span></span><span></span></span>
+        <span>
+          <strong>Оригинал</strong>
+          <small>Текущий светлый сайт с зелёным акцентом.</small>
+        </span>
+      </button>
+      <button type="button" class="theme-option" data-theme-id="docs">
+        <span class="theme-option-swatch" aria-hidden="true"><span></span><span></span></span>
+        <span>
+          <strong>Документы</strong>
+          <small>Тёмная pine-шапка и кремовая бумага, как в разделе документов.</small>
+        </span>
+      </button>
+      <button type="button" class="theme-option" data-theme-id="parchment">
+        <span class="theme-option-swatch" aria-hidden="true"><span></span><span></span></span>
+        <span>
+          <strong>Пергамент</strong>
+          <small>Светлая бумага, serif-бренд, золотая линия у активных вкладок.</small>
+        </span>
+      </button>
+      <button type="button" class="theme-option" data-theme-id="forest">
+        <span class="theme-option-swatch" aria-hidden="true"><span></span><span></span></span>
+        <span>
+          <strong>Хвойный</strong>
+          <small>Насыщенный лесной акцент и плотные зелёные кнопки.</small>
+        </span>
+      </button>
+    </div>
+    <p class="theme-picker-note">Выбор сохраняется в localStorage этого браузера.</p>
+  </div>
+</div>
+{% endif %}

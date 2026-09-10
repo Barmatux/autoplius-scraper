@@ -1,0 +1,393 @@
+/* Site theme variants. Applied via html[data-theme="…"] (admin preview). */
+
+html[data-theme="docs"],
+html[data-theme="parchment"],
+html[data-theme="forest"] {
+  --font: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Cormorant Garamond", Georgia, serif;
+}
+
+html[data-theme="docs"] .brand-name,
+html[data-theme="parchment"] .brand-name,
+html[data-theme="forest"] .brand-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* 1) Документы — тёмный pine header как rail, кремовый контент */
+html[data-theme="docs"] {
+  --bg: #f3eee4;
+  --bg-glow: #e4ebe7;
+  --bg-top: #f3eee4;
+  --bg-bottom: #e8e0d2;
+  --ink: #1c1916;
+  --muted: #6b645b;
+  --line: #d3c6b0;
+  --card: #fffcf7;
+  --accent: #1a3c34;
+  --accent-soft: #e2ebe7;
+  --accent-border: #c4b49a;
+  --gold: #c4b49a;
+  --top-bg: #0e241f;
+  --top-ink: #efe8dc;
+  --shadow: 0 12px 28px rgba(14, 36, 31, 0.12);
+}
+
+html[data-theme="docs"] .top {
+  backdrop-filter: none;
+  border-bottom: 0;
+}
+
+html[data-theme="docs"] .brand-sub,
+html[data-theme="docs"] .brand-tagline-domain,
+html[data-theme="docs"] .brand-tagline-copy {
+  color: #cbbca3;
+}
+
+html[data-theme="docs"] .brand-tagline-divider {
+  background: rgba(196, 180, 154, 0.45);
+}
+
+html[data-theme="docs"] .brand-link:hover {
+  color: #fff;
+}
+
+html[data-theme="docs"] .nav-btn {
+  color: #d8cebf;
+}
+
+html[data-theme="docs"] .nav-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="docs"] .nav-btn.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 -2px 0 #c4b49a;
+}
+
+html[data-theme="docs"] .mobile-nav-toggle {
+  color: #efe8dc;
+  border-color: rgba(196, 180, 154, 0.55);
+}
+
+html[data-theme="docs"] .pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(196, 180, 154, 0.45);
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .pill.accent {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #c4b49a;
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .admin-mode-link {
+  color: #c4b49a;
+}
+
+html[data-theme="docs"] .admin-enter-link {
+  border-color: #c4b49a;
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .admin-enter-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+html[data-theme="docs"] .panel,
+html[data-theme="docs"] .listing-card,
+html[data-theme="docs"] table.catalog,
+html[data-theme="docs"] .auth-panel {
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+}
+
+/* 2) Пергамент — светлый бумажный фон, pine + золото */
+html[data-theme="parchment"] {
+  --bg: #f6f1e6;
+  --bg-glow: #efe6d4;
+  --bg-top: #faf6ee;
+  --bg-bottom: #ebe3d3;
+  --ink: #1c1916;
+  --muted: #6b645b;
+  --line: #d3c6b0;
+  --card: #fffcf7;
+  --accent: #1a3c34;
+  --accent-soft: #e8efe9;
+  --accent-border: #c4b49a;
+  --gold: #9a7b4f;
+  --top-bg: rgba(255, 252, 247, 0.92);
+  --top-ink: #1c1916;
+  --shadow: 0 10px 28px rgba(40, 30, 10, 0.07);
+}
+
+html[data-theme="parchment"] .top {
+  border-bottom: 1px solid var(--line);
+  box-shadow: inset 0 -1px 0 rgba(154, 123, 79, 0.18);
+}
+
+html[data-theme="parchment"] .brand-name {
+  color: var(--accent);
+}
+
+html[data-theme="parchment"] .nav-btn.active {
+  background: transparent;
+  color: var(--accent);
+  box-shadow: inset 0 -2px 0 var(--gold);
+  border-radius: 0;
+}
+
+html[data-theme="parchment"] .nav-btn:hover {
+  background: rgba(26, 60, 52, 0.06);
+  color: var(--accent);
+}
+
+html[data-theme="parchment"] .pill.accent {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+html[data-theme="parchment"] .admin-enter-link {
+  border-radius: 4px;
+  border-color: var(--accent);
+}
+
+html[data-theme="parchment"] .panel,
+html[data-theme="parchment"] .listing-card {
+  border-radius: 6px;
+  border-color: var(--line);
+}
+
+/* 3) Хвойный — насыщенный лесной акцент, мягкий зелёный свет */
+html[data-theme="forest"] {
+  --bg: #eef3ef;
+  --bg-glow: #d5e6dc;
+  --bg-top: #f2f6f3;
+  --bg-bottom: #e2ebe5;
+  --ink: #14241f;
+  --muted: #5a6b63;
+  --line: #c5d4cb;
+  --card: #fbfefc;
+  --accent: #0e241f;
+  --accent-soft: #d7e8df;
+  --accent-border: #9fbfb0;
+  --gold: #9a7b4f;
+  --top-bg: rgba(251, 254, 252, 0.88);
+  --top-ink: #14241f;
+  --shadow: 0 12px 30px rgba(14, 36, 31, 0.1);
+}
+
+html[data-theme="forest"] .top {
+  border-bottom: 2px solid var(--accent);
+}
+
+html[data-theme="forest"] .brand-name {
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+html[data-theme="forest"] .nav-btn.active {
+  background: var(--accent);
+  color: #efe8dc;
+}
+
+html[data-theme="forest"] .nav-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+html[data-theme="forest"] .pill.accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #efe8dc;
+}
+
+html[data-theme="forest"] .admin-mode-link {
+  color: #c4b49a;
+}
+
+html[data-theme="forest"] .admin-enter-link {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  border-radius: 8px;
+}
+
+html[data-theme="forest"] .admin-enter-link:hover {
+  background: var(--accent);
+  color: #efe8dc;
+}
+
+/* Shared accent-border helpers used by pills/links in style.css */
+html[data-theme="docs"] .pill.accent,
+html[data-theme="parchment"] .pill.accent,
+html[data-theme="forest"] .pill.accent {
+  border-color: var(--accent-border);
+}
+
+/* Theme picker UI */
+.theme-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  background: rgba(14, 36, 31, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.theme-picker-backdrop[hidden] {
+  display: none !important;
+}
+
+.theme-picker {
+  width: min(720px, 100%);
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 1.15rem 1.25rem 1.25rem;
+}
+
+.theme-picker-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.theme-picker-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-family: var(--font-display);
+}
+
+.theme-picker-head p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.theme-picker-close {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+}
+
+.theme-picker-close:hover {
+  color: var(--ink);
+}
+
+.theme-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .theme-picker-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.theme-option {
+  appearance: none;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.85rem;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  display: grid;
+  gap: 0.55rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.theme-option:hover {
+  border-color: var(--accent);
+}
+
+.theme-option.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.theme-option-swatch {
+  height: 52px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  display: grid;
+  grid-template-columns: 34% 1fr;
+  overflow: hidden;
+}
+
+.theme-option-swatch span:last-child {
+  background:
+    linear-gradient(180deg, var(--swatch-top, #f7f3ea), var(--swatch-bg, #f3efe6));
+}
+
+.theme-option strong {
+  display: block;
+  font-size: 0.98rem;
+}
+
+.theme-option small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.theme-option[data-theme-id="original"] .theme-option-swatch span:first-child {
+  background: #fffdf8;
+}
+.theme-option[data-theme-id="original"] {
+  --swatch-top: #f7f3ea;
+  --swatch-bg: #f3efe6;
+}
+
+.theme-option[data-theme-id="docs"] .theme-option-swatch span:first-child {
+  background: #0e241f;
+}
+.theme-option[data-theme-id="docs"] {
+  --swatch-top: #f3eee4;
+  --swatch-bg: #e8e0d2;
+}
+
+.theme-option[data-theme-id="parchment"] .theme-option-swatch span:first-child {
+  background: #fffcf7;
+  box-shadow: inset 0 -2px 0 #9a7b4f;
+}
+.theme-option[data-theme-id="parchment"] {
+  --swatch-top: #faf6ee;
+  --swatch-bg: #f6f1e6;
+}
+
+.theme-option[data-theme-id="forest"] .theme-option-swatch span:first-child {
+  background: #0e241f;
+}
+.theme-option[data-theme-id="forest"] {
+  --swatch-top: #f2f6f3;
+  --swatch-bg: #eef3ef;
+}
+
+.theme-picker-note {
+  margin: 0.9rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}

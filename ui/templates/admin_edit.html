@@ -6,8 +6,8 @@
 <title>Редактирование #{{ item.autoplius_id }} · EuroHUB</title>
   {% include "_meta_brand.html" %}
   {% include "_site_icons.html" %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260910d">
-  <script defer src="{{ url_for('static', filename='admin.js') }}"></script>
+  {% include "_site_styles.html" %}
+<script defer src="{{ url_for('static', filename='admin.js') }}"></script>
 </head>
 <body>
   <header class="top">

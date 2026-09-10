@@ -114,6 +114,7 @@
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'feedback' %} is-active{% endif %}"
       href="{{ url_for('admin_feedback') }}"
     >Сообщения{% if feedback_unread_count %} <span class="tab-count">{{ feedback_unread_count }}</span>{% endif %}</a>
+    <button type="button" class="mobile-nav-link" data-theme-open>Сменить дизайн</button>
     <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'contracts' %} is-active{% endif %}"
       href="{{ url_for('admin_contracts') }}"
@@ -127,4 +128,5 @@
     {% endif %}
   </nav>
 </div>
+{% include "_theme_picker.html" %}
 <script src="{{ url_for('static', filename='mobile_nav.js') }}" defer></script>
