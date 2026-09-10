@@ -42,9 +42,13 @@
   {% endif %}
 
   <h3 class="listing-card-title">
-    <a href="{{ detail_href }}" data-save-return>
-      <span class="listing-make">{{ make }}</span>{% if model %} <span class="listing-model">{{ model }}</span>{% endif %}{% if item.year %} · {{ item.year }}{% endif %}{% if item.body_type %} · {{ item.body_type }}{% endif %}{% if has_vol or item.fuel %} · {% if has_vol %}{{ vol }}{% endif %}{% if has_vol and item.fuel %} {% endif %}{% if item.fuel %}{{ item.fuel }}{% endif %}{% endif %}{% if kpp %} · {{ kpp }}{% endif %}
-    </a>
+    {% if make and make != '—' %}
+    <a class="listing-make-link" href="{{ url_for('index', tab='all', page=1, make=make) }}">{{ make }}</a>{% if model %}
+    <a class="listing-model-link" href="{{ url_for('index', tab='all', page=1, make=make, model=model) }}"> {{ model }}</a>{% endif %}{% if item.year or item.body_type or has_vol or item.fuel or kpp %}
+    <a class="listing-card-title-rest" href="{{ detail_href }}" data-save-return>{% if item.year %} · {{ item.year }}{% endif %}{% if item.body_type %} · {{ item.body_type }}{% endif %}{% if has_vol or item.fuel %} · {% if has_vol %}{{ vol }}{% endif %}{% if has_vol and item.fuel %} {% endif %}{% if item.fuel %}{{ item.fuel }}{% endif %}{% endif %}{% if kpp %} · {{ kpp }}{% endif %}</a>{% endif %}
+    {% else %}
+    <a href="{{ detail_href }}" data-save-return>{{ item|listing_headline }}</a>
+    {% endif %}
   </h3>
 
 {% if mileage_km is not none %}  <p class="listing-card-meta"><strong>Пробег:</strong> {{ "{:,}".format(mileage_km|int).replace(",", " ") }} км</p>

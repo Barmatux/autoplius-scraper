@@ -40,10 +40,12 @@
             {% endfor %}
           </div>
         </div>
+        {% if is_admin %}
         <a
           class="mobile-nav-sublink{% if active_tab is defined and active_tab == 'electric' %} is-active{% endif %}"
           href="{{ url_for('index', tab='electric', sort=nav_sort) }}"
         >Электромобили из Литвы{% if electric_count is defined and electric_count is not none %} <span class="tab-count">{{ electric_count }}</span>{% endif %}</a>
+        {% endif %}
       </div>
     </div>
 

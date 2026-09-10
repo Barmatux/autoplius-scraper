@@ -41,7 +41,15 @@
     <div class="detail-heading">
       <div class="detail-heading-text">
         <a class="detail-back-link" href="{{ back_url }}" data-back-to-list>← к списку</a>
-        <h1 class="detail-title">{{ item|listing_headline }}</h1>
+        {% set make, model = item|listing_make_model %}
+        <h1 class="detail-title">
+          {% if make and make != '—' %}
+          <a class="detail-title-link detail-title-make" href="{{ url_for('index', tab='all', page=1, make=make) }}">{{ make }}</a>{% if model %}
+          <a class="detail-title-link detail-title-model" href="{{ url_for('index', tab='all', page=1, make=make, model=model) }}">{{ model }}</a>{% endif %}
+          {% else %}
+          {{ item|listing_headline }}
+          {% endif %}
+        </h1>
       </div>
       <div class="detail-heading-actions">
         {% set favorite_button_label = "В избранное" %}

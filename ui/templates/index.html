@@ -343,10 +343,14 @@
                 {% include "_listing_favorite_button.html" %}
                 <div class="listing-auto-main">
               {% set make, model = item|listing_make_model %}
-              <a class="listing-name" href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}" data-save-return>
-                <span class="listing-make">{{ make }}</span>
-                {% if model %}<span class="listing-model">{{ model }}</span>{% endif %}
-              </a>
+              <div class="listing-name">
+                {% if make and make != '—' %}
+                <a class="listing-make-link" href="{{ url_for('index', tab='all', page=1, make=make) }}">{{ make }}</a>
+                {% if model %}<a class="listing-model-link" href="{{ url_for('index', tab='all', page=1, make=make, model=model) }}">{{ model }}</a>{% endif %}
+                {% else %}
+                <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}" data-save-return>{{ item|listing_headline }}</a>
+                {% endif %}
+              </div>
               {% if item.body_type %}
               {% for line in item.body_type|body_type_lines %}
               <div class="muted body-type-line">{{ line }}</div>

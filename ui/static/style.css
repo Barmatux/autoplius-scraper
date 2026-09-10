@@ -2180,6 +2180,12 @@ a:hover {
   line-height: 1.25;
 }
 
+.listing-name .listing-make-link,
+.listing-name .listing-model-link {
+  display: block;
+  white-space: nowrap;
+}
+
 .listing-make {
   display: block;
   white-space: nowrap;
