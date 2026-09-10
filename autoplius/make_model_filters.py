@@ -19,6 +19,11 @@ BLOCKED_MAKE_MODELS = frozenset(
         ("Peugeot", "206+"),
         ("Toyota", "Mirai"),
         ("Toyota", "Prius"),
+        ("Lexus", "CT 200h"),
+        ("Chevrolet", "Volt"),
+        ("Opel", "Ampera"),
+        ("Honda", "Insight"),
+        ("MG", "EHS"),
     }
 )
 

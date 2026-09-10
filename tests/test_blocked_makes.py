@@ -19,6 +19,11 @@ def test_blocked_makes_include_aixam_ligier_microcar_skoda_chatenet_byd_and_daih
     assert ("Peugeot", "206+") in BLOCKED_MAKE_MODELS
     assert ("Toyota", "Mirai") in BLOCKED_MAKE_MODELS
     assert ("Toyota", "Prius") in BLOCKED_MAKE_MODELS
+    assert ("Lexus", "CT 200h") in BLOCKED_MAKE_MODELS
+    assert ("Chevrolet", "Volt") in BLOCKED_MAKE_MODELS
+    assert ("Opel", "Ampera") in BLOCKED_MAKE_MODELS
+    assert ("Honda", "Insight") in BLOCKED_MAKE_MODELS
+    assert ("MG", "EHS") in BLOCKED_MAKE_MODELS
     assert is_blocked_make("Aixam")
     assert is_blocked_make("aixam")
     assert is_blocked_make("Ligier")
@@ -51,6 +56,26 @@ def test_blocked_makes_include_aixam_ligier_microcar_skoda_chatenet_byd_and_daih
     assert is_blocked_make_model("toyota", "Prius Plug-in")
     assert not is_blocked_make_model("Toyota", "Corolla")
     assert not is_blocked_make_model("Toyota", "Priusma")
+    assert is_blocked_make_model("Lexus", "CT 200h")
+    assert is_blocked_make_model("lexus", "CT 200h")
+    assert is_blocked_make_model("Chevrolet", "Volt")
+    assert is_blocked_make_model("Opel", "Ampera")
+    assert is_blocked_make_model("Honda", "Insight")
+    assert is_blocked_make_model("MG", "EHS")
+    assert not is_blocked_make_model("Lexus", "NX")
+    assert not is_blocked_make_model("Honda", "Civic")
+    assert not is_blocked_make_model("Chevrolet", "Captiva")
+    assert not is_blocked_make_model("Opel", "Astra")
+    assert not is_blocked_make_model("MG", "ZS")
+    assert is_blocked_listing(
+        {"title": "Lexus CT 200h, 2018", "url": "https://en.autoplius.lt/ads/lexus/ct-200h/1.html"}
+    )
+    assert is_blocked_listing(
+        {"title": "Chevrolet Volt, 2015", "url": "https://en.autoplius.lt/ads/chevrolet/volt/1.html"}
+    )
+    assert not is_blocked_listing(
+        {"title": "Toyota Corolla, 2019", "url": "https://en.autoplius.lt/ads/toyota/corolla/1.html"}
+    )
 
 
 def test_blocked_listings_hidden_from_catalog(tmp_path):
