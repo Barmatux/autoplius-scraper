@@ -1,18 +1,19 @@
 (function () {
   var STORAGE_KEY = "eu2-site-theme";
+  var DEFAULT_THEME = "docs";
   var THEMES = ["original", "docs", "parchment", "forest"];
 
   function currentTheme() {
     try {
-      var value = localStorage.getItem(STORAGE_KEY) || "original";
-      return THEMES.indexOf(value) >= 0 ? value : "original";
+      var value = localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME;
+      return THEMES.indexOf(value) >= 0 ? value : DEFAULT_THEME;
     } catch (err) {
-      return "original";
+      return DEFAULT_THEME;
     }
   }
 
   function applyTheme(themeId) {
-    var id = THEMES.indexOf(themeId) >= 0 ? themeId : "original";
+    var id = THEMES.indexOf(themeId) >= 0 ? themeId : DEFAULT_THEME;
     if (id === "original") {
       document.documentElement.removeAttribute("data-theme");
     } else {

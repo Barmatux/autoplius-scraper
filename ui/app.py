@@ -125,7 +125,7 @@ from collections import Counter
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
-PAGE_SIZE = 50
+PAGE_SIZE = 52
 RUNS_PAGE_SIZE = 30
 LISTINGS_VIEW_TABLE = "table"
 LISTINGS_VIEW_CARDS = "cards"
