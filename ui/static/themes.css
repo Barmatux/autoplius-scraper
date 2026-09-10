@@ -143,26 +143,76 @@ html[data-theme="docs"] .filters-panel-badge {
   color: #efe8dc;
 }
 
-html[data-theme="docs"] .filters label,
+html[data-theme="docs"] .filters > label,
+html[data-theme="docs"] .filters .catalog-filter-field,
 html[data-theme="docs"] .vehicle-hierarchy-label,
+html[data-theme="docs"] .volume-range-label,
+html[data-theme="docs"] .year-range-label,
 html[data-theme="docs"] .summary,
+html[data-theme="docs"] .summary p,
+html[data-theme="docs"] .summary strong,
 html[data-theme="docs"] .cards-sort,
 html[data-theme="docs"] .check,
-html[data-theme="docs"] .check span {
+html[data-theme="docs"] .check span,
+html[data-theme="docs"] .pager,
+html[data-theme="docs"] .empty {
   color: #efe8dc;
 }
 
-html[data-theme="docs"] .make-model-filters {
+html[data-theme="docs"] .make-model-filters,
+html[data-theme="docs"] .spec-filters-row {
   border-bottom-color: rgba(196, 180, 154, 0.28);
 }
 
 html[data-theme="docs"] .filters input,
 html[data-theme="docs"] .filters select,
 html[data-theme="docs"] .vehicle-hierarchy-field select,
-html[data-theme="docs"] .cards-sort-select {
+html[data-theme="docs"] .year-range-inputs select,
+html[data-theme="docs"] .volume-range-inputs select,
+html[data-theme="docs"] .cards-sort-select,
+html[data-theme="docs"] .catalog-multi-select-trigger {
   background: #fffcf7;
   color: #1c1916;
   border-color: #c4b49a;
+}
+
+html[data-theme="docs"] .catalog-multi-select-trigger::after {
+  border-top-color: #6b645b;
+}
+
+html[data-theme="docs"] .catalog-filter-field.is-active .catalog-multi-select-trigger,
+html[data-theme="docs"] .year-range-filters.is-active .year-range-inputs select,
+html[data-theme="docs"] .volume-range-filters.is-active .volume-range-inputs select {
+  background: #1a3c34;
+  color: #efe8dc;
+  border-color: #c4b49a;
+}
+
+html[data-theme="docs"] .catalog-filter-field.is-active .catalog-multi-select-trigger::after {
+  border-top-color: #c4b49a;
+}
+
+html[data-theme="docs"] .catalog-multi-select-menu {
+  background: #fffcf7;
+  border-color: #d3c6b0;
+  color: #1c1916;
+  box-shadow: 0 12px 28px rgba(14, 36, 31, 0.28);
+}
+
+html[data-theme="docs"] .filters label.catalog-multi-select-row,
+html[data-theme="docs"] .filters label.catalog-multi-select-row-main,
+html[data-theme="docs"] .catalog-multi-select-row,
+html[data-theme="docs"] .catalog-multi-select-label {
+  color: #1c1916;
+}
+
+html[data-theme="docs"] .catalog-multi-select-row:hover {
+  background: rgba(26, 60, 52, 0.08);
+}
+
+html[data-theme="docs"] .catalog-multi-select-row.is-selected {
+  background: rgba(26, 60, 52, 0.14);
+  color: #1c1916;
 }
 
 html[data-theme="docs"] .vehicle-hierarchy-field select:disabled {
@@ -178,6 +228,43 @@ html[data-theme="docs"] .filters button {
 
 html[data-theme="docs"] .filters button:hover {
   filter: brightness(1.08);
+}
+
+html[data-theme="docs"] .pager a {
+  color: #c4b49a;
+}
+
+html[data-theme="docs"] .pager a:hover {
+  color: #fff;
+}
+
+html[data-theme="docs"] .auth-page .auth-title,
+html[data-theme="docs"] .auth-page .auth-lead,
+html[data-theme="docs"] main > h1,
+html[data-theme="docs"] main > .lead,
+html[data-theme="docs"] .cabinet-title,
+html[data-theme="docs"] .cabinet-lead {
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .auth-page .auth-lead,
+html[data-theme="docs"] .cabinet-lead {
+  color: #cbbca3;
+}
+
+html[data-theme="docs"] .cookie-consent {
+  background: #0e241f;
+  border-color: rgba(196, 180, 154, 0.45);
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .cookie-consent-text,
+html[data-theme="docs"] .cookie-consent-link {
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .cookie-consent-link:hover {
+  color: #fff;
 }
 
 html[data-theme="docs"] .tab {
