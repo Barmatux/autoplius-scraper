@@ -21,10 +21,9 @@
 
   const syncFields = () => {
     const kind = form.querySelector('input[name="vehicle_kind"]:checked')?.value || "ice";
-    const person = form.querySelector('input[name="person"]:checked')?.value || "individual";
     const age = form.querySelector('select[name="age_band"]')?.value || "3_5";
     const needsVolume = kind === "ice";
-    const canPrivilege = kind === "ice" && person === "individual";
+    const canPrivilege = kind === "ice";
     // Стоимость нужна только для авто младше 3 лет (ставки от таможенной стоимости).
     const needsPrice = age === "under_3";
     if (volumeWrap) volumeWrap.hidden = !needsVolume;
@@ -127,7 +126,6 @@
       price_eur: needsPrice && rawPrice !== "" ? Number(rawPrice) : 0,
       age_band: age,
       vehicle_kind: kind,
-      person: String(fd.get("person") || "individual"),
       engine_cm3: fd.get("engine_cm3") ? Number(fd.get("engine_cm3")) : null,
       privilege_50: fd.get("privilege_50") === "on",
     };

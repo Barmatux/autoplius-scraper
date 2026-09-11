@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page_title }} · EuroHUB</title>
   {% set og_title = page_title ~ ' · EuroHUB' %}
-  {% set og_description = 'Онлайн-расчёт растаможки авто в Беларуси: ставки ЕАЭС, утильсбор, льготы Указа №140. Актуальные тарифы ' ~ year ~ ' года.' %}
+  {% set og_description = 'Таможенный калькулятор для физлиц: ставки ЕАЭС, утильсбор, льготы Указа №140. Актуальные тарифы ' ~ year ~ ' года.' %}
   {% include "_meta_brand.html" %}
   {% include "_site_icons.html" %}
   {% include "_site_styles.html" %}
@@ -54,12 +54,6 @@
             <label class="calc-radio"><input type="radio" name="vehicle_kind" value="ice" checked> Топливо / гибрид PHEV</label>
             <label class="calc-radio"><input type="radio" name="vehicle_kind" value="electric"> Электромобиль</label>
             <label class="calc-radio"><input type="radio" name="vehicle_kind" value="erev"> Гибрид EREV</label>
-          </fieldset>
-
-          <fieldset class="calc-fieldset">
-            <legend>Декларант</legend>
-            <label class="calc-radio"><input type="radio" name="person" value="individual" checked> Физ. лицо</label>
-            <label class="calc-radio"><input type="radio" name="person" value="legal"> Юр. лицо</label>
           </fieldset>
 
           <label class="calc-field" id="calc-volume-wrap">
@@ -198,6 +192,6 @@
   {% include "_site_footer.html" %}
   {% include "_feedback_modal.html" %}
   {% include "_yandex_metrika.html" %}
-  <script src="{{ url_for('static', filename='customs_calculator.js') }}?v=20260911c" defer></script>
+  <script src="{{ url_for('static', filename='customs_calculator.js') }}?v=20260911d" defer></script>
 </body>
 </html>

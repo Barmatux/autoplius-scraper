@@ -130,4 +130,4 @@ def test_estimate_ice_older_without_price(monkeypatch):
 
 def test_page_title_includes_date():
     title = calculator_page_title(date(2026, 9, 11))
-    assert title == "Таможенный калькулятор на 11 сентября 2026 года"
+    assert title == "Таможенный калькулятор для физлиц на 11 сентября 2026 года"

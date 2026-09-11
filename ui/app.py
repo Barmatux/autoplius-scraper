@@ -1629,13 +1629,11 @@ def api_customs_calculator():
         price_eur=data.get("price_eur"),
         age_band=data.get("age_band") or "3_5",
         vehicle_kind=data.get("vehicle_kind") or "ice",
-        person=data.get("person") or "individual",
+        person="individual",
         engine_cm3=data.get("engine_cm3"),
         privilege_50=bool(data.get("privilege_50", True)),
     )
     status = 200 if result.ok else 400
-    if result.person == "legal" and not result.ok:
-        status = 200
     return jsonify(result.as_dict()), status
 
 

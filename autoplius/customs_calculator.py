@@ -66,14 +66,14 @@ class PersonType(str, Enum):
 
 
 def calculator_title_date(today: date | None = None) -> str:
-    """E.g. «11 сентября» for the H1 «Таможенный калькулятор на … 2026 года»."""
+    """E.g. «11 сентября» for the H1 with the current calendar day."""
     d = today or date.today()
     return f"{d.day} {_RU_MONTHS[d.month - 1]}"
 
 
 def calculator_page_title(today: date | None = None) -> str:
     d = today or date.today()
-    return f"Таможенный калькулятор на {calculator_title_date(d)} {d.year} года"
+    return f"Таможенный калькулятор для физлиц на {calculator_title_date(d)} {d.year} года"
 
 
 def parse_age_band(value: str | CustomsAgeBand) -> CustomsAgeBand:
