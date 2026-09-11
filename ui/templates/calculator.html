@@ -34,55 +34,41 @@
       </p>
 
       <section class="calc-grid" id="scroll_calc_rezult" aria-label="Калькулятор растаможки">
-        <form class="calc-form" id="customs-calc-form" novalidate>
-          <label class="calc-field">
-            <span>Возраст авто</span>
-            <select name="age_band" required>
-              <option value="under_3">менее 3 лет</option>
-              <option value="3_5" selected>от 3 до 5 лет</option>
-              <option value="over_5">более 5 лет</option>
-            </select>
-          </label>
+        <div class="calc-left">
+          <form class="calc-form" id="customs-calc-form" novalidate>
+            <label class="calc-field">
+              <span>Возраст авто</span>
+              <select name="age_band" required>
+                <option value="under_3">менее 3 лет</option>
+                <option value="3_5" selected>от 3 до 5 лет</option>
+                <option value="over_5">более 5 лет</option>
+              </select>
+            </label>
 
-          <label class="calc-field" id="calc-price-wrap" hidden>
-            <span>Стоимость авто, €</span>
-            <input type="number" name="price_eur" min="1" step="1" placeholder="например 10000">
-          </label>
+            <label class="calc-field" id="calc-price-wrap" hidden>
+              <span>Стоимость авто, €</span>
+              <input type="number" name="price_eur" min="1" step="1" placeholder="например 10000">
+            </label>
 
-          <fieldset class="calc-fieldset">
-            <legend>Тип автомобиля</legend>
-            <label class="calc-radio"><input type="radio" name="vehicle_kind" value="ice" checked> Топливо / гибрид PHEV</label>
-            <label class="calc-radio"><input type="radio" name="vehicle_kind" value="electric"> Электромобиль</label>
-            <label class="calc-radio"><input type="radio" name="vehicle_kind" value="erev"> Гибрид EREV</label>
-          </fieldset>
+            <fieldset class="calc-fieldset">
+              <legend>Тип автомобиля</legend>
+              <label class="calc-radio"><input type="radio" name="vehicle_kind" value="ice" checked> Топливо / гибрид PHEV</label>
+              <label class="calc-radio"><input type="radio" name="vehicle_kind" value="electric"> Электромобиль</label>
+              <label class="calc-radio"><input type="radio" name="vehicle_kind" value="erev"> Гибрид EREV</label>
+            </fieldset>
 
-          <label class="calc-field" id="calc-volume-wrap">
-            <span>Объём двигателя, см³</span>
-            <input type="number" name="engine_cm3" min="1" step="1" placeholder="например 1496">
-          </label>
+            <label class="calc-field" id="calc-volume-wrap">
+              <span>Объём двигателя, см³</span>
+              <input type="number" name="engine_cm3" min="1" step="1" placeholder="например 1496">
+            </label>
 
-          <label class="calc-check" id="calc-privilege-wrap">
-            <input type="checkbox" name="privilege_50" checked>
-            <span>Таможенная льгота 50% (Указ №140)</span>
-          </label>
+            <label class="calc-check" id="calc-privilege-wrap">
+              <input type="checkbox" name="privilege_50" checked>
+              <span>Таможенная льгота 50% (Указ №140)</span>
+            </label>
 
-          <button type="submit" class="calc-submit">Рассчитать</button>
-        </form>
-
-        <div class="calc-result-col">
-          <p class="calc-error" id="customs-calc-error" hidden></p>
-          <div class="calc-result" id="customs-calc-result" hidden></div>
-          <aside class="calc-aside" id="calc-aside-placeholder">
-            <h2>Что учитывает калькулятор</h2>
-            <ul>
-              <li>Ставки совокупного таможенного платежа ЕАЭС для физлиц</li>
-              <li>Льготу 50% по Указу Президента РБ №140 (при выборе опции)</li>
-              <li>Утилизационный сбор (624,92 / 1&nbsp;282,02 Br в зависимости от возраста)</li>
-              <li>Таможенный сбор, услуги декларанта и оформление ЭПТС</li>
-              <li>Для электромобилей — пошлину 15% после исчерпания квоты 2026 года</li>
-            </ul>
-          </aside>
-        </div>
+            <button type="submit" class="calc-submit">Рассчитать</button>
+          </form>
 
           <aside class="calc-rates" id="calc-rates" aria-label="Курсы валют">
             <h2>Курсы валют</h2>
@@ -145,6 +131,22 @@
               </table>
             </div>
           </aside>
+        </div>
+
+        <div class="calc-result-col">
+          <p class="calc-error" id="customs-calc-error" hidden></p>
+          <div class="calc-result" id="customs-calc-result" hidden></div>
+          <aside class="calc-aside" id="calc-aside-placeholder">
+            <h2>Что учитывает калькулятор</h2>
+            <ul>
+              <li>Ставки совокупного таможенного платежа ЕАЭС для физлиц</li>
+              <li>Льготу 50% по Указу Президента РБ №140 (при выборе опции)</li>
+              <li>Утилизационный сбор (624,92 / 1&nbsp;282,02 Br в зависимости от возраста)</li>
+              <li>Таможенный сбор, услуги декларанта и оформление ЭПТС</li>
+              <li>Для электромобилей — пошлину 15% после исчерпания квоты 2026 года</li>
+            </ul>
+          </aside>
+        </div>
       </section>
 
       <section class="legal-section">
@@ -192,6 +194,6 @@
   {% include "_site_footer.html" %}
   {% include "_feedback_modal.html" %}
   {% include "_yandex_metrika.html" %}
-  <script src="{{ url_for('static', filename='customs_calculator.js') }}?v=20260911e" defer></script>
+  <script src="{{ url_for('static', filename='customs_calculator.js') }}?v=20260911f" defer></script>
 </body>
 </html>

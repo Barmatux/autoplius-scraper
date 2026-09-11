@@ -2,7 +2,6 @@
   const form = document.getElementById("customs-calc-form");
   if (!form) return;
 
-  const gridEl = document.getElementById("scroll_calc_rezult");
   const resultEl = document.getElementById("customs-calc-result");
   const errorEl = document.getElementById("customs-calc-error");
   const volumeWrap = document.getElementById("calc-volume-wrap");
@@ -40,7 +39,6 @@
     if (!resultEl) return;
     if (!data.ok) {
       resultEl.hidden = true;
-      if (gridEl) gridEl.classList.remove("has-result");
       if (asideEl) asideEl.hidden = false;
       if (errorEl) {
         errorEl.hidden = false;
@@ -50,7 +48,6 @@
     }
     if (errorEl) errorEl.hidden = true;
     if (asideEl) asideEl.hidden = true;
-    if (gridEl) gridEl.classList.add("has-result");
 
     const lines = [];
     if (data.price_eur > 0) {
