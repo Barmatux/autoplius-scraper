@@ -9,7 +9,7 @@ from autoplius.engine_volume import _parse_volume_cm3_from_text, engine_volume_c
 from autoplius.catalog_filters import is_pickup_listing
 from autoplius.make_model_filters import is_blocked_make, is_blocked_make_model
 from autoplius.electric import is_electric_make_model, is_pure_electric_listing
-from autoplius.vag_engines import vag_customs_cm3
+from autoplius.engine_hints import hint_customs_cm3
 
 CATALOG_UPTO_LITERS_DEFAULT = 1.9
 
@@ -121,10 +121,15 @@ def aggregate_catalog_groups(listings: list[dict[str, Any]]) -> list[dict[str, A
     for bucket in grouped.values():
         parsed_values = bucket.pop("parsed_cm3_values")
         suggested = parsed_values.most_common(1)[0][0] if parsed_values else None
-        vag = vag_customs_cm3(bucket["make"], bucket["engine_label"], bucket.get("fuel"))
-        if vag is not None:
-            # Authoritative VAG displacements beat rounded listing parses (1400→1395, etc.).
-            suggested = vag
+        hint = hint_customs_cm3(
+            bucket["make"],
+            bucket["engine_label"],
+            bucket.get("fuel"),
+            bucket.get("model"),
+        )
+        if hint is not None:
+            # Table displacements beat rounded listing parses (1500→1498, etc.).
+            suggested = hint
         rows.append(
             {
                 **bucket,
