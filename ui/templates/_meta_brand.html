@@ -1,4 +1,10 @@
 <meta name="description" content="{{ og_description|default('EuroHUB. Авто из Европы в Беларусь') }}">
+{% if canonical_url %}
+<link rel="canonical" href="{{ canonical_url }}">
+{% endif %}
+{% if robots_meta %}
+<meta name="robots" content="{{ robots_meta }}">
+{% endif %}
 <meta property="og:site_name" content="EuroHUB">
 <meta property="og:title" content="{{ og_title|default('EuroHUB. Авто из Европы в Беларусь') }}">
 <meta property="og:description" content="{{ og_description|default('Авто из Европы в Беларусь') }}">

@@ -122,6 +122,11 @@ from autoplius.company_info import company_info as load_company_info
 from autoplius.listing_availability import probe_listing_result
 from autoplius.customs_calculator import calculator_page_title, estimate_customs
 from autoplius.myfin_rates import myfin_best_board
+from autoplius.listing_url_normalize import (
+    default_equivalent_home_target,
+    listing_query_has_active_filters,
+    normalize_listing_cache_query,
+)
 from autoplius.nbrb_rates import get_nbrb_board
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
@@ -703,6 +708,8 @@ def robots_txt():
         "Disallow: /cabinet\n"
         "Disallow: /admin\n"
         "Disallow: /api/\n"
+        # Filtered listing URLs explode crawl budget; canonical home is "/".
+        "Disallow: /?\n"
         "\n"
         "User-agent: Yandex\n"
         "Crawl-delay: 2\n"
@@ -712,6 +719,17 @@ def robots_txt():
         "Disallow: /cabinet\n"
         "Disallow: /admin\n"
         "Disallow: /api/\n"
+        "Disallow: /?\n"
+        "\n"
+        "User-agent: Googlebot\n"
+        "Allow: /\n"
+        "Disallow: /media/\n"
+        "Disallow: /login\n"
+        "Disallow: /register\n"
+        "Disallow: /cabinet\n"
+        "Disallow: /admin\n"
+        "Disallow: /api/\n"
+        "Disallow: /?\n"
         "\n"
         f"Host: {base}\n"
         f"Sitemap: {base}/sitemap.xml\n"
@@ -1232,13 +1250,22 @@ def _anonymous_page_cache_allowed() -> bool:
     return True
 
 
-def _cached_html_response(html: str, *, hit: bool, bot: bool, ttl_sec: float) -> Response:
+def _cached_html_response(
+    html: str,
+    *,
+    hit: bool,
+    bot: bool,
+    ttl_sec: float,
+    robots_tag: str | None = None,
+) -> Response:
     response = make_response(html)
     response.headers["X-Page-Cache"] = "HIT" if hit else "MISS"
     if bot and ttl_sec > 0:
         response.headers["Cache-Control"] = f"public, max-age={int(ttl_sec)}"
     else:
         response.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+    if robots_tag:
+        response.headers["X-Robots-Tag"] = robots_tag
     return response
 
 
@@ -1401,15 +1428,25 @@ def _active_filter_count(
 
 @app.get("/")
 def index():
+    raw_qs = request.query_string.decode("utf-8", "replace")
+    target = default_equivalent_home_target(raw_qs)
+    if target is not None:
+        return redirect(target, code=301)
+
     path = require_db()
     bot = is_bot_user_agent(request.headers.get("User-Agent"))
     cache_ttl = home_cache_ttl(bot=bot)
+    cache_query = normalize_listing_cache_query(raw_qs)
+    filtered_page = listing_query_has_active_filters(raw_qs)
+    robots_tag = "noindex, follow" if filtered_page else None
     cache_key: str | None = None
     if _anonymous_page_cache_allowed() and cache_ttl > 0:
-        cache_key = make_cache_key("home", path, request.query_string.decode("utf-8", "replace"))
+        cache_key = make_cache_key("home", path, cache_query)
         cached = get_cached_html(cache_key)
         if cached is not None:
-            return _cached_html_response(cached, hit=True, bot=bot, ttl_sec=cache_ttl)
+            return _cached_html_response(
+                cached, hit=True, bot=bot, ttl_sec=cache_ttl, robots_tag=robots_tag
+            )
 
     q = request.args.get("q", "")
     sort = request.args.get("sort", DEFAULT_LIST_SORT)
@@ -1518,6 +1555,9 @@ def index():
     )
     listings = fetch_listings_by_ids(path, page_ids, lite=True)
 
+    canonical_url = f"{_public_site_base()}/"
+    robots_meta = "noindex,follow" if filtered_page else "index,follow"
+
     html = render_template(
         "index.html",
         listings=listings,
@@ -1556,6 +1596,8 @@ def index():
         page_size=PAGE_SIZE,
         listings_view=listings_view,
         thumb_url=thumb_url,
+        canonical_url=canonical_url,
+        robots_meta=robots_meta,
         filters_active_count=_active_filter_count(
             q=q,
             min_price=min_price_raw,
@@ -1577,7 +1619,9 @@ def index():
     )
     if cache_key is not None:
         set_cached_html(cache_key, html, cache_ttl)
-    return _cached_html_response(html, hit=False, bot=bot, ttl_sec=cache_ttl)
+    return _cached_html_response(
+        html, hit=False, bot=bot, ttl_sec=cache_ttl, robots_tag=robots_tag
+    )
 
 
 @app.get("/api/table-layout")
