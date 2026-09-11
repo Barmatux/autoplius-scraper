@@ -298,11 +298,17 @@ def _customs_nominal_13_petrol_override_applies(item: dict[str, Any], cm3: int) 
 
 def customs_engine_volume_cm3(item: dict[str, Any]) -> int | None:
     """Engine displacement used for Belarus customs duty (may differ from display volume)."""
-    from autoplius.engine_catalog import lookup_catalog_cm3
+    from autoplius.engine_catalog import catalog_engine_label, catalog_fuel_label, lookup_catalog_cm3
+    from autoplius.vag_engines import vag_customs_cm3
 
     catalog_cm3 = lookup_catalog_cm3(item)
     if catalog_cm3 is not None:
         return catalog_cm3
+
+    make, _model = listing_make_model(item)
+    vag = vag_customs_cm3(make if make != "—" else None, catalog_engine_label(item), catalog_fuel_label(item))
+    if vag is not None:
+        return vag
 
     cm3 = engine_volume_cm3(item)
     if cm3 is None:
