@@ -263,16 +263,23 @@ def estimate_customs(
         )
 
     try:
-        price = float(price_eur)
+        raw_price = price_eur
+        if raw_price is None or raw_price == "":
+            price = 0.0
+        else:
+            price = float(raw_price)
     except (TypeError, ValueError):
         return fail("Укажите стоимость автомобиля в евро.")
-    if price <= 0:
+
+    price_required = kind != VehicleKind.ICE or band == CustomsAgeBand.UNDER_THREE
+    if price_required and price <= 0:
+        return fail("Укажите стоимость автомобиля в евро.")
+    if price < 0:
         return fail("Укажите стоимость автомобиля в евро.")
 
     notes: list[str] = [
         "Расчёт для физлица при ввозе для личного пользования. "
         "Итоговая сумма на таможне зависит от документов и курса на день оформления.",
-        f"Курсы: 1 EUR ≈ {eur_byn:.4f} BYN, 1 USD ≈ {usd_byn:.4f} BYN (Myfin / НБРБ).",
     ]
 
     duty_full = 0.0

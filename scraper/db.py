@@ -2271,7 +2271,7 @@ def toggle_user_favorite(db_path: Path, user_id: int, listing_id: int) -> bool:
     return True
 
 
-EXCHANGE_RATE_PAIRS = ("eurusd", "usd")
+EXCHANGE_RATE_PAIRS = ("eurusd", "usd", "eur")
 
 
 def save_exchange_rates(

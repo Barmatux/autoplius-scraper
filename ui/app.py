@@ -121,7 +121,8 @@ from autoplius.popular_makes import make_nav_links, top_makes_for_nav
 from autoplius.company_info import company_info as load_company_info
 from autoplius.listing_availability import probe_listing_result
 from autoplius.customs_calculator import calculator_page_title, estimate_customs
-from autoplius.myfin_rates import eur_usd_rate, usd_byn_rate
+from autoplius.myfin_rates import myfin_best_board
+from autoplius.nbrb_rates import get_nbrb_board
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
 
@@ -1612,14 +1613,12 @@ def vin_check():
 @app.get("/calculator")
 def customs_calculator():
     today = date.today()
-    eur_usd = eur_usd_rate()
-    usd_byn = usd_byn_rate()
     return render_template(
         "calculator.html",
         page_title=calculator_page_title(today),
         year=today.year,
-        eur_byn=eur_usd * usd_byn,
-        usd_byn=usd_byn,
+        nbrb_rates=get_nbrb_board(),
+        myfin_rates=myfin_best_board(),
     )
 
 

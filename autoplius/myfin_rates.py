@@ -26,10 +26,12 @@ _USER_AGENT = (
 MYFIN_URLS = {
     "eurusd": "https://myfin.by/currency/eurusd",
     "usd": "https://myfin.by/currency/usd",
+    "eur": "https://myfin.by/currency/eur",
 }
 _FALLBACK = {
     "eurusd": 1.158,
     "usd": 3.04,
+    "eur": 3.52,
 }
 _RATE_NUMBER_RE = re.compile(r"(\d+(?:[.,]\d+)?)")
 
@@ -142,10 +144,12 @@ def myfin_best_buy_rate(pair: str, *, db_path: Path | None = None) -> float:
     env_key = {
         "eurusd": "PRICE_RB_EUR_USD",
         "usd": "PRICE_RB_USD_BYN",
-    }[pair]
-    override = (os.environ.get(env_key) or "").strip()
-    if override:
-        return float(override)
+        "eur": "PRICE_RB_EUR_BYN",
+    }.get(pair)
+    if env_key:
+        override = (os.environ.get(env_key) or "").strip()
+        if override:
+            return float(override)
 
     path = db_path or _db_path()
     now = datetime.now(timezone.utc)
@@ -176,3 +180,31 @@ def eur_usd_rate(*, db_path: Path | None = None) -> float:
 def usd_byn_rate(*, db_path: Path | None = None) -> float:
     """BYN per 1 USD at the best buy rate."""
     return myfin_best_buy_rate("usd", db_path=db_path)
+
+
+def eur_byn_rate(*, db_path: Path | None = None) -> float:
+    """BYN per 1 EUR at the best buy rate."""
+    path = db_path or _db_path()
+    direct = get_latest_exchange_rate(path, "eur")
+    if direct is not None:
+        now = datetime.now(timezone.utc)
+        _CACHE["eur"] = {"fetched_at": now, "rate": direct}
+        return float(direct)
+    # Prefer dedicated EUR/BYN when present in cache/env/live path.
+    cached = _CACHE.get("eur") or {}
+    if cached.get("rate") is not None:
+        return float(cached["rate"])
+    override = (os.environ.get("PRICE_RB_EUR_BYN") or "").strip()
+    if override:
+        return float(override)
+    # Cross from best EURUSD × USD/BYN when EUR/BYN pair is not stored yet.
+    return eur_usd_rate(db_path=db_path) * usd_byn_rate(db_path=db_path)
+
+
+def myfin_best_board(*, db_path: Path | None = None) -> list[dict[str, object]]:
+    """Best myfin buy rates for the calculator FX board."""
+    return [
+        {"pair": "USD / BYN", "rate": round(usd_byn_rate(db_path=db_path), 4)},
+        {"pair": "EUR / BYN", "rate": round(eur_byn_rate(db_path=db_path), 4)},
+        {"pair": "EUR / USD", "rate": round(eur_usd_rate(db_path=db_path), 4)},
+    ]

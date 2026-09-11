@@ -113,6 +113,21 @@ def test_estimate_rejects_legal_entity():
     assert result.error
 
 
+def test_estimate_ice_older_without_price(monkeypatch):
+    monkeypatch.setattr("autoplius.customs_calculator.eur_usd_rate", lambda: 1.0)
+    monkeypatch.setattr("autoplius.customs_calculator.usd_byn_rate", lambda: 3.0)
+
+    result = estimate_customs(
+        price_eur=0,
+        age_band=CustomsAgeBand.THREE_TO_FIVE,
+        engine_cm3=1496,
+        privilege_50=True,
+    )
+    assert result.ok
+    assert result.price_eur == 0
+    assert result.duty_payable_eur == pytest.approx(1271.6)
+
+
 def test_page_title_includes_date():
     title = calculator_page_title(date(2026, 9, 11))
     assert title == "Таможенный калькулятор на 11 сентября 2026 года"

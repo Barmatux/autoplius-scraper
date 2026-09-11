@@ -44,9 +44,9 @@
             </select>
           </label>
 
-          <label class="calc-field">
+          <label class="calc-field" id="calc-price-wrap" hidden>
             <span>Стоимость авто, €</span>
-            <input type="number" name="price_eur" min="1" step="1" placeholder="например 10000" required>
+            <input type="number" name="price_eur" min="1" step="1" placeholder="например 10000">
           </label>
 
           <fieldset class="calc-fieldset">
@@ -73,10 +73,6 @@
           </label>
 
           <button type="submit" class="nav-btn nav-btn-text calc-submit">Рассчитать</button>
-          <p class="calc-hint">
-            Курсы на странице: 1&nbsp;EUR ≈ {{ '%.4f'|format(eur_byn) }}&nbsp;BYN,
-            1&nbsp;USD ≈ {{ '%.4f'|format(usd_byn) }}&nbsp;BYN.
-          </p>
         </form>
 
         <div class="calc-result-col">
@@ -91,6 +87,68 @@
               <li>Таможенный сбор, услуги декларанта и оформление ЭПТС</li>
               <li>Для электромобилей — пошлину 15% после исчерпания квоты 2026 года</li>
             </ul>
+          </aside>
+
+          <aside class="calc-rates" aria-label="Курсы валют">
+            <h2>Курсы валют</h2>
+            <div class="calc-rates-block">
+              <h3>Нацбанк РБ <span class="calc-rates-src">nbrb.by</span></h3>
+              <table class="calc-rates-table">
+                <thead>
+                  <tr>
+                    <th>Валюта</th>
+                    <th>Курс, BYN</th>
+                    <th aria-label="Изменение"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in nbrb_rates %}
+                  <tr>
+                    <td>{{ row.code }}</td>
+                    <td>
+                      {% if row.rate > 0 %}
+                        {{ '%.4f'|format(row.rate) }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                    <td class="calc-rates-dir">
+                      {% if row.direction == 'up' %}
+                        <span class="fx-arrow fx-up" title="Выше вчерашнего">▲</span>
+                      {% elif row.direction == 'down' %}
+                        <span class="fx-arrow fx-down" title="Ниже вчерашнего">▼</span>
+                      {% elif row.direction == 'flat' %}
+                        <span class="fx-arrow fx-flat" title="Без изменений">●</span>
+                      {% else %}
+                        <span class="fx-arrow fx-unknown">—</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% else %}
+                  <tr><td colspan="3">Курсы НБРБ временно недоступны</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="calc-rates-block">
+              <h3>Лучшие курсы <span class="calc-rates-src">myfin.by</span></h3>
+              <table class="calc-rates-table">
+                <thead>
+                  <tr>
+                    <th>Пара</th>
+                    <th>Купить</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in myfin_rates %}
+                  <tr>
+                    <td>{{ row.pair }}</td>
+                    <td>{{ '%.4f'|format(row.rate) }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
           </aside>
         </div>
       </section>
@@ -110,7 +168,7 @@
         <p>Для расчёта укажите:</p>
         <ul>
           <li>точный рабочий объём двигателя в см³ (например 1496) — для авто с ДВС и PHEV;</li>
-          <li>стоимость автомобиля в евро (таможенная стоимость нетто);</li>
+          <li>стоимость автомобиля в евро — для авто младше 3 лет, а также для электромобилей и EREV;</li>
           <li>возраст с даты <em>производства</em>, а не с первой регистрации;</li>
           <li>тип силовой установки и статус декларанта.</li>
         </ul>
@@ -140,6 +198,6 @@
   {% include "_site_footer.html" %}
   {% include "_feedback_modal.html" %}
   {% include "_yandex_metrika.html" %}
-  <script src="{{ url_for('static', filename='customs_calculator.js') }}?v=20260911a" defer></script>
+  <script src="{{ url_for('static', filename='customs_calculator.js') }}?v=20260911b" defer></script>
 </body>
 </html>

@@ -6,8 +6,9 @@
   const errorEl = document.getElementById("customs-calc-error");
   const volumeWrap = document.getElementById("calc-volume-wrap");
   const privilegeWrap = document.getElementById("calc-privilege-wrap");
+  const priceWrap = document.getElementById("calc-price-wrap");
+  const priceInput = form.querySelector('input[name="price_eur"]');
   const asideEl = document.getElementById("calc-aside-placeholder");
-  const personLegal = form.querySelector('input[name="person"][value="legal"]');
 
   const money = (value, digits = 0) => {
     const n = Number(value);
@@ -21,10 +22,18 @@
   const syncFields = () => {
     const kind = form.querySelector('input[name="vehicle_kind"]:checked')?.value || "ice";
     const person = form.querySelector('input[name="person"]:checked')?.value || "individual";
+    const age = form.querySelector('select[name="age_band"]')?.value || "3_5";
     const needsVolume = kind === "ice";
     const canPrivilege = kind === "ice" && person === "individual";
+    // Стоимость влияет на пошлину для авто <3 лет (ЕАЭС) и всегда для EV/EREV.
+    const needsPrice = age === "under_3" || kind === "electric" || kind === "erev";
     if (volumeWrap) volumeWrap.hidden = !needsVolume;
     if (privilegeWrap) privilegeWrap.hidden = !canPrivilege;
+    if (priceWrap) priceWrap.hidden = !needsPrice;
+    if (priceInput) {
+      priceInput.required = needsPrice;
+      if (!needsPrice) priceInput.value = "";
+    }
   };
 
   const renderResult = (data) => {
@@ -41,10 +50,11 @@
     if (errorEl) errorEl.hidden = true;
     if (asideEl) asideEl.hidden = true;
 
-    const lines = [
-      ["Стоимость авто", `${money(data.price_eur)} €`],
-      ["Возраст для ставки", data.age_band_label],
-    ];
+    const lines = [];
+    if (data.price_eur > 0) {
+      lines.push(["Стоимость авто", `${money(data.price_eur)} €`]);
+    }
+    lines.push(["Возраст для ставки", data.age_band_label]);
     if (data.engine_cm3) {
       lines.push(["Объём двигателя", `${money(data.engine_cm3)} см³`]);
     }
@@ -71,6 +81,9 @@
       .map((n) => `<li>${n}</li>`)
       .join("");
 
+    const totalLabel =
+      data.price_eur > 0 ? "Авто + таможенные платежи" : "Итого таможенные платежи";
+
     resultEl.hidden = false;
     resultEl.innerHTML = `
       <h2 class="calc-result-title">Результаты расчёта</h2>
@@ -83,7 +96,7 @@
           .join("")}
       </ul>
       <div class="calc-result-total">
-        <div class="calc-result-total-label">Авто + таможенные платежи</div>
+        <div class="calc-result-total-label">${totalLabel}</div>
         <div class="calc-result-total-values">
           <strong>${money(data.total_eur)}</strong>&nbsp;€
           <span class="calc-result-or">или</span>
@@ -106,10 +119,14 @@
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const fd = new FormData(form);
+    const age = String(fd.get("age_band") || "");
+    const kind = String(fd.get("vehicle_kind") || "ice");
+    const needsPrice = age === "under_3" || kind === "electric" || kind === "erev";
+    const rawPrice = fd.get("price_eur");
     const payload = {
-      price_eur: Number(fd.get("price_eur")),
-      age_band: String(fd.get("age_band") || ""),
-      vehicle_kind: String(fd.get("vehicle_kind") || "ice"),
+      price_eur: needsPrice && rawPrice !== "" ? Number(rawPrice) : 0,
+      age_band: age,
+      vehicle_kind: kind,
       person: String(fd.get("person") || "individual"),
       engine_cm3: fd.get("engine_cm3") ? Number(fd.get("engine_cm3")) : null,
       privilege_50: fd.get("privilege_50") === "on",
@@ -132,9 +149,4 @@
       renderResult({ ok: false, error: "Сеть недоступна. Попробуйте ещё раз." });
     }
   });
-
-  // Prefill hint when switching to legal: still submit to get server message.
-  if (personLegal) {
-    personLegal.addEventListener("change", () => syncFields());
-  }
 })();

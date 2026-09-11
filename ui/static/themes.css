@@ -384,7 +384,8 @@ html[data-theme="docs"] .legal-disclaimer {
 
 html[data-theme="docs"] .calc-form,
 html[data-theme="docs"] .calc-aside,
-html[data-theme="docs"] .calc-result {
+html[data-theme="docs"] .calc-result,
+html[data-theme="docs"] .calc-rates {
   background: #f3eee3;
   border-color: #c9bba3;
   color: #1f2a22;
@@ -402,7 +403,11 @@ html[data-theme="docs"] .calc-result-key,
 html[data-theme="docs"] .calc-result-val,
 html[data-theme="docs"] .calc-result-notes,
 html[data-theme="docs"] .calc-result-total-label,
-html[data-theme="docs"] .calc-result-total-values {
+html[data-theme="docs"] .calc-result-total-values,
+html[data-theme="docs"] .calc-rates h2,
+html[data-theme="docs"] .calc-rates-block h3,
+html[data-theme="docs"] .calc-rates-table,
+html[data-theme="docs"] .calc-rates-src {
   color: #1f2a22;
 }
 
