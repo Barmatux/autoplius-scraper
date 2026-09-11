@@ -1,28 +1,41 @@
 (function () {
   var STORAGE_KEY = "eu2-site-theme";
   var DEFAULT_THEME = "docs";
-  var THEMES = ["original", "docs", "parchment", "forest"];
+  var PUBLIC_THEMES = ["docs"];
+  var ADMIN_THEMES = ["original", "docs", "parchment", "forest", "carbon"];
+
+  function isAdmin() {
+    return window.__EU2_IS_ADMIN__ === true || window.__EU2_IS_ADMIN__ === "true";
+  }
+
+  function allowedThemes() {
+    return isAdmin() ? ADMIN_THEMES : PUBLIC_THEMES;
+  }
 
   function currentTheme() {
+    var allowed = allowedThemes();
     try {
       var value = localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME;
-      return THEMES.indexOf(value) >= 0 ? value : DEFAULT_THEME;
+      return allowed.indexOf(value) >= 0 ? value : DEFAULT_THEME;
     } catch (err) {
       return DEFAULT_THEME;
     }
   }
 
   function applyTheme(themeId) {
-    var id = THEMES.indexOf(themeId) >= 0 ? themeId : DEFAULT_THEME;
+    var allowed = allowedThemes();
+    var id = allowed.indexOf(themeId) >= 0 ? themeId : DEFAULT_THEME;
     if (id === "original") {
       document.documentElement.removeAttribute("data-theme");
     } else {
       document.documentElement.setAttribute("data-theme", id);
     }
-    try {
-      localStorage.setItem(STORAGE_KEY, id);
-    } catch (err) {
-      /* ignore quota / private mode */
+    if (isAdmin()) {
+      try {
+        localStorage.setItem(STORAGE_KEY, id);
+      } catch (err) {
+        /* ignore quota / private mode */
+      }
     }
     document.querySelectorAll("[data-theme-id]").forEach(function (btn) {
       btn.classList.toggle("is-active", btn.getAttribute("data-theme-id") === id);
@@ -30,6 +43,7 @@
   }
 
   function openPicker() {
+    if (!isAdmin()) return;
     var backdrop = document.querySelector("[data-theme-backdrop]");
     if (!backdrop) return;
     applyTheme(currentTheme());

@@ -1,7 +1,13 @@
 <script>
+window.__EU2_IS_ADMIN__ = {{ 'true' if is_admin else 'false' }};
 (function () {
   try {
+    var isAdmin = window.__EU2_IS_ADMIN__ === true || window.__EU2_IS_ADMIN__ === "true";
     var t = localStorage.getItem("eu2-site-theme") || "docs";
+    var allowed = isAdmin
+      ? ["original", "docs", "parchment", "forest", "carbon"]
+      : ["docs"];
+    if (allowed.indexOf(t) < 0) t = "docs";
     if (t === "original") {
       document.documentElement.removeAttribute("data-theme");
     } else {
@@ -15,6 +21,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260911f">
-<link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}?v=20260911f">
-<script src="{{ url_for('static', filename='theme_picker.js') }}?v=20260911f" defer></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260911g">
+<link rel="stylesheet" href="{{ url_for('static', filename='themes.css') }}?v=20260911g">
+<script src="{{ url_for('static', filename='theme_picker.js') }}?v=20260911g" defer></script>
