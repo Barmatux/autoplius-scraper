@@ -15,6 +15,24 @@ def test_vag_map_core_engines():
     assert vag_customs_cm3("Volkswagen", "1.8 TSI", "Бензин") == 1798
 
 
+def test_vag_map_cm3_listing_labels():
+    assert (
+        vag_customs_cm3("Audi", "1500 cm³, 150 Л.С. (110кВ)", "Бензин") == 1498
+    )
+    assert (
+        vag_customs_cm3(
+            "Audi", "1500 cm³, 150 Л.С. (110кВ)", "Бензин / электричество"
+        )
+        == 1498
+    )
+    assert (
+        vag_customs_cm3("Audi", "1600 cm³, 106 Л.С. (78кВ)", "Дизель") == 1598
+    )
+    assert (
+        vag_customs_cm3("Audi", "1798 cm³, 170 л.с. (125kW)", "Бензин") == 1798
+    )
+
+
 def test_vag_14_hp_variants():
     assert vag_customs_cm3("Audi", "1.4i 122", "Бензин") == 1390
     assert vag_customs_cm3("Audi", "1.4i 125", "Бензин") == 1395

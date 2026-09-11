@@ -1,6 +1,6 @@
 """Known exact displacements for VAG petrol/diesel engines (VW / Audi / SEAT).
 
-Listing labels often round to 1.0 / 1.4 / 1.6 L; Belarus customs needs the real cm³.
+Listing labels often round to 1.0 / 1.4 / 1.6 L or «1500 cm³»; Belarus customs needs the real cm³.
 Skoda shares the same engines but is out of scope until explicitly enabled.
 """
 
@@ -25,12 +25,39 @@ VAG_ENGINE_CM3 = {
     "1.9_tdi": 1896,
 }
 
-_LITERS_RE = re.compile(r"(?<!\d)(\d+[.,]\d+)(?!\d)")
-_HP_RE = re.compile(r"(?<!\d)(122|125)\s*(?:a\.?\s*g\.?|hp|ps|л\.?\s*с\.?)?\b", re.I)
-_KW_RE = re.compile(r"(?<!\d)(90|92)\s*k\s*w\b", re.I)
+# Rounded listing cm³ → liters family used by the map.
+_ROUNDED_CM3_TO_LITERS = {
+    999: "1.0",
+    1000: "1.0",
+    1197: "1.2",
+    1198: "1.2",
+    1199: "1.2",
+    1200: "1.2",
+    1390: "1.4",
+    1395: "1.4",
+    1400: "1.4",
+    1422: "1.4",
+    1498: "1.5",
+    1500: "1.5",
+    1598: "1.6",
+    1600: "1.6",
+    1798: "1.8",
+    1800: "1.8",
+    1896: "1.9",
+    1900: "1.9",
+}
+
+_LITERS_RE = re.compile(r"(?<!\d)(\d+[.,]\d+)\s*(?:l|л)?(?!\d)", re.I)
+_CM3_RE = re.compile(r"(?<!\d)(\d{3,4})\s*(?:cm|см)(?:³|3|\u00b3)?", re.I)
+_BARE_CM3_RE = re.compile(r"(?<!\d)(\d{3,4})(?!\d)")
+_HP_RE = re.compile(
+    r"(?<!\d)(122|125)\s*(?:a\.?\s*g\.?|hp|ps|л\.?\s*с\.?)?\b",
+    re.I,
+)
+_KW_RE = re.compile(r"(?<!\d)(90|92)\s*k\s*[wв]\b", re.I)
 _DIESEL_RE = re.compile(r"\b(tdi|tdci|diesel|dyzel|дизел|дизель)\b", re.I)
 _PETROL_TURBO_RE = re.compile(r"\b(tsi|tfsi|turbo)\b", re.I)
-_PETROL_I_RE = re.compile(r"(?<![a-z])i(?![a-z])|\bmpi\b|\bfsi\b", re.I)
+_PETROL_I_RE = re.compile(r"(?<![a-zа-я])i(?![a-zа-я])|\bmpi\b|\bfsi\b", re.I)
 
 
 def normalize_vag_make(make: str | None) -> str | None:
@@ -51,16 +78,31 @@ def is_vag_make(make: str | None) -> bool:
 
 
 def _liters_token(text: str) -> str | None:
-    match = _LITERS_RE.search(text.replace("\xa0", " "))
-    if not match:
+    normalized = text.replace("\xa0", " ")
+    match = _LITERS_RE.search(normalized)
+    if match:
+        raw = match.group(1).replace(",", ".")
+        try:
+            value = float(raw)
+        except ValueError:
+            value = None
+        if value is not None and 0.5 <= value <= 10.0:
+            return f"{value:.1f}"
+
+    cm3 = None
+    match = _CM3_RE.search(normalized)
+    if match:
+        cm3 = int(match.group(1))
+    else:
+        # Labels like «1500 cm³, 150 Л.С.» — first 3–4 digit volume before hp.
+        match = _BARE_CM3_RE.search(normalized)
+        if match:
+            candidate = int(match.group(1))
+            if 800 <= candidate <= 3000:
+                cm3 = candidate
+    if cm3 is None:
         return None
-    raw = match.group(1).replace(",", ".")
-    try:
-        value = float(raw)
-    except ValueError:
-        return None
-    # Canonical one-decimal token used in map keys: 1.0, 1.2, …
-    return f"{value:.1f}"
+    return _ROUNDED_CM3_TO_LITERS.get(cm3)
 
 
 def _fuel_kind(engine_label: str, fuel: str | None) -> str:
@@ -72,7 +114,7 @@ def _fuel_kind(engine_label: str, fuel: str | None) -> str:
     fuel_folded = (fuel or "").casefold()
     if any(m in fuel_folded for m in ("dizel", "diesel", "дизел")):
         return "diesel"
-    if any(m in fuel_folded for m in ("benzin", "petrol", "gasoline", "бенз")):
+    if any(m in fuel_folded for m in ("benzin", "petrol", "gasoline", "бенз", "hybrid", "гибрид", "электри")):
         return "petrol"
     return "unknown"
 
@@ -92,24 +134,7 @@ def _hp_hint(text: str) -> int | None:
     return None
 
 
-def vag_customs_cm3(
-    make: str | None,
-    engine_label: str | None,
-    fuel: str | None = None,
-) -> int | None:
-    """Return exact cm³ for a VAG engine label, or None if unknown."""
-    if not is_vag_make(make):
-        return None
-    label = (engine_label or "").strip()
-    if not label or label == "—":
-        return None
-
-    liters = _liters_token(label)
-    if liters is None:
-        return None
-    kind = _fuel_kind(label, fuel)
-    hp = _hp_hint(label)
-
+def _cm3_for_liters(liters: str, *, kind: str, label: str, hp: int | None) -> int | None:
     if liters == "1.0" and kind != "diesel":
         return VAG_ENGINE_CM3["1.0_tsi"]
     if liters == "1.2":
@@ -136,3 +161,23 @@ def vag_customs_cm3(
     if liters == "1.9" and kind == "diesel":
         return VAG_ENGINE_CM3["1.9_tdi"]
     return None
+
+
+def vag_customs_cm3(
+    make: str | None,
+    engine_label: str | None,
+    fuel: str | None = None,
+) -> int | None:
+    """Return exact cm³ for a VAG engine label, or None if unknown."""
+    if not is_vag_make(make):
+        return None
+    label = (engine_label or "").strip()
+    if not label or label == "—":
+        return None
+
+    liters = _liters_token(label)
+    if liters is None:
+        return None
+    kind = _fuel_kind(label, fuel)
+    hp = _hp_hint(label)
+    return _cm3_for_liters(liters, kind=kind, label=label, hp=hp)

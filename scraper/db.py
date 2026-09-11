@@ -1877,6 +1877,8 @@ def sync_engine_catalog_from_listings(
     inserted = 0
     updated = 0
     now = _utc_now()
+    from autoplius.vag_engines import vag_customs_cm3
+
     with connect(db_path) as conn:
         for group in groups:
             existing = conn.execute(
@@ -1916,13 +1918,19 @@ def sync_engine_catalog_from_listings(
             customs_cm3 = existing["customs_cm3"]
             is_manual = bool(existing["is_manual"])
             is_new = bool(existing["is_new"])
-            if (
+            suggested = group.get("suggested_cm3")
+            # Non-manual VAG rows: refresh customs to the authoritative map value
+            # so rounded listing parses (1500/1600) do not stick in the input.
+            vag = vag_customs_cm3(group["make"], group["engine_label"], group.get("fuel"))
+            if not is_manual and not is_new and vag is not None:
+                customs_cm3 = vag
+            elif (
                 not is_manual
                 and not is_new
                 and customs_cm3 is None
-                and group.get("suggested_cm3") is not None
+                and suggested is not None
             ):
-                customs_cm3 = group["suggested_cm3"]
+                customs_cm3 = suggested
 
             conn.execute(
                 """
@@ -1938,7 +1946,7 @@ def sync_engine_catalog_from_listings(
                 WHERE id = ?
                 """,
                 (
-                    group.get("suggested_cm3"),
+                    suggested,
                     int(group.get("listing_count") or 0),
                     customs_cm3,
                     now,
