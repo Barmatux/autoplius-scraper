@@ -391,6 +391,28 @@ html[data-theme="docs"] .legal-disclaimer {
   color: #cbbca3;
 }
 
+html[data-theme="docs"] .catalog-make-title,
+html[data-theme="docs"] .catalog-make-index-name,
+html[data-theme="docs"] .catalog-make-index-link {
+  color: #efe8dc;
+}
+
+html[data-theme="docs"] .catalog-make-index-link {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(196, 180, 154, 0.4);
+}
+
+html[data-theme="docs"] .catalog-make-index-link:hover,
+html[data-theme="docs"] .catalog-make-index-link:focus-visible {
+  border-color: #c4b49a;
+  color: #fff;
+}
+
+html[data-theme="docs"] .catalog-make-index-meta,
+html[data-theme="docs"] .catalog-model-title {
+  color: #cbbca3;
+}
+
 html[data-theme="docs"] .calc-form,
 html[data-theme="docs"] .calc-aside,
 html[data-theme="docs"] .calc-result,
@@ -1060,6 +1082,28 @@ html[data-theme="carbon"] .legal-page a {
 
 html[data-theme="carbon"] .legal-page a:hover {
   color: var(--accent);
+}
+
+html[data-theme="carbon"] .catalog-make-title,
+html[data-theme="carbon"] .catalog-make-index-name,
+html[data-theme="carbon"] .catalog-make-index-link {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon"] .catalog-make-index-link {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(62, 198, 240, 0.28);
+}
+
+html[data-theme="carbon"] .catalog-make-index-link:hover,
+html[data-theme="carbon"] .catalog-make-index-link:focus-visible {
+  border-color: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="carbon"] .catalog-make-index-meta,
+html[data-theme="carbon"] .catalog-model-title {
+  color: #9aa0a6;
 }
 
 html[data-theme="carbon"] .calc-form,
