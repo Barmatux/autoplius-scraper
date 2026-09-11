@@ -6,7 +6,7 @@
 <a class="nav-btn nav-btn-text nav-auth desktop-primary-nav" href="{{ url_for('cabinet') }}">Кабинет</a>
 {% else %}
 <a
-  class="nav-btn nav-btn-text nav-auth desktop-primary-nav"
+  class="nav-btn nav-btn-text nav-auth nav-auth-login desktop-primary-nav"
   href="{{ url_for('login', next=request.full_path if request.full_path != '?' else request.path) }}"
 >Вход</a>
 {% endif %}

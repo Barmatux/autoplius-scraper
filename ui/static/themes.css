@@ -68,6 +68,13 @@ html[data-theme="docs"] .nav-btn.active {
   box-shadow: inset 0 -2px 0 #c4b49a;
 }
 
+html[data-theme="docs"] .nav-auth-login,
+html[data-theme="docs"] .nav-auth-login:hover {
+  background: #c62828 !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(198, 40, 40, 0.28);
+}
+
 html[data-theme="docs"] .mobile-nav-toggle {
   color: #efe8dc;
   border-color: rgba(196, 180, 154, 0.55);

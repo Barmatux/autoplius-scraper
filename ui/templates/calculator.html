@@ -66,7 +66,7 @@
             <span>Таможенная льгота 50% (Указ №140)</span>
           </label>
 
-          <button type="submit" class="nav-btn nav-btn-text calc-submit">Рассчитать</button>
+          <button type="submit" class="calc-submit">Рассчитать</button>
         </form>
 
         <div class="calc-result-col">
@@ -82,8 +82,9 @@
               <li>Для электромобилей — пошлину 15% после исчерпания квоты 2026 года</li>
             </ul>
           </aside>
+        </div>
 
-          <aside class="calc-rates" aria-label="Курсы валют">
+          <aside class="calc-rates" id="calc-rates" aria-label="Курсы валют">
             <h2>Курсы валют</h2>
             <div class="calc-rates-block">
               <h3>Нацбанк РБ <span class="calc-rates-src">nbrb.by</span></h3>
@@ -144,7 +145,6 @@
               </table>
             </div>
           </aside>
-        </div>
       </section>
 
       <section class="legal-section">
@@ -178,7 +178,7 @@
         </p>
         <p class="legal-disclaimer">
           Расчёт носит справочный характер и не является официальным таможенным решением.
-          Итоговая сумма зависит от документов, курса на день оплаты и статуса декларанта.
+          Итоговая сумма зависит от документов и курса на день оплаты.
         </p>
       </section>
 
@@ -192,6 +192,6 @@
   {% include "_site_footer.html" %}
   {% include "_feedback_modal.html" %}
   {% include "_yandex_metrika.html" %}
-  <script src="{{ url_for('static', filename='customs_calculator.js') }}?v=20260911d" defer></script>
+  <script src="{{ url_for('static', filename='customs_calculator.js') }}?v=20260911e" defer></script>
 </body>
 </html>

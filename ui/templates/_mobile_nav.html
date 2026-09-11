@@ -83,7 +83,7 @@
     >Кабинет</a>
     {% else %}
     <a
-      class="mobile-nav-link"
+      class="mobile-nav-link mobile-nav-login"
       href="{{ url_for('login', next=request.full_path if request.full_path != '?' else request.path) }}"
     >Вход</a>
     {% endif %}
