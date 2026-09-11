@@ -10,6 +10,8 @@ def test_vag_map_core_engines():
     assert vag_customs_cm3("Audi", "1.2 TDI", "Дизель") == 1199
     assert vag_customs_cm3("SEAT", "1.4 TDI", "Дизель") == 1422
     assert vag_customs_cm3("Volkswagen", "1.6 TDI", "Дизель") == 1598
+    assert vag_customs_cm3("Audi", "1.6i", "Бензин") == 1598
+    assert vag_customs_cm3("VW", "1600 cm³, 102 Л.С. (75кВ)", "Бензин") == 1598
     assert vag_customs_cm3("Audi", "1.9 TDI", "Дизель") == 1896
     assert vag_customs_cm3("Seat", "1.5 TSI", "Бензин") == 1498
     assert vag_customs_cm3("Volkswagen", "1.8 TSI", "Бензин") == 1798

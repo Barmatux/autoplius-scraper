@@ -19,6 +19,7 @@ VAG_ENGINE_CM3 = {
     "1.4_i_125": 1395,
     "1.4_tsi": 1395,
     "1.5_i": 1498,
+    "1.6_i": 1598,
     "1.8_tsi": 1798,
     "1.4_tdi": 1422,
     "1.6_tdi": 1598,
@@ -156,8 +157,12 @@ def _cm3_for_liters(liters: str, *, kind: str, label: str, hp: int | None) -> in
         return VAG_ENGINE_CM3["1.5_i"]
     if liters == "1.8" and kind != "diesel":
         return VAG_ENGINE_CM3["1.8_tsi"]
-    if liters == "1.6" and kind == "diesel":
-        return VAG_ENGINE_CM3["1.6_tdi"]
+    if liters == "1.6":
+        if kind == "diesel":
+            return VAG_ENGINE_CM3["1.6_tdi"]
+        if kind == "petrol":
+            return VAG_ENGINE_CM3["1.6_i"]
+        return None
     if liters == "1.9" and kind == "diesel":
         return VAG_ENGINE_CM3["1.9_tdi"]
     return None
