@@ -382,8 +382,36 @@ html[data-theme="docs"] .legal-disclaimer {
   color: #cbbca3;
 }
 
-html[data-theme="docs"] .legal-page a:hover {
-  color: #fff;
+html[data-theme="docs"] .calc-form,
+html[data-theme="docs"] .calc-aside,
+html[data-theme="docs"] .calc-result {
+  background: #f3eee3;
+  border-color: #c9bba3;
+  color: #1f2a22;
+}
+
+html[data-theme="docs"] .calc-form .calc-field span,
+html[data-theme="docs"] .calc-fieldset legend,
+html[data-theme="docs"] .calc-radio,
+html[data-theme="docs"] .calc-check,
+html[data-theme="docs"] .calc-hint,
+html[data-theme="docs"] .calc-aside h2,
+html[data-theme="docs"] .calc-aside li,
+html[data-theme="docs"] .calc-result-title,
+html[data-theme="docs"] .calc-result-key,
+html[data-theme="docs"] .calc-result-val,
+html[data-theme="docs"] .calc-result-notes,
+html[data-theme="docs"] .calc-result-total-label,
+html[data-theme="docs"] .calc-result-total-values {
+  color: #1f2a22;
+}
+
+html[data-theme="docs"] .calc-result-total {
+  background: #e4ecdf;
+}
+
+html[data-theme="docs"] .calc-error {
+  background: #fdeceb;
 }
 
 html[data-theme="docs"] .legal-dl > div {

@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Таможенный калькулятор · EuroHUB</title>
+  <title>{{ page_title }} · EuroHUB</title>
+  {% set og_title = page_title ~ ' · EuroHUB' %}
+  {% set og_description = 'Онлайн-расчёт растаможки авто в Беларуси: ставки ЕАЭС, утильсбор, льготы Указа №140. Актуальные тарифы ' ~ year ~ ' года.' %}
   {% include "_meta_brand.html" %}
   {% include "_site_icons.html" %}
   {% include "_site_styles.html" %}
@@ -23,20 +25,121 @@
 
   <main>
     {% include "_tabs.html" %}
-    <section class="auth-panel calculator-panel">
-      <h1 class="auth-title">Таможенный калькулятор</h1>
+    <article class="legal-page calculator-page">
+      <h1 class="auth-title">{{ page_title }}</h1>
       <p class="auth-lead">
-        Скоро здесь появится расчёт растаможки для Беларуси. Пока ориентировочную цену с пошлиной
-        можно смотреть в карточках объявлений.
+        Рассчитайте ориентировочную стоимость растаможки легкового автомобиля при ввозе
+        в Беларусь физическим лицом. Используются единые ставки ЕАЭС (решение Совета ЕЭК №107),
+        утилизационный сбор по постановлению Совмина №195 и актуальные курсы валют.
       </p>
-      <p>
-        <a class="nav-btn nav-btn-text" href="{{ url_for('index', tab='all', sort=nav_sort) }}">Смотреть автомобили</a>
+
+      <section class="calc-grid" id="scroll_calc_rezult" aria-label="Калькулятор растаможки">
+        <form class="calc-form" id="customs-calc-form" novalidate>
+          <label class="calc-field">
+            <span>Возраст авто</span>
+            <select name="age_band" required>
+              <option value="under_3">менее 3 лет</option>
+              <option value="3_5" selected>от 3 до 5 лет</option>
+              <option value="over_5">более 5 лет</option>
+            </select>
+          </label>
+
+          <label class="calc-field">
+            <span>Стоимость авто, €</span>
+            <input type="number" name="price_eur" min="1" step="1" placeholder="например 10000" required>
+          </label>
+
+          <fieldset class="calc-fieldset">
+            <legend>Тип автомобиля</legend>
+            <label class="calc-radio"><input type="radio" name="vehicle_kind" value="ice" checked> Топливо / гибрид PHEV</label>
+            <label class="calc-radio"><input type="radio" name="vehicle_kind" value="electric"> Электромобиль</label>
+            <label class="calc-radio"><input type="radio" name="vehicle_kind" value="erev"> Гибрид EREV</label>
+          </fieldset>
+
+          <fieldset class="calc-fieldset">
+            <legend>Декларант</legend>
+            <label class="calc-radio"><input type="radio" name="person" value="individual" checked> Физ. лицо</label>
+            <label class="calc-radio"><input type="radio" name="person" value="legal"> Юр. лицо</label>
+          </fieldset>
+
+          <label class="calc-field" id="calc-volume-wrap">
+            <span>Объём двигателя, см³</span>
+            <input type="number" name="engine_cm3" min="1" step="1" placeholder="например 1496">
+          </label>
+
+          <label class="calc-check" id="calc-privilege-wrap">
+            <input type="checkbox" name="privilege_50" checked>
+            <span>Таможенная льгота 50% (Указ №140)</span>
+          </label>
+
+          <button type="submit" class="nav-btn nav-btn-text calc-submit">Рассчитать</button>
+          <p class="calc-hint">
+            Курсы на странице: 1&nbsp;EUR ≈ {{ '%.4f'|format(eur_byn) }}&nbsp;BYN,
+            1&nbsp;USD ≈ {{ '%.4f'|format(usd_byn) }}&nbsp;BYN.
+          </p>
+        </form>
+
+        <div class="calc-result-col">
+          <p class="calc-error" id="customs-calc-error" hidden></p>
+          <div class="calc-result" id="customs-calc-result" hidden></div>
+          <aside class="calc-aside" id="calc-aside-placeholder">
+            <h2>Что учитывает калькулятор</h2>
+            <ul>
+              <li>Ставки совокупного таможенного платежа ЕАЭС для физлиц</li>
+              <li>Льготу 50% по Указу Президента РБ №140 (при выборе опции)</li>
+              <li>Утилизационный сбор (624,92 / 1&nbsp;282,02 Br в зависимости от возраста)</li>
+              <li>Таможенный сбор, услуги декларанта и оформление ЭПТС</li>
+              <li>Для электромобилей — пошлину 15% после исчерпания квоты 2026 года</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section class="legal-section">
+        <h2>50% льгота по Указу №140</h2>
+        <p>
+          Физические лица, постоянно проживающие в Беларуси, при соблюдении условий
+          Указа Президента Республики Беларусь №140 от 10.04.2019 могут уплачивать
+          таможенные пошлины, налоги в размере 50% от рассчитанной суммы.
+          Перед оформлением уточните, подходите ли вы под критерии указа.
+        </p>
+      </section>
+
+      <section class="legal-section">
+        <h2>Как пользоваться калькулятором</h2>
+        <p>Для расчёта укажите:</p>
+        <ul>
+          <li>точный рабочий объём двигателя в см³ (например 1496) — для авто с ДВС и PHEV;</li>
+          <li>стоимость автомобиля в евро (таможенная стоимость нетто);</li>
+          <li>возраст с даты <em>производства</em>, а не с первой регистрации;</li>
+          <li>тип силовой установки и статус декларанта.</li>
+        </ul>
+      </section>
+
+      <section class="legal-section">
+        <h2>Ставки для физлиц в {{ year }} году</h2>
+        <p>
+          Автомобили старше 3 лет облагаются по ставке в евро за 1&nbsp;см³ объёма двигателя
+          (отдельно для возрастов 3–5 и свыше 5 лет). Авто младше 3 лет — по проценту
+          от стоимости, но не менее минимума в €/см³ по стоимостным диапазонам
+          (до 8&nbsp;500 € — 54% / не менее 2,5 €/см³; далее 48% с повышающимся минимумом).
+        </p>
+        <p class="legal-disclaimer">
+          Расчёт носит справочный характер и не является официальным таможенным решением.
+          Итоговая сумма зависит от документов, курса на день оплаты и статуса декларанта.
+        </p>
+      </section>
+
+      <p class="calc-bottom-cta">
+        <a class="nav-btn nav-btn-text" href="{{ url_for('index', tab='all', sort=nav_sort) }}">Каталог авто из Европы</a>
+        <a class="nav-btn nav-btn-text" href="{{ url_for('instruction') }}">Инструкция по ввозу</a>
       </p>
-    </section>
+    </article>
   </main>
 
   {% include "_site_footer.html" %}
   {% include "_feedback_modal.html" %}
   {% include "_yandex_metrika.html" %}
+  <script src="{{ url_for('static', filename='customs_calculator.js') }}?v=20260911a" defer></script>
 </body>
 </html>

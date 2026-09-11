@@ -4,7 +4,7 @@ from dataclasses import replace
 import json
 import os
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -120,6 +120,8 @@ from autoplius.import_presets import preset_links
 from autoplius.popular_makes import make_nav_links, top_makes_for_nav
 from autoplius.company_info import company_info as load_company_info
 from autoplius.listing_availability import probe_listing_result
+from autoplius.customs_calculator import calculator_page_title, estimate_customs
+from autoplius.myfin_rates import eur_usd_rate, usd_byn_rate
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
 
@@ -1609,7 +1611,33 @@ def vin_check():
 
 @app.get("/calculator")
 def customs_calculator():
-    return render_template("calculator.html")
+    today = date.today()
+    eur_usd = eur_usd_rate()
+    usd_byn = usd_byn_rate()
+    return render_template(
+        "calculator.html",
+        page_title=calculator_page_title(today),
+        year=today.year,
+        eur_byn=eur_usd * usd_byn,
+        usd_byn=usd_byn,
+    )
+
+
+@app.post("/api/customs-calculator")
+def api_customs_calculator():
+    data = request.get_json(silent=True) or {}
+    result = estimate_customs(
+        price_eur=data.get("price_eur"),
+        age_band=data.get("age_band") or "3_5",
+        vehicle_kind=data.get("vehicle_kind") or "ice",
+        person=data.get("person") or "individual",
+        engine_cm3=data.get("engine_cm3"),
+        privilege_50=bool(data.get("privilege_50", True)),
+    )
+    status = 200 if result.ok else 400
+    if result.person == "legal" and not result.ok:
+        status = 200
+    return jsonify(result.as_dict()), status
 
 
 @app.get("/company")
