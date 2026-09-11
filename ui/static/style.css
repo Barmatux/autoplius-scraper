@@ -342,6 +342,11 @@ body {
   font-size: 0.92rem;
 }
 
+.calc-field[hidden],
+.calc-check[hidden] {
+  display: none !important;
+}
+
 .calc-field span,
 .calc-fieldset legend,
 .calc-check {

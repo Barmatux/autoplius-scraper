@@ -271,11 +271,16 @@ def estimate_customs(
     except (TypeError, ValueError):
         return fail("Укажите стоимость автомобиля в евро.")
 
-    price_required = kind != VehicleKind.ICE or band == CustomsAgeBand.UNDER_THREE
+    price_required = band == CustomsAgeBand.UNDER_THREE
     if price_required and price <= 0:
         return fail("Укажите стоимость автомобиля в евро.")
     if price < 0:
         return fail("Укажите стоимость автомобиля в евро.")
+    if kind in (VehicleKind.ELECTRIC, VehicleKind.EREV) and price <= 0:
+        return fail(
+            "Для электромобилей и EREV укажите возраст «менее 3 лет» и стоимость авто в евро, "
+            "либо выберите топливный автомобиль."
+        )
 
     notes: list[str] = [
         "Расчёт для физлица при ввозе для личного пользования. "

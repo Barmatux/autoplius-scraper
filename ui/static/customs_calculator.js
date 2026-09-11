@@ -25,8 +25,8 @@
     const age = form.querySelector('select[name="age_band"]')?.value || "3_5";
     const needsVolume = kind === "ice";
     const canPrivilege = kind === "ice" && person === "individual";
-    // Стоимость влияет на пошлину для авто <3 лет (ЕАЭС) и всегда для EV/EREV.
-    const needsPrice = age === "under_3" || kind === "electric" || kind === "erev";
+    // Стоимость нужна только для авто младше 3 лет (ставки от таможенной стоимости).
+    const needsPrice = age === "under_3";
     if (volumeWrap) volumeWrap.hidden = !needsVolume;
     if (privilegeWrap) privilegeWrap.hidden = !canPrivilege;
     if (priceWrap) priceWrap.hidden = !needsPrice;
@@ -121,7 +121,7 @@
     const fd = new FormData(form);
     const age = String(fd.get("age_band") || "");
     const kind = String(fd.get("vehicle_kind") || "ice");
-    const needsPrice = age === "under_3" || kind === "electric" || kind === "erev";
+    const needsPrice = age === "under_3";
     const rawPrice = fd.get("price_eur");
     const payload = {
       price_eur: needsPrice && rawPrice !== "" ? Number(rawPrice) : 0,
