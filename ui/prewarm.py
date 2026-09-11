@@ -13,10 +13,11 @@ from typing import Iterable
 
 logger = logging.getLogger(__name__)
 
-# Default listing view + brand/nav link (different query → different cache keys).
+# Default listing view + brand/nav link + catalog (different query → different keys).
 DEFAULT_HOME_PATHS = (
     "/",
     "/?tab=all&sort=added_desc",
+    "/catalog",
 )
 
 
