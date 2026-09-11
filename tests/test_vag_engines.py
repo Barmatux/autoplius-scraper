@@ -62,6 +62,10 @@ def test_hint_bmw_mini():
 
 def test_hint_other_brands():
     assert hint_customs_cm3("Peugeot", "1.2 PureTech", "Бензин") == 1199
+    assert hint_customs_cm3("Citroen", "1.6 L., 66 кВт", "Дизель") == 1560
+    assert hint_customs_cm3("Citroen", "1600 см³, 90 Л.С. (66кВт)", "Дизель") == 1560
+    assert hint_customs_cm3("Peugeot", "1.6 HDI", "Дизель") == 1560
+    assert hint_customs_cm3("Ford", "1.6 TDCI", "Дизель") == 1560
     assert hint_customs_cm3("Renault", "1.5d", "Дизель") == 1461
     assert hint_customs_cm3("Nissan", "1.5", "Бензин", model="Qashqai e-Power") == 1461
     assert hint_customs_cm3("Ford", "1.5 Ecoboost", "Бензин") == 1498

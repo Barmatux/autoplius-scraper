@@ -176,6 +176,8 @@ def _rules() -> tuple[_Rule, ...]:
         _Rule("stellantis", "1.4", "diesel", 1398, 20, require_any=("hdi",)),
         _Rule("stellantis", "1.4", "diesel", 1398, 5),
         _Rule("stellantis", "1.5", "diesel", 1499, 10),
+        # PSA / Ford 1.6 HDI/TDCI listed as 1600 → real 1560 cm³
+        _Rule("stellantis", "1.6", "diesel", 1560, 10),
         _Rule("stellantis", "1.6", "petrol", 1598, 20, require_any=("ep6",)),
         _Rule("stellantis", "1.6", "petrol", 1598, 5),
         _Rule("stellantis", "1.3", "petrol", 1332, 10),
@@ -267,6 +269,7 @@ def _rules() -> tuple[_Rule, ...]:
         _Rule("ford", "1.5", "petrol", 1498, 20, require_any=("ecoboost",)),
         _Rule("ford", "1.5", "petrol", 1498, 5),
         _Rule("ford", "1.6", "petrol", 1596, 10),
+        _Rule("ford", "1.6", "diesel", 1560, 10),
         _Rule("ford", "1.8", "petrol", 1798, 10),
         _Rule("ford", "1.4", "diesel", 1398, 10),
         _Rule("ford", "1.5", "diesel", 1499, 10),
