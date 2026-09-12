@@ -9,6 +9,7 @@ def test_home_paths_default(monkeypatch):
     monkeypatch.delenv("UI_PREWARM_PATHS", raising=False)
     assert home_paths() == DEFAULT_HOME_PATHS
     assert "/catalog" in DEFAULT_HOME_PATHS
+    assert "/calculator" in DEFAULT_HOME_PATHS
 
 
 def test_home_paths_override(monkeypatch):

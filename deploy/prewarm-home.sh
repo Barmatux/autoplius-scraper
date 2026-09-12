@@ -11,7 +11,7 @@ HOST_HEADER="${UI_PREWARM_HOST:-eu2.by}"
 ROUNDS="${UI_PREWARM_ROUNDS:-2}"
 TIMEOUT="${UI_PREWARM_TIMEOUT_SEC:-120}"
 # Paths hit through nginx (in addition to Python origin prewarm).
-NGINX_PATHS="${UI_PREWARM_NGINX_PATHS:-/ /catalog}"
+NGINX_PATHS="${UI_PREWARM_NGINX_PATHS:-/ /catalog /calculator /instruction /privacy /vin-check}"
 
 cd "$APP"
 

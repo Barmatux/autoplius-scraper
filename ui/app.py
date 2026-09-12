@@ -4,6 +4,7 @@ from dataclasses import replace
 import json
 import os
 import re
+import time
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -1138,12 +1139,44 @@ def toggle_favorite(listing_id: int):
 
 @app.context_processor
 def inject_tab_counts():
+    """Badge counts for nav/tabs.
+
+    Public pages only need ``electric_count`` (primary nav). Admin-only badges
+    (no_volume / catalog) are skipped for anonymous traffic so light pages like
+    /calculator do not pay four SQLite aggregations on every request.
+    """
     path = db_path()
     if not path.is_file():
         return {}
     try:
-        init_db(path)
-        return {
+        return _tab_counts_for_request(path, admin=_is_admin())
+    except Exception:
+        return {}
+
+
+_TAB_COUNTS_TTL_SEC = 120.0
+_tab_counts_cache: dict[str, tuple[float, dict[str, int]]] = {}
+
+
+def _tab_counts_cache_token(db_file: Path) -> str:
+    try:
+        st = db_file.resolve().stat()
+        return f"{db_file.resolve()}:{st.st_mtime_ns}:{st.st_size}"
+    except OSError:
+        return str(db_file)
+
+
+def _tab_counts_for_request(path: Path, *, admin: bool) -> dict[str, int]:
+    token = _tab_counts_cache_token(path)
+    cache_key = f"{token}:{'admin' if admin else 'public'}"
+    now = time.monotonic()
+    cached = _tab_counts_cache.get(cache_key)
+    if cached is not None and cached[0] > now:
+        return dict(cached[1])
+
+    init_db(path)
+    if admin:
+        counts = {
             "catalog_missing_count": engine_catalog_missing_count(path),
             "catalog_new_count": engine_catalog_new_count(path),
             "no_volume_count": count_listings(
@@ -1155,8 +1188,21 @@ def inject_tab_counts():
                 ListingFilters(electric_only=True, catalog_filter=False),
             ),
         }
-    except Exception:
-        return {}
+    else:
+        # Primary/mobile nav show electric badge for everyone.
+        counts = {
+            "electric_count": count_listings(
+                path,
+                ListingFilters(electric_only=True, catalog_filter=False),
+            ),
+        }
+
+    _tab_counts_cache[cache_key] = (now + _TAB_COUNTS_TTL_SEC, dict(counts))
+    # Keep cache small (db token changes invalidate naturally).
+    if len(_tab_counts_cache) > 8:
+        oldest = min(_tab_counts_cache, key=lambda k: _tab_counts_cache[k][0])
+        _tab_counts_cache.pop(oldest, None)
+    return counts
 
 
 def db_path() -> Path:

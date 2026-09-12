@@ -13,12 +13,17 @@ from typing import Iterable
 
 logger = logging.getLogger(__name__)
 
-# Default listing view + brand/nav link + catalog (different query → different keys).
+# Default listing + catalog + light static-ish pages (nginx HIT after deploy).
 DEFAULT_HOME_PATHS = (
     "/",
     "/?tab=all&sort=added_desc",
     "/catalog",
+    "/calculator",
+    "/instruction",
+    "/privacy",
+    "/vin-check",
 )
+
 
 
 def _env_int(name: str, default: int) -> int:
