@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 _CACHE_TTL_SEC = 3600.0
 _cache: dict[str, tuple[float, dict[str, Any] | None]] = {}
-_WINDOWS = (90, 60, 30)
+# Prefer 60-day market avg; fall back to 90 then 30 when no samples.
+_WINDOWS = (60, 90, 30)
 
 
 @dataclass(frozen=True)
@@ -91,6 +92,13 @@ def _cache_set(key: str, value: dict[str, Any] | None) -> None:
         _cache.pop(oldest, None)
 
 
+def _window_rank(window_days: int) -> int:
+    try:
+        return _WINDOWS.index(window_days)
+    except ValueError:
+        return len(_WINDOWS)
+
+
 def _pick_best_item(items: list[dict[str, Any]]) -> dict[str, Any] | None:
     scored: list[tuple[int, int, dict[str, Any]]] = []
     for item in items:
@@ -106,7 +114,8 @@ def _pick_best_item(items: list[dict[str, Any]]) -> dict[str, Any] | None:
         scored.append((window_i, samples_i, item))
     if not scored:
         return None
-    scored.sort(key=lambda row: (row[0], row[1]), reverse=True)
+    # Prefer preferred window order (60 → 90 → 30), then more samples.
+    scored.sort(key=lambda row: (_window_rank(row[0]), -row[1]))
     return scored[0][2]
 
 

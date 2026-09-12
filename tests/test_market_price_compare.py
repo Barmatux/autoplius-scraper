@@ -11,7 +11,19 @@ from autoplius.market_price_compare import (
 from scraper.auto160_market_client import Auto160MarketClient
 
 
-def test_pick_best_item_prefers_longer_window():
+def test_pick_best_item_prefers_60_day_window():
+    picked = _pick_best_item(
+        [
+            {"window_days": 30, "sample_count": 20, "avg_price_byn": "10000"},
+            {"window_days": 90, "sample_count": 12, "avg_price_byn": "12000"},
+            {"window_days": 60, "sample_count": 8, "avg_price_byn": "11000"},
+        ]
+    )
+    assert picked is not None
+    assert picked["window_days"] == 60
+
+
+def test_pick_best_item_falls_back_to_90_without_60():
     picked = _pick_best_item(
         [
             {"window_days": 30, "sample_count": 20, "avg_price_byn": "10000"},
