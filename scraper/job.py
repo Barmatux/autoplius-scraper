@@ -485,6 +485,15 @@ def scrape_search_pages(
         snapshot_path=str(snapshot_path),
     )
 
+    try:
+        from scraper.staff_alerts import process_staff_alerts_for_new_listings
+
+        new_ids = [int(p.autoplius_id) for p in new_previews]
+        alert_matches = process_staff_alerts_for_new_listings(settings.db_path, new_ids)
+        payload["staff_alert_matches"] = alert_matches
+    except Exception:
+        logger.exception("Staff alert matching failed")
+
     if nightly:
         from scraper.db import archive_active_missing_from_search
 

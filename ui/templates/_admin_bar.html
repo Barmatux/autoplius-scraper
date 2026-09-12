@@ -5,6 +5,9 @@
 </div>
 <button type="button" class="admin-enter-link" data-theme-open>Сменить дизайн</button>
 <a class="admin-enter-link" href="{{ url_for('admin_users') }}">Аккаунты</a>
+<a class="admin-enter-link" href="{{ url_for('admin_alerts') }}">
+  Алерты{% if staff_alerts_unread_count %} <span class="tab-count">{{ staff_alerts_unread_count }}</span>{% endif %}
+</a>
 <a class="admin-enter-link" href="{{ url_for('admin_contracts') }}">Документы</a>
 <a class="admin-enter-link" href="{{ url_for('admin_feedback') }}">
   Сообщения{% if feedback_unread_count %} <span class="tab-count">{{ feedback_unread_count }}</span>{% endif %}
@@ -22,6 +25,11 @@
   <a class="admin-mode-link" href="{{ url_for('logout') }}">Выйти</a>
 </div>
 <a class="admin-enter-link" href="{{ url_for('cabinet') }}">Кабинет</a>
+{% if can_access_staff_alerts %}
+<a class="admin-enter-link" href="{{ url_for('admin_alerts') }}">
+  Алерты{% if staff_alerts_unread_count %} <span class="tab-count">{{ staff_alerts_unread_count }}</span>{% endif %}
+</a>
+{% endif %}
 <a class="admin-enter-link" href="{{ url_for('admin_contracts') }}">Документы</a>
 {% elif current_user %}
 <a class="admin-enter-link" href="{{ url_for('logout') }}">Выйти</a>
