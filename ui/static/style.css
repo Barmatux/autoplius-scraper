@@ -2271,7 +2271,8 @@ tr:hover td.photo {
 }
 
 .photo img,
-.photo-empty {
+.photo-empty,
+.photo .list-photo-link {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -2281,6 +2282,15 @@ tr:hover td.photo {
   border-radius: 0;
   background: #e8e2d6;
   display: block;
+}
+
+.photo .list-photo-link img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
 }
 
 .list-gallery {
@@ -2499,6 +2509,16 @@ a:hover {
   gap: 0.1rem;
   max-width: 100%;
   line-height: 1.25;
+}
+
+.listing-name > a {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  max-width: 100%;
+  color: inherit;
+  text-decoration: none;
 }
 
 .listing-name .listing-make-link,

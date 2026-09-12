@@ -325,9 +325,12 @@
           {% set list_photos = photos.thumb if photos.thumb else photos.full %}
           <tr data-listing-row="{{ item.autoplius_id }}">
             <td class="photo">
+              {% set detail_href = url_for('listing_detail', listing_id=item.autoplius_id) %}
               {% if list_photos %}
               <div class="list-gallery" data-list-gallery data-photos='{{ list_photos|tojson }}'>
-                <img data-list-photo src="{{ list_photos[0] }}" alt="" loading="lazy" decoding="async">
+                <a class="list-photo-link" href="{{ detail_href }}" data-save-return aria-label="Открыть объявление">
+                  <img data-list-photo src="{{ list_photos[0] }}" alt="" loading="lazy" decoding="async">
+                </a>
                 {% if list_photos|length > 1 %}
                 <button type="button" class="list-photo-nav list-photo-prev" data-list-photo-prev aria-label="Предыдущее фото">‹</button>
                 <button type="button" class="list-photo-nav list-photo-next" data-list-photo-next aria-label="Следующее фото">›</button>
@@ -335,7 +338,7 @@
                 {% endif %}
               </div>
               {% else %}
-              <div class="photo-empty"></div>
+              <a class="photo-empty" href="{{ detail_href }}" data-save-return aria-label="Открыть объявление"></a>
               {% endif %}
             </td>
             <td class="col-auto">
@@ -344,12 +347,13 @@
                 <div class="listing-auto-main">
               {% set make, model = item|listing_make_model %}
               <div class="listing-name">
-                {% if make and make != '—' %}
-                <a class="listing-make-link" href="{{ url_for('index', tab='all', page=1, make=make) }}">{{ make }}</a>
-                {% if model %}<a class="listing-model-link" href="{{ url_for('index', tab='all', page=1, make=make, model=model) }}">{{ model }}</a>{% endif %}
-                {% else %}
-                <a href="{{ url_for('listing_detail', listing_id=item.autoplius_id) }}" data-save-return>{{ item|listing_headline }}</a>
-                {% endif %}
+                <a href="{{ detail_href }}" data-save-return>
+                  {% if make and make != '—' %}
+                  <span class="listing-make-link">{{ make }}</span>{% if model %} <span class="listing-model-link">{{ model }}</span>{% endif %}
+                  {% else %}
+                  {{ item|listing_headline }}
+                  {% endif %}
+                </a>
               </div>
               {% if item.body_type %}
               {% for line in item.body_type|body_type_lines %}

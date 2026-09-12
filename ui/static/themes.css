@@ -557,6 +557,8 @@ html[data-theme="docs"] .detail-gallery {
 }
 
 .detail-title-link,
+.listing-card-title-link,
+.listing-name > a,
 .listing-make-link,
 .listing-model-link {
   color: inherit;
@@ -564,8 +566,8 @@ html[data-theme="docs"] .detail-gallery {
 }
 
 .detail-title-link:hover,
-.listing-make-link:hover,
-.listing-model-link:hover {
+.listing-card-title-link:hover,
+.listing-name > a:hover {
   text-decoration: underline;
 }
 
