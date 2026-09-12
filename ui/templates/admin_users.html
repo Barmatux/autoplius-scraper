@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Аккаунты · Кабинет администратора</title>
+  {% include "_site_icons.html" %}
+  {% include "_site_styles.html" %}
+</head>
+<body>
+  <header class="top">
+    {% set brand_sub = "Аккаунты" %}
+    {% set active_tab = "users" %}
+    <div class="top-main">
+      {% include "_brand.html" %}
+      {% include "_primary_nav.html" %}
+      {% include "_mobile_nav.html" %}
+      <div class="meta top-meta">
+        {% include "_admin_bar.html" %}
+      </div>
+    </div>
+  </header>
+
+  <main class="cabinet-page admin-users-page">
+    <section class="auth-panel cabinet-panel">
+      <h1 class="auth-title">Аккаунты</h1>
+      <p class="auth-lead">Роли: пользователь, сотрудник (договоры), админ. RB-параметры влияют на расчёт цены в РБ.</p>
+      <div class="cabinet-actions">
+        <a class="admin-enter-link" href="{{ url_for('index') }}">К объявлениям</a>
+        <a class="admin-enter-link" href="{{ url_for('admin_contracts') }}">Документы</a>
+      </div>
+      {% if notice %}
+      <p class="admin-users-notice">{{ notice }}</p>
+      {% endif %}
+      {% if error %}
+      <p class="admin-users-error">{{ error }}</p>
+      {% endif %}
+    </section>
+
+    <section class="auth-panel cabinet-panel">
+      <h2 class="cabinet-section-title">Создать аккаунт</h2>
+      <form class="admin-users-create" method="post" action="{{ url_for('admin_users_create') }}">
+        <label>
+          Логин
+          <input type="text" name="username" required minlength="3" maxlength="32" autocomplete="off">
+        </label>
+        <label>
+          Имя
+          <input type="text" name="display_name" maxlength="64" autocomplete="off">
+        </label>
+        <label>
+          Пароль
+          <input type="password" name="password" required minlength="6" autocomplete="new-password">
+        </label>
+        <label>
+          Роль
+          <select name="role">
+            {% for role in roles %}
+            <option value="{{ role }}"{% if role == 'user' %} selected{% endif %}>{{ role_labels.get(role, role) }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit" class="admin-enter-link">Создать</button>
+      </form>
+    </section>
+
+    <section class="auth-panel cabinet-panel admin-users-table-wrap">
+      <h2 class="cabinet-section-title">Список ({{ users|length }})</h2>
+      {% if not users %}
+      <p class="empty">Пока нет зарегистрированных пользователей.</p>
+      {% else %}
+      <div class="admin-users-table-scroll">
+        <table class="admin-users-table">
+          <thead>
+            <tr>
+              <th>Логин</th>
+              <th>Имя</th>
+              <th>Роль</th>
+              <th>RB льгота / доставка</th>
+              <th>Пароль</th>
+              <th>Вход</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in users %}
+            <tr>
+              <td class="mono">{{ item.username }}</td>
+              <td>{{ item.display_name }}</td>
+              <td>
+                <form method="post" action="{{ url_for('admin_users_set_role', user_id=item.id) }}" class="admin-users-inline">
+                  <select name="role" aria-label="Роль {{ item.username }}">
+                    {% for role in roles %}
+                    <option value="{{ role }}"{% if item.role == role %} selected{% endif %}>{{ role_labels.get(role, role) }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="admin-enter-link">OK</button>
+                </form>
+              </td>
+              <td>
+                <form method="post" action="{{ url_for('admin_users_set_rb_extras', user_id=item.id) }}" class="admin-users-inline">
+                  <input type="text" name="rb_privilege_usd" value="{{ '%.2f'|format(item.rb_privilege_usd) }}" inputmode="decimal" aria-label="Льгота {{ item.username }}">
+                  <input type="text" name="rb_delivery_usd" value="{{ '%.2f'|format(item.rb_delivery_usd) }}" inputmode="decimal" aria-label="Доставка {{ item.username }}">
+                  <button type="submit" class="admin-enter-link">OK</button>
+                </form>
+              </td>
+              <td>
+                <form method="post" action="{{ url_for('admin_users_set_password', user_id=item.id) }}" class="admin-users-inline">
+                  <input type="password" name="password" minlength="6" placeholder="новый пароль" autocomplete="new-password" aria-label="Пароль {{ item.username }}">
+                  <button type="submit" class="admin-enter-link">OK</button>
+                </form>
+              </td>
+              <td class="muted">
+                {% if item.last_login_at %}{{ item.last_login_at|format_datetime }}{% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </section>
+  </main>
+
+  {% include "_feedback_modal.html" %}
+  {% include '_yandex_metrika.html' %}
+</body>
+</html>

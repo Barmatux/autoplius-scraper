@@ -1,4 +1,8 @@
-"""Contract-staff accounts (login → /admin/contracts only)."""
+"""Contract-staff accounts (login → /admin/contracts only).
+
+DEPRECATED fallback: prefer DB users with role=employee (see /admin/users).
+Env CONTRACT_USERS / DEFAULT_CONTRACT_USERS remain for the transition period.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +11,7 @@ import re
 import secrets
 
 # Built-in staff for contracts UI. Override with CONTRACT_USERS=login:pass,...
+# Prefer creating role=employee accounts in /admin/users instead.
 DEFAULT_CONTRACT_USERS: tuple[tuple[str, str], ...] = (
     ("dir_max", "77997799"),
     ("manager_alex", "77997799"),

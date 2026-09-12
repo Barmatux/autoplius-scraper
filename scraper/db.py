@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL COLLATE NOCASE UNIQUE,
     password_hash TEXT NOT NULL,
     display_name TEXT,
+    role TEXT NOT NULL DEFAULT 'user',
     rb_privilege_usd REAL NOT NULL DEFAULT 0,
     rb_delivery_usd REAL NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
@@ -363,6 +364,10 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
         if "rb_delivery_usd" not in user_cols:
             conn.execute(
                 "ALTER TABLE users ADD COLUMN rb_delivery_usd REAL NOT NULL DEFAULT 0"
+            )
+        if "role" not in user_cols:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'"
             )
 
     conn.execute(
@@ -2040,12 +2045,30 @@ def archive_pickup_listings(db_path: Path) -> int:
         return _archive_listings(conn, pickup_ids, archived_at=now)
 
 
+USER_ROLES = frozenset({"user", "employee", "admin"})
+USER_ROLE_USER = "user"
+USER_ROLE_EMPLOYEE = "employee"
+USER_ROLE_ADMIN = "admin"
+
+
+def normalize_user_role(role: str | None) -> str:
+    value = (role or USER_ROLE_USER).strip().lower()
+    if value not in USER_ROLES:
+        raise ValueError(f"invalid user role: {role}")
+    return value
+
+
 def _user_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     username = str(row["username"])
     display_name = (row["display_name"] or "").strip()
     keys = set(row.keys())
     privilege = row["rb_privilege_usd"] if "rb_privilege_usd" in keys else 0
     delivery = row["rb_delivery_usd"] if "rb_delivery_usd" in keys else 0
+    raw_role = row["role"] if "role" in keys else USER_ROLE_USER
+    try:
+        role = normalize_user_role(str(raw_role or USER_ROLE_USER))
+    except ValueError:
+        role = USER_ROLE_USER
     try:
         privilege_usd = float(privilege or 0)
     except (TypeError, ValueError):
@@ -2058,6 +2081,7 @@ def _user_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
         "id": int(row["id"]),
         "username": username,
         "display_name": display_name or username,
+        "role": role,
         "rb_privilege_usd": privilege_usd,
         "rb_delivery_usd": delivery_usd,
         "created_at": row["created_at"],
@@ -2071,6 +2095,7 @@ def create_user(
     password: str,
     *,
     display_name: str | None = None,
+    role: str = USER_ROLE_USER,
 ) -> dict[str, Any]:
     from werkzeug.security import generate_password_hash
 
@@ -2079,6 +2104,7 @@ def create_user(
         raise ValueError("username must be at least 3 characters")
     if not password:
         raise ValueError("password required")
+    role_value = normalize_user_role(role)
 
     init_db(db_path)
     now = _utc_now()
@@ -2086,13 +2112,14 @@ def create_user(
         try:
             conn.execute(
                 """
-                INSERT INTO users (username, password_hash, display_name, created_at)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO users (username, password_hash, display_name, role, created_at)
+                VALUES (?, ?, ?, ?, ?)
                 """,
                 (
                     normalized,
                     generate_password_hash(password),
                     (display_name or "").strip() or None,
+                    role_value,
                     now,
                 ),
             )
@@ -2170,6 +2197,74 @@ def update_user_rb_extras(
             WHERE id = ?
             """,
             (privilege, delivery, int(user_id)),
+        )
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (int(user_id),)).fetchone()
+    return _user_row_to_dict(row) if row else None
+
+
+def list_users(db_path: Path, *, limit: int = 500) -> list[dict[str, Any]]:
+    init_db(db_path)
+    capped = max(1, min(int(limit), 2000))
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT *
+            FROM users
+            ORDER BY username COLLATE NOCASE ASC, id ASC
+            LIMIT ?
+            """,
+            (capped,),
+        ).fetchall()
+    return [_user_row_to_dict(row) for row in rows]
+
+
+def count_users_with_role(db_path: Path, role: str) -> int:
+    role_value = normalize_user_role(role)
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM users WHERE role = ?",
+            (role_value,),
+        ).fetchone()
+    return int(row["n"] if row else 0)
+
+
+def set_user_role(db_path: Path, user_id: int, role: str) -> dict[str, Any] | None:
+    role_value = normalize_user_role(role)
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (int(user_id),)).fetchone()
+        if row is None:
+            return None
+        current = _user_row_to_dict(row)
+        if current["role"] == USER_ROLE_ADMIN and role_value != USER_ROLE_ADMIN:
+            admin_count = conn.execute(
+                "SELECT COUNT(*) AS n FROM users WHERE role = ?",
+                (USER_ROLE_ADMIN,),
+            ).fetchone()
+            if int(admin_count["n"] if admin_count else 0) <= 1:
+                raise ValueError("cannot demote the last admin")
+        conn.execute(
+            "UPDATE users SET role = ? WHERE id = ?",
+            (role_value, int(user_id)),
+        )
+        updated = conn.execute(
+            "SELECT * FROM users WHERE id = ?",
+            (int(user_id),),
+        ).fetchone()
+    return _user_row_to_dict(updated) if updated else None
+
+
+def set_user_password(db_path: Path, user_id: int, password: str) -> dict[str, Any] | None:
+    from werkzeug.security import generate_password_hash
+
+    if not password:
+        raise ValueError("password required")
+    init_db(db_path)
+    with connect(db_path) as conn:
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (generate_password_hash(password), int(user_id)),
         )
         row = conn.execute("SELECT * FROM users WHERE id = ?", (int(user_id),)).fetchone()
     return _user_row_to_dict(row) if row else None
