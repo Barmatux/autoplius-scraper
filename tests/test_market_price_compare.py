@@ -14,9 +14,9 @@ from scraper.auto160_market_client import Auto160MarketClient
 def test_pick_best_item_prefers_60_day_window():
     picked = _pick_best_item(
         [
-            {"window_days": 30, "sample_count": 20, "avg_price_byn": "10000"},
-            {"window_days": 90, "sample_count": 12, "avg_price_byn": "12000"},
-            {"window_days": 60, "sample_count": 8, "avg_price_byn": "11000"},
+            {"window_days": 30, "sample_count": 20, "avg_price_usd": "10000"},
+            {"window_days": 90, "sample_count": 12, "avg_price_usd": "12000"},
+            {"window_days": 60, "sample_count": 8, "avg_price_usd": "11000"},
         ]
     )
     assert picked is not None
@@ -49,8 +49,9 @@ def test_compare_listing_to_market(monkeypatch):
                 "brand": "BMW",
                 "model": "X1",
                 "year": 2015,
-                "window_days": 90,
+                "window_days": 60,
                 "avg_price_byn": "20000.00",
+                "avg_price_usd": "6250.00",
                 "sample_count": 14,
             }
         ]
@@ -79,10 +80,14 @@ def test_compare_listing_to_market(monkeypatch):
 
     result = compare_listing_to_market({"title": "BMW X1"})
     assert isinstance(result, MarketPriceCompare)
+    assert result.avg_price_usd == 6250.0
     assert result.avg_price_byn == 20000.0
+    assert result.listing_price_usd == 5000.0
     assert result.listing_price_byn == 16000.0  # 5000 * 3.2
     assert result.cheaper is True
     tpl = result.as_template_dict()
+    assert tpl["avg_price_usd_fmt"] == "6 250"
+    assert tpl["avg_price_byn_fmt"] == "20 000"
     assert "ниже рынка" in tpl["label"]
 
 

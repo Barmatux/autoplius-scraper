@@ -102,9 +102,16 @@
         <div class="detail-market-compare">
           <dt>Рынок BY <span class="muted">(ср. {{ market_compare.window_days }} дн.)</span></dt>
           <dd>
-            <span class="detail-market-avg">≈ {{ market_compare.avg_price_byn_fmt }}&nbsp;Br</span>
-            <span class="detail-market-delta{% if market_compare.cheaper %} is-better{% elif market_compare.delta_byn > 0 %} is-worse{% endif %}">
-              {{ market_compare.delta_byn_fmt }}&nbsp;Br ({{ market_compare.delta_pct_fmt }}) · {{ market_compare.label }}
+            <div class="price-rb detail-market-avg-host" tabindex="0">
+              <span class="detail-market-avg">≈ {{ market_compare.avg_price_usd_fmt }}&nbsp;$</span>
+              <div class="price-rb-tooltip" role="tooltip" hidden>
+                <p>Средняя на рынке: ≈ {{ market_compare.avg_price_byn_fmt }}&nbsp;Br</p>
+                <p>Это объявление: {{ market_compare.listing_price_byn_fmt }}&nbsp;Br
+                  ({{ market_compare.delta_byn_fmt }}&nbsp;Br, {{ market_compare.delta_pct_fmt }})</p>
+              </div>
+            </div>
+            <span class="detail-market-delta{% if market_compare.cheaper %} is-better{% elif market_compare.delta_usd > 0 %} is-worse{% endif %}">
+              {{ market_compare.delta_usd_fmt }}&nbsp;$ ({{ market_compare.delta_pct_fmt }}) · {{ market_compare.label }}
             </span>
             <span class="muted detail-market-meta">{{ market_compare.brand }} {{ market_compare.model }}, {{ market_compare.year }} · n={{ market_compare.sample_count }} · av.by</span>
           </dd>
