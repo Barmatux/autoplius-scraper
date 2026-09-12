@@ -44,3 +44,9 @@ def test_default_equivalent_redirect_targets():
     assert default_equivalent_home_target("view=cards") is None
     assert default_equivalent_home_target("view=cards&tab=all") == "/?view=cards"
     assert default_equivalent_home_target("make=BMW") is None
+
+
+def test_default_sort_alone_redirects_to_canonical_home():
+    """Regression: JS must not re-apply added_desc or it loops with this 301."""
+    assert default_equivalent_home_target("sort=added_desc") == "/"
+    assert default_equivalent_home_target("sort=price_asc") is None

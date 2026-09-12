@@ -1,11 +1,14 @@
 (function () {
   const STORAGE_KEY = "listings-sort-v2";
+  // Must match server default sort. Re-applying added_desc to "/" loops forever:
+  // JS adds ?sort=added_desc → server 301s to "/" → JS runs again.
+  const DEFAULT_SORT = "added_desc";
   const url = new URL(window.location.href);
 
   if (!url.searchParams.has("sort")) {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
+      if (saved && saved !== DEFAULT_SORT) {
         url.searchParams.set("sort", saved);
         window.location.replace(url.toString());
         return;
