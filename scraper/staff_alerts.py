@@ -9,9 +9,11 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote_plus, urlsplit
 
+from autoplius.market_price_compare import compare_listing_to_market
 from scraper.db import (
     STAFF_ALERT_ROLES,
     connect,
+    fetch_listings_by_ids,
     get_user_by_id,
     insert_staff_alert_matches,
     list_staff_alert_rules,
@@ -175,6 +177,55 @@ def filter_candidate_ids(
     return [int(row[0]) for row in rows]
 
 
+
+# Only alert when landed BY price is at least this far below RB market average (USD).
+STAFF_ALERT_MIN_MARKET_SAVINGS_USD = 1000.0
+
+
+def listing_has_market_deal(
+    item: dict[str, Any],
+    *,
+    min_savings_usd: float = STAFF_ALERT_MIN_MARKET_SAVINGS_USD,
+) -> bool:
+    """True when listing is cheaper than RB market average by >= min_savings_usd."""
+    try:
+        compare = compare_listing_to_market(item)
+    except Exception:
+        logger.exception(
+            "market compare failed for alert filter autoplius_id=%s",
+            item.get("autoplius_id"),
+        )
+        return False
+    if compare is None:
+        return False
+    # delta_usd = listing_usd - avg_usd; negative means below market.
+    return float(compare.delta_usd) <= -float(min_savings_usd)
+
+
+def filter_ids_by_market_deal(
+    db_path: Path,
+    candidate_ids: list[int],
+    *,
+    min_savings_usd: float = STAFF_ALERT_MIN_MARKET_SAVINGS_USD,
+) -> list[int]:
+    """Keep ids whose BY landed price beats RB market avg by min_savings_usd."""
+    if not candidate_ids:
+        return []
+    unique_ids = sorted({int(x) for x in candidate_ids})
+    listings = fetch_listings_by_ids(db_path, unique_ids, lite=False)
+    by_id = {
+        int(row["autoplius_id"]): row
+        for row in listings
+        if row.get("autoplius_id") is not None
+    }
+    return [
+        autoplius_id
+        for autoplius_id in unique_ids
+        if (item := by_id.get(autoplius_id)) is not None
+        and listing_has_market_deal(item, min_savings_usd=min_savings_usd)
+    ]
+
+
 def process_staff_alerts_for_new_listings(
     db_path: Path,
     new_listing_ids: list[int],
@@ -191,6 +242,16 @@ def process_staff_alerts_for_new_listings(
     if not rules:
         return 0
 
+    # Shared market-deal gate: cheaper than RB average by >= $1000.
+    deal_ids = set(filter_ids_by_market_deal(db_path, candidates))
+    if not deal_ids:
+        logger.info(
+            "staff alerts: 0 market deals (>= $%s below avg) among %s candidate(s)",
+            int(STAFF_ALERT_MIN_MARKET_SAVINGS_USD),
+            len(candidates),
+        )
+        return 0
+
     to_insert: list[tuple[int, int, int]] = []
     for rule in rules:
         user = get_user_by_id(db_path, int(rule["user_id"]))
@@ -201,7 +262,7 @@ def process_staff_alerts_for_new_listings(
         except (TypeError, ValueError, json.JSONDecodeError):
             logger.warning("skip alert rule %s: invalid filters_json", rule.get("id"))
             continue
-        matched_ids = filter_candidate_ids(db_path, filters, candidates)
+        matched_ids = filter_candidate_ids(db_path, filters, sorted(deal_ids))
         for autoplius_id in matched_ids:
             to_insert.append((int(rule["id"]), int(rule["user_id"]), int(autoplius_id)))
 
