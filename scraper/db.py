@@ -176,6 +176,40 @@ CREATE TABLE IF NOT EXISTS exchange_rates (
 );
 
 CREATE INDEX IF NOT EXISTS idx_exchange_rates_pair_time ON exchange_rates(pair, fetched_at DESC);
+
+CREATE TABLE IF NOT EXISTS staff_alert_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    filters_json TEXT NOT NULL,
+    query_string TEXT,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_alert_rules_user
+    ON staff_alert_rules(user_id, enabled, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS staff_alert_matches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    autoplius_id INTEGER NOT NULL,
+    matched_at TEXT NOT NULL,
+    seen_at TEXT,
+    UNIQUE(rule_id, autoplius_id),
+    FOREIGN KEY(rule_id) REFERENCES staff_alert_rules(id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(autoplius_id) REFERENCES listings(autoplius_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_alert_matches_user
+    ON staff_alert_matches(user_id, matched_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_staff_alert_matches_unseen
+    ON staff_alert_matches(user_id, seen_at, matched_at DESC);
 """
 
 
@@ -383,6 +417,50 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
     )
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_exchange_rates_pair_time ON exchange_rates(pair, fetched_at DESC)"
+    )
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS staff_alert_rules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            filters_json TEXT NOT NULL,
+            query_string TEXT,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_staff_alert_rules_user "
+        "ON staff_alert_rules(user_id, enabled, updated_at DESC)"
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS staff_alert_matches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            rule_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            autoplius_id INTEGER NOT NULL,
+            matched_at TEXT NOT NULL,
+            seen_at TEXT,
+            UNIQUE(rule_id, autoplius_id),
+            FOREIGN KEY(rule_id) REFERENCES staff_alert_rules(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(autoplius_id) REFERENCES listings(autoplius_id) ON DELETE CASCADE
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_staff_alert_matches_user "
+        "ON staff_alert_matches(user_id, matched_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_staff_alert_matches_unseen "
+        "ON staff_alert_matches(user_id, seen_at, matched_at DESC)"
     )
 
 
@@ -2709,3 +2787,297 @@ def delete_service_contract(db_path: Path, contract_id: int) -> bool:
         )
         return cur.rowcount > 0
 
+
+
+STAFF_ALERT_ROLES = frozenset({USER_ROLE_EMPLOYEE, USER_ROLE_ADMIN})
+
+
+def _staff_alert_rule_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    return {
+        "id": int(row["id"]),
+        "user_id": int(row["user_id"]),
+        "name": str(row["name"] or ""),
+        "filters_json": str(row["filters_json"] or "{}"),
+        "query_string": (row["query_string"] or None),
+        "enabled": bool(int(row["enabled"] or 0)),
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def _staff_alert_match_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    return {
+        "id": int(row["id"]),
+        "rule_id": int(row["rule_id"]),
+        "user_id": int(row["user_id"]),
+        "autoplius_id": int(row["autoplius_id"]),
+        "matched_at": row["matched_at"],
+        "seen_at": row["seen_at"],
+        "rule_name": row["rule_name"] if "rule_name" in row.keys() else None,
+        "title": row["title"] if "title" in row.keys() else None,
+        "price_eur": row["price_eur"] if "price_eur" in row.keys() else None,
+        "year": row["year"] if "year" in row.keys() else None,
+        "url": row["url"] if "url" in row.keys() else None,
+    }
+
+
+def create_staff_alert_rule(
+    db_path: Path,
+    *,
+    user_id: int,
+    name: str,
+    filters_json: str,
+    query_string: str | None = None,
+    enabled: bool = True,
+) -> dict[str, Any]:
+    init_db(db_path)
+    title = (name or "").strip()
+    if len(title) < 2:
+        raise ValueError("name too short")
+    payload = (filters_json or "").strip()
+    if not payload:
+        raise ValueError("filters_json required")
+    # validate JSON
+    json.loads(payload)
+    now = _utc_now()
+    with connect(db_path) as conn:
+        user = conn.execute(
+            "SELECT id, role FROM users WHERE id = ?",
+            (int(user_id),),
+        ).fetchone()
+        if user is None:
+            raise ValueError("user not found")
+        role = str(user["role"] or USER_ROLE_USER)
+        if role not in STAFF_ALERT_ROLES:
+            raise ValueError("alerts are only for staff roles")
+        cur = conn.execute(
+            """
+            INSERT INTO staff_alert_rules (
+                user_id, name, filters_json, query_string, enabled, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                int(user_id),
+                title,
+                payload,
+                (query_string or "").strip() or None,
+                1 if enabled else 0,
+                now,
+                now,
+            ),
+        )
+        row = conn.execute(
+            "SELECT * FROM staff_alert_rules WHERE id = ?",
+            (int(cur.lastrowid),),
+        ).fetchone()
+    out = _staff_alert_rule_row(row)
+    if out is None:
+        raise RuntimeError("failed to load created alert rule")
+    return out
+
+
+def list_staff_alert_rules(
+    db_path: Path,
+    *,
+    user_id: int | None = None,
+    enabled_only: bool = False,
+) -> list[dict[str, Any]]:
+    init_db(db_path)
+    clauses: list[str] = []
+    params: list[Any] = []
+    if user_id is not None:
+        clauses.append("user_id = ?")
+        params.append(int(user_id))
+    if enabled_only:
+        clauses.append("enabled = 1")
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            f"""
+            SELECT *
+            FROM staff_alert_rules
+            {where}
+            ORDER BY updated_at DESC, id DESC
+            """,
+            params,
+        ).fetchall()
+    return [_staff_alert_rule_row(row) for row in rows if row is not None]
+
+
+def get_staff_alert_rule(db_path: Path, rule_id: int) -> dict[str, Any] | None:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM staff_alert_rules WHERE id = ?",
+            (int(rule_id),),
+        ).fetchone()
+    return _staff_alert_rule_row(row)
+
+
+def set_staff_alert_rule_enabled(
+    db_path: Path,
+    rule_id: int,
+    *,
+    enabled: bool,
+    user_id: int | None = None,
+) -> dict[str, Any] | None:
+    init_db(db_path)
+    now = _utc_now()
+    with connect(db_path) as conn:
+        if user_id is not None:
+            cur = conn.execute(
+                """
+                UPDATE staff_alert_rules
+                SET enabled = ?, updated_at = ?
+                WHERE id = ? AND user_id = ?
+                """,
+                (1 if enabled else 0, now, int(rule_id), int(user_id)),
+            )
+        else:
+            cur = conn.execute(
+                """
+                UPDATE staff_alert_rules
+                SET enabled = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (1 if enabled else 0, now, int(rule_id)),
+            )
+        if cur.rowcount <= 0:
+            return None
+        row = conn.execute(
+            "SELECT * FROM staff_alert_rules WHERE id = ?",
+            (int(rule_id),),
+        ).fetchone()
+    return _staff_alert_rule_row(row)
+
+
+def delete_staff_alert_rule(
+    db_path: Path,
+    rule_id: int,
+    *,
+    user_id: int | None = None,
+) -> bool:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        if user_id is not None:
+            cur = conn.execute(
+                "DELETE FROM staff_alert_rules WHERE id = ? AND user_id = ?",
+                (int(rule_id), int(user_id)),
+            )
+        else:
+            cur = conn.execute(
+                "DELETE FROM staff_alert_rules WHERE id = ?",
+                (int(rule_id),),
+            )
+        return cur.rowcount > 0
+
+
+def insert_staff_alert_matches(
+    db_path: Path,
+    rows: list[tuple[int, int, int]],
+    *,
+    matched_at: str | None = None,
+) -> int:
+    """Insert (rule_id, user_id, autoplius_id) matches; ignore duplicates."""
+    if not rows:
+        return 0
+    init_db(db_path)
+    when = matched_at or _utc_now()
+    inserted = 0
+    with connect(db_path) as conn:
+        for rule_id, user_id, autoplius_id in rows:
+            cur = conn.execute(
+                """
+                INSERT OR IGNORE INTO staff_alert_matches (
+                    rule_id, user_id, autoplius_id, matched_at
+                ) VALUES (?, ?, ?, ?)
+                """,
+                (int(rule_id), int(user_id), int(autoplius_id), when),
+            )
+            inserted += int(cur.rowcount or 0)
+    return inserted
+
+
+def list_staff_alert_matches(
+    db_path: Path,
+    *,
+    user_id: int,
+    limit: int = 100,
+    unseen_only: bool = False,
+) -> list[dict[str, Any]]:
+    init_db(db_path)
+    capped = max(1, min(500, int(limit)))
+    unseen_sql = "AND m.seen_at IS NULL" if unseen_only else ""
+    with connect(db_path) as conn:
+        rows = conn.execute(
+            f"""
+            SELECT
+                m.*,
+                r.name AS rule_name,
+                l.title AS title,
+                l.price_eur AS price_eur,
+                l.year AS year,
+                l.url AS url
+            FROM staff_alert_matches m
+            JOIN staff_alert_rules r ON r.id = m.rule_id
+            LEFT JOIN listings l ON l.autoplius_id = m.autoplius_id
+            WHERE m.user_id = ?
+              {unseen_sql}
+            ORDER BY m.matched_at DESC, m.id DESC
+            LIMIT ?
+            """,
+            (int(user_id), capped),
+        ).fetchall()
+    return [_staff_alert_match_row(row) for row in rows if row is not None]
+
+
+def count_unseen_staff_alert_matches(db_path: Path, *, user_id: int) -> int:
+    init_db(db_path)
+    with connect(db_path) as conn:
+        row = conn.execute(
+            """
+            SELECT COUNT(*) AS n
+            FROM staff_alert_matches
+            WHERE user_id = ? AND seen_at IS NULL
+            """,
+            (int(user_id),),
+        ).fetchone()
+    return int(row["n"] if row else 0)
+
+
+def mark_staff_alert_matches_seen(
+    db_path: Path,
+    *,
+    user_id: int,
+    match_ids: list[int] | None = None,
+) -> int:
+    init_db(db_path)
+    now = _utc_now()
+    with connect(db_path) as conn:
+        if match_ids:
+            placeholders = ",".join("?" for _ in match_ids)
+            params: list[Any] = [now, int(user_id), *[int(x) for x in match_ids]]
+            cur = conn.execute(
+                f"""
+                UPDATE staff_alert_matches
+                SET seen_at = ?
+                WHERE user_id = ?
+                  AND seen_at IS NULL
+                  AND id IN ({placeholders})
+                """,
+                params,
+            )
+        else:
+            cur = conn.execute(
+                """
+                UPDATE staff_alert_matches
+                SET seen_at = ?
+                WHERE user_id = ? AND seen_at IS NULL
+                """,
+                (now, int(user_id)),
+            )
+        return int(cur.rowcount or 0)

@@ -81,6 +81,12 @@
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'cabinet' %} is-active{% endif %}"
       href="{{ url_for('cabinet') }}"
     >Кабинет</a>
+    {% if can_access_staff_alerts %}
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'alerts' %} is-active{% endif %}"
+      href="{{ url_for('admin_alerts') }}"
+    >Алерты{% if staff_alerts_unread_count %} <span class="tab-count">{{ staff_alerts_unread_count }}</span>{% endif %}</a>
+    {% endif %}
     {% if can_access_contracts %}
     <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'contracts' %} is-active{% endif %}"
@@ -122,6 +128,10 @@
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'users' %} is-active{% endif %}"
       href="{{ url_for('admin_users') }}"
     >Аккаунты</a>
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'alerts' %} is-active{% endif %}"
+      href="{{ url_for('admin_alerts') }}"
+    >Алерты{% if staff_alerts_unread_count %} <span class="tab-count">{{ staff_alerts_unread_count }}</span>{% endif %}</a>
     <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'feedback' %} is-active{% endif %}"
       href="{{ url_for('admin_feedback') }}"

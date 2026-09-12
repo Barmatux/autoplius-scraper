@@ -21,13 +21,16 @@ from scraper.db import (
     USER_ROLE_USER,
     USER_ROLES,
     count_scrape_runs,
+    count_unseen_staff_alert_matches,
     count_unread_feedback,
     create_feedback_message,
     create_service_contract,
+    create_staff_alert_rule,
     create_user,
     db_stats,
     default_db_path,
     delete_service_contract,
+    delete_staff_alert_rule,
     fetch_engine_catalog,
     fetch_feedback_messages,
     fetch_listing,
@@ -37,15 +40,20 @@ from scraper.db import (
     fetch_sitemap_listings,
     fetch_user_favorite_ids,
     get_service_contract,
+    get_staff_alert_rule,
     get_user_by_id,
     init_db,
     engine_catalog_missing_count,
     engine_catalog_new_count,
     list_service_contracts,
+    list_staff_alert_matches,
+    list_staff_alert_rules,
     list_users,
+    mark_staff_alert_matches_seen,
     normalize_user_role,
     scrape_runs_analytics,
     set_feedback_status,
+    set_staff_alert_rule_enabled,
     set_user_password,
     set_user_role,
     toggle_user_favorite,
@@ -451,8 +459,20 @@ def _can_access_contracts() -> bool:
     return _user_role(_current_user()) in {USER_ROLE_EMPLOYEE, USER_ROLE_ADMIN}
 
 
+def _can_access_staff_alerts() -> bool:
+    """Admin and DB employees can manage in-app filter alerts."""
+    if _is_admin():
+        return True
+    user = _current_user()
+    return bool(user and _user_role(user) in {USER_ROLE_EMPLOYEE, USER_ROLE_ADMIN})
+
+
 def _is_contracts_admin_path(path: str) -> bool:
     return path == "/admin/contracts" or path.startswith("/admin/api/contracts")
+
+
+def _is_staff_alerts_path(path: str) -> bool:
+    return path == "/admin/alerts" or path.startswith("/admin/alerts/")
 
 
 def _contracts_actor() -> str:
@@ -471,7 +491,9 @@ def _login_redirect_for_user(user: dict[str, Any], next_url: str | None) -> str:
         return _safe_redirect_target(next_url or url_for("index", sort=DEFAULT_LIST_SORT))
     if role == USER_ROLE_EMPLOYEE:
         path_only = (next_url or "").split("?", 1)[0]
-        if next_url and _is_contracts_admin_path(path_only):
+        if next_url and (
+            _is_contracts_admin_path(path_only) or _is_staff_alerts_path(path_only)
+        ):
             return _safe_redirect_target(next_url)
         return _safe_redirect_target(url_for("admin_contracts"))
     return _safe_redirect_target(next_url or url_for("cabinet"))
@@ -553,6 +575,8 @@ def require_admin_auth():
         _is_contract_user() or _is_employee()
     ):
         return None
+    if _is_staff_alerts_path(request.path) and _is_employee():
+        return None
     if _is_contract_user() or _is_employee():
         return redirect(url_for("admin_contracts"))
     return redirect(url_for("login", next=_current_request_path()))
@@ -582,11 +606,23 @@ def inject_nav_helpers():
 
 @app.context_processor
 def inject_admin():
+    alerts_unread = 0
+    user = _current_user()
+    if user and _can_access_staff_alerts():
+        try:
+            alerts_unread = count_unseen_staff_alert_matches(
+                db_path(),
+                user_id=int(user["id"]),
+            )
+        except Exception:
+            alerts_unread = 0
     return {
         "is_admin": _is_admin(),
         "is_contract_user": _is_contract_user(),
         "is_employee": _is_employee(),
         "can_access_contracts": _can_access_contracts(),
+        "can_access_staff_alerts": _can_access_staff_alerts(),
+        "staff_alerts_unread_count": alerts_unread,
         "contract_username": session.get("contract_user") or "",
     }
 
@@ -1137,6 +1173,137 @@ def admin_users_set_password(user_id: int):
     if updated is None:
         abort(404, "user not found")
     return redirect(url_for("admin_users", notice="Пароль обновлён"))
+
+
+def _require_staff_alerts_user() -> dict[str, Any] | None:
+    if not _can_access_staff_alerts():
+        return None
+    user = _current_user()
+    if user is not None:
+        return user
+    return None
+
+
+@app.get("/admin/alerts")
+def admin_alerts():
+    if not _can_access_staff_alerts():
+        return redirect(url_for("login", next=url_for("admin_alerts")))
+    path = require_db()
+    user = _current_user()
+    notice = (request.args.get("notice") or "").strip()
+    error = (request.args.get("error") or "").strip()
+    if user is None:
+        # Env admin without DB user: overview only.
+        rules = list_staff_alert_rules(path)
+        matches: list[dict[str, Any]] = []
+        unseen = 0
+        if not notice:
+            notice = (
+                "Чтобы создавать алерты, войдите под DB-аккаунтом с ролью "
+                "сотрудник или админ."
+            )
+    else:
+        rules = list_staff_alert_rules(path, user_id=int(user["id"]))
+        matches = list_staff_alert_matches(path, user_id=int(user["id"]), limit=100)
+        unseen = count_unseen_staff_alert_matches(path, user_id=int(user["id"]))
+    return render_template(
+        "admin_alerts.html",
+        rules=rules,
+        matches=matches,
+        unseen_count=unseen,
+        can_create=user is not None,
+        notice=notice,
+        error=error,
+        active_tab="alerts",
+        save_query=(request.args.get("query") or "").strip(),
+    )
+
+
+@app.post("/admin/alerts/create")
+def admin_alerts_create():
+    user = _require_staff_alerts_user()
+    if user is None:
+        return redirect(url_for("login", next=url_for("admin_alerts")))
+    path = require_db()
+    name = (request.form.get("name") or "").strip()
+    query = (request.form.get("query") or "").strip()
+    if len(name) < 2:
+        return redirect(url_for("admin_alerts", error="Укажите название алерта"))
+    if not query:
+        return redirect(url_for("admin_alerts", error="Вставьте query с каталога"))
+    try:
+        from scraper.staff_alerts import listing_filters_to_json, parse_alert_query_string
+
+        filters, normalized_query = parse_alert_query_string(query)
+        create_staff_alert_rule(
+            path,
+            user_id=int(user["id"]),
+            name=name,
+            filters_json=listing_filters_to_json(filters),
+            query_string=normalized_query,
+            enabled=True,
+        )
+    except ValueError as exc:
+        return redirect(url_for("admin_alerts", error=f"Не удалось сохранить: {exc}"))
+    except Exception:
+        logging.getLogger(__name__).exception("create staff alert failed")
+        return redirect(url_for("admin_alerts", error="Не удалось сохранить алерт"))
+    return redirect(url_for("admin_alerts", notice="Алерт сохранён"))
+
+
+@app.post("/admin/alerts/<int:rule_id>/toggle")
+def admin_alerts_toggle(rule_id: int):
+    user = _require_staff_alerts_user()
+    if user is None:
+        return redirect(url_for("login", next=url_for("admin_alerts")))
+    path = require_db()
+    enabled_raw = (request.form.get("enabled") or "").strip().lower()
+    enabled = enabled_raw in {"1", "true", "on", "yes"}
+    updated = set_staff_alert_rule_enabled(
+        path,
+        rule_id,
+        enabled=enabled,
+        user_id=None if _is_admin() and _user_role(user) == USER_ROLE_ADMIN else int(user["id"]),
+    )
+    # Employees may only toggle own rules; DB admin may toggle any.
+    if updated is None and _is_admin():
+        updated = set_staff_alert_rule_enabled(path, rule_id, enabled=enabled)
+    if updated is None:
+        return redirect(url_for("admin_alerts", error="Алерт не найден"))
+    return redirect(url_for("admin_alerts", notice="Алерт обновлён"))
+
+
+@app.post("/admin/alerts/<int:rule_id>/delete")
+def admin_alerts_delete(rule_id: int):
+    user = _require_staff_alerts_user()
+    if user is None:
+        return redirect(url_for("login", next=url_for("admin_alerts")))
+    path = require_db()
+    own_only = not (_is_admin() and _user_role(user) == USER_ROLE_ADMIN)
+    deleted = delete_staff_alert_rule(
+        path,
+        rule_id,
+        user_id=int(user["id"]) if own_only else None,
+    )
+    if not deleted:
+        return redirect(url_for("admin_alerts", error="Алерт не найден"))
+    return redirect(url_for("admin_alerts", notice="Алерт удалён"))
+
+
+@app.post("/admin/alerts/matches/seen")
+def admin_alerts_matches_seen():
+    user = _require_staff_alerts_user()
+    if user is None:
+        return redirect(url_for("login", next=url_for("admin_alerts")))
+    path = require_db()
+    raw_ids = request.form.getlist("match_id")
+    match_ids = [int(x) for x in raw_ids if str(x).isdigit()]
+    mark_staff_alert_matches_seen(
+        path,
+        user_id=int(user["id"]),
+        match_ids=match_ids or None,
+    )
+    return redirect(url_for("admin_alerts", notice="Отмечено прочитанным"))
 
 
 def _director_short(full_name: str) -> str:

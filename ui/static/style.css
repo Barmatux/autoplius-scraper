@@ -4949,3 +4949,31 @@ body.cookie-consent-visible .feedback-fab {
 .admin-users-table .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+
+.admin-alerts-create {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 42rem;
+}
+
+.admin-alerts-create label,
+.admin-alerts-query {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.admin-alerts-create input,
+.admin-alerts-create textarea {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card, #fff);
+  color: inherit;
+  font: inherit;
+}
+
+.admin-alerts-page tr.is-unseen td {
+  font-weight: 600;
+}
