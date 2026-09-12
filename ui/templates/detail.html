@@ -98,6 +98,18 @@
       <dl class="kv">
         <div><dt>Цена в LT</dt><dd>{{ render_price_lt(item) }}</dd></div>
         <div><dt>Цена в BY</dt><dd class="detail-price-rb">{{ render_price_rb(item) }}</dd></div>
+        {% if market_compare %}
+        <div class="detail-market-compare">
+          <dt>Рынок BY <span class="muted">(ср. {{ market_compare.window_days }} дн.)</span></dt>
+          <dd>
+            <span class="detail-market-avg">≈ {{ market_compare.avg_price_byn_fmt }}&nbsp;Br</span>
+            <span class="detail-market-delta{% if market_compare.cheaper %} is-better{% elif market_compare.delta_byn > 0 %} is-worse{% endif %}">
+              {{ market_compare.delta_byn_fmt }}&nbsp;Br ({{ market_compare.delta_pct_fmt }}) · {{ market_compare.label }}
+            </span>
+            <span class="muted detail-market-meta">{{ market_compare.brand }} {{ market_compare.model }}, {{ market_compare.year }} · n={{ market_compare.sample_count }} · av.by</span>
+          </dd>
+        </div>
+        {% endif %}
         {% for row in item|detail_spec_rows %}
         <div>
           <dt>{{ row.label }}</dt>

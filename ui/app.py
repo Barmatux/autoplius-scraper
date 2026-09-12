@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 import json
+import logging
 import os
 import re
 import time
@@ -128,6 +129,7 @@ from autoplius.listing_url_normalize import (
     listing_query_has_active_filters,
     normalize_listing_cache_query,
 )
+from autoplius.market_price_compare import compare_listing_to_market
 from autoplius.nbrb_rates import get_nbrb_board
 from autoplius.price_rb import estimate_price_rb
 from collections import Counter
@@ -139,6 +141,7 @@ RUNS_PAGE_SIZE = 30
 LISTINGS_VIEW_TABLE = "table"
 LISTINGS_VIEW_CARDS = "cards"
 SETTINGS = Settings.from_env()
+logger = logging.getLogger(__name__)
 TAB_ALL = "all"
 TAB_NO_VOLUME = "no_volume"
 TAB_ELECTRIC = "electric"
@@ -1973,12 +1976,21 @@ def listing_detail(listing_id: int):
     # (data-save-return / data-back-to-list). Optional ?next= still works.
     next_raw = request.args.get("next")
     back_url = _safe_redirect_target(next_raw) if next_raw else url_for("index")
+    market_compare = None
+    if not bot:
+        try:
+            compare = compare_listing_to_market(item)
+            market_compare = compare.as_template_dict() if compare else None
+        except Exception:
+            logger.exception("market price compare failed for %s", listing_id)
+            market_compare = None
     html = render_template(
         "detail.html",
         item=item,
         photos=photos,
         display_description=display_description,
         back_url=back_url,
+        market_compare=market_compare,
     )
     if cache_key is not None:
         set_cached_html(cache_key, html, cache_ttl)
