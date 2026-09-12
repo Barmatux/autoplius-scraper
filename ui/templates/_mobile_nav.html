@@ -81,6 +81,12 @@
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'cabinet' %} is-active{% endif %}"
       href="{{ url_for('cabinet') }}"
     >Кабинет</a>
+    {% if can_access_contracts %}
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'contracts' %} is-active{% endif %}"
+      href="{{ url_for('admin_contracts') }}"
+    >Документы</a>
+    {% endif %}
     {% else %}
     <a
       class="mobile-nav-link mobile-nav-login"
@@ -112,6 +118,10 @@
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'analytics' %} is-active{% endif %}"
       href="{{ url_for('analytics') }}"
     >Аналитика</a>
+    <a
+      class="mobile-nav-link{% if active_tab is defined and active_tab == 'users' %} is-active{% endif %}"
+      href="{{ url_for('admin_users') }}"
+    >Аккаунты</a>
     <a
       class="mobile-nav-link{% if active_tab is defined and active_tab == 'feedback' %} is-active{% endif %}"
       href="{{ url_for('admin_feedback') }}"

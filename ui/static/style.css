@@ -4889,3 +4889,63 @@ body.cookie-consent-visible .feedback-fab {
     bottom: 6.5rem;
   }
 }
+
+.admin-users-notice {
+  margin: 0.75rem 0 0;
+  color: #1b7a3d;
+}
+
+.admin-users-error {
+  margin: 0.75rem 0 0;
+  color: #a33b2b;
+}
+
+.admin-users-create,
+.admin-users-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: end;
+}
+
+.admin-users-create label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.admin-users-create input,
+.admin-users-create select,
+.admin-users-inline input,
+.admin-users-inline select {
+  min-width: 7rem;
+  max-width: 12rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card, #fff);
+  color: inherit;
+}
+
+.admin-users-table-scroll {
+  overflow-x: auto;
+}
+
+.admin-users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-users-table th,
+.admin-users-table td {
+  padding: 0.55rem 0.4rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-users-table .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}

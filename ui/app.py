@@ -16,6 +16,10 @@ from flask import Flask, abort, jsonify, make_response, redirect, render_templat
 from autoplius.contract_staff import check_contract_credentials
 from scraper.config import Settings
 from scraper.db import (
+    USER_ROLE_ADMIN,
+    USER_ROLE_EMPLOYEE,
+    USER_ROLE_USER,
+    USER_ROLES,
     count_scrape_runs,
     count_unread_feedback,
     create_feedback_message,
@@ -38,8 +42,12 @@ from scraper.db import (
     engine_catalog_missing_count,
     engine_catalog_new_count,
     list_service_contracts,
+    list_users,
+    normalize_user_role,
     scrape_runs_analytics,
     set_feedback_status,
+    set_user_password,
+    set_user_role,
     toggle_user_favorite,
     update_listing_admin,
     update_service_contract,
@@ -414,16 +422,33 @@ def _check_contract_form_credentials(username: str, password: str) -> str | None
     return check_contract_credentials(username, password)
 
 
+def _user_role(user: dict[str, Any] | None) -> str:
+    if not user:
+        return USER_ROLE_USER
+    try:
+        return normalize_user_role(str(user.get("role") or USER_ROLE_USER))
+    except ValueError:
+        return USER_ROLE_USER
+
+
 def _is_admin() -> bool:
-    return _check_admin_auth() or session.get("admin") is True
+    if _check_admin_auth() or session.get("admin") is True:
+        return True
+    return _user_role(_current_user()) == USER_ROLE_ADMIN
 
 
 def _is_contract_user() -> bool:
     return bool(session.get("contract_user"))
 
 
+def _is_employee() -> bool:
+    return _user_role(_current_user()) == USER_ROLE_EMPLOYEE
+
+
 def _can_access_contracts() -> bool:
-    return _is_admin() or _is_contract_user()
+    if _is_admin() or _is_contract_user():
+        return True
+    return _user_role(_current_user()) in {USER_ROLE_EMPLOYEE, USER_ROLE_ADMIN}
 
 
 def _is_contracts_admin_path(path: str) -> bool:
@@ -433,8 +458,23 @@ def _is_contracts_admin_path(path: str) -> bool:
 def _contracts_actor() -> str:
     if _is_contract_user():
         return str(session.get("contract_user") or "staff")
+    user = _current_user()
+    if user:
+        return str(user.get("username") or "staff")
     admin_user, _ = _admin_credentials()
     return admin_user or "admin"
+
+
+def _login_redirect_for_user(user: dict[str, Any], next_url: str | None) -> str:
+    role = _user_role(user)
+    if role == USER_ROLE_ADMIN:
+        return _safe_redirect_target(next_url or url_for("index", sort=DEFAULT_LIST_SORT))
+    if role == USER_ROLE_EMPLOYEE:
+        path_only = (next_url or "").split("?", 1)[0]
+        if next_url and _is_contracts_admin_path(path_only):
+            return _safe_redirect_target(next_url)
+        return _safe_redirect_target(url_for("admin_contracts"))
+    return _safe_redirect_target(next_url or url_for("cabinet"))
 
 
 def _current_user() -> dict[str, Any] | None:
@@ -509,9 +549,11 @@ def require_admin_auth():
         )
     if _is_admin():
         return None
-    if _is_contract_user() and _is_contracts_admin_path(request.path):
+    if _is_contracts_admin_path(request.path) and (
+        _is_contract_user() or _is_employee()
+    ):
         return None
-    if _is_contract_user():
+    if _is_contract_user() or _is_employee():
         return redirect(url_for("admin_contracts"))
     return redirect(url_for("login", next=_current_request_path()))
 
@@ -522,7 +564,8 @@ def require_cabinet_auth():
         return None
     if _is_admin():
         return redirect(url_for("index", sort=DEFAULT_LIST_SORT))
-    if _is_contract_user():
+    # Legacy env contract staff has no cabinet; DB employees keep cabinet access.
+    if _is_contract_user() and _current_user() is None:
         return redirect(url_for("admin_contracts"))
     if _current_user() is not None:
         return None
@@ -542,6 +585,7 @@ def inject_admin():
     return {
         "is_admin": _is_admin(),
         "is_contract_user": _is_contract_user(),
+        "is_employee": _is_employee(),
         "can_access_contracts": _can_access_contracts(),
         "contract_username": session.get("contract_user") or "",
     }
@@ -799,8 +843,9 @@ def login():
             return redirect(_safe_redirect_target(next_url or url_for("index", sort=DEFAULT_LIST_SORT)))
         if _is_contract_user():
             return redirect(_safe_redirect_target(next_url or url_for("admin_contracts")))
-        if _current_user() is not None:
-            return redirect(_safe_redirect_target(next_url or url_for("cabinet")))
+        current = _current_user()
+        if current is not None:
+            return redirect(_login_redirect_for_user(current, next_url))
 
     error = None
     if request.method == "POST":
@@ -840,9 +885,12 @@ def login():
                 session.permanent = True
                 session["user_id"] = user["id"]
                 session["username"] = user["username"]
-                session.pop("admin", None)
                 session.pop("contract_user", None)
-                return redirect(_safe_redirect_target(next_url or url_for("cabinet")))
+                if _user_role(user) == USER_ROLE_ADMIN:
+                    session["admin"] = True
+                else:
+                    session.pop("admin", None)
+                return redirect(_login_redirect_for_user(user, next_url))
 
     return render_template("login.html", error=error, next=next_url)
 
@@ -976,6 +1024,119 @@ def admin_feedback_status(message_id: int):
     if next_status in {"new", "read", "done"}:
         return redirect(url_for("admin_feedback", status=next_status))
     return redirect(url_for("admin_feedback"))
+
+
+_USER_ROLE_LABELS = {
+    USER_ROLE_USER: "Пользователь",
+    USER_ROLE_EMPLOYEE: "Сотрудник",
+    USER_ROLE_ADMIN: "Админ",
+}
+
+
+@app.get("/admin/users")
+def admin_users():
+    if not _is_admin():
+        return redirect(url_for("login", next=url_for("admin_users")))
+    path = require_db()
+    notice = (request.args.get("notice") or "").strip()
+    error = (request.args.get("error") or "").strip()
+    return render_template(
+        "admin_users.html",
+        users=list_users(path),
+        roles=sorted(USER_ROLES),
+        role_labels=_USER_ROLE_LABELS,
+        notice=notice,
+        error=error,
+        active_tab="users",
+    )
+
+
+@app.post("/admin/users/create")
+def admin_users_create():
+    if not _is_admin():
+        return redirect(url_for("login", next=url_for("admin_users")))
+    path = require_db()
+    username = (request.form.get("username") or "").strip()
+    password = request.form.get("password") or ""
+    display_name = (request.form.get("display_name") or "").strip()
+    try:
+        role = normalize_user_role(request.form.get("role"))
+    except ValueError:
+        return redirect(url_for("admin_users", error="Некорректная роль"))
+    if len(username) < 3:
+        return redirect(url_for("admin_users", error="Логин: минимум 3 символа"))
+    if len(password) < 6:
+        return redirect(url_for("admin_users", error="Пароль: минимум 6 символов"))
+    try:
+        create_user(
+            path,
+            username,
+            password,
+            display_name=display_name or None,
+            role=role,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        if "already exists" in message:
+            return redirect(url_for("admin_users", error="Логин уже занят"))
+        return redirect(url_for("admin_users", error="Не удалось создать аккаунт"))
+    return redirect(url_for("admin_users", notice="Аккаунт создан"))
+
+
+@app.post("/admin/users/<int:user_id>/role")
+def admin_users_set_role(user_id: int):
+    if not _is_admin():
+        return redirect(url_for("login", next=url_for("admin_users")))
+    path = require_db()
+    try:
+        role = normalize_user_role(request.form.get("role"))
+        updated = set_user_role(path, user_id, role)
+    except ValueError as exc:
+        message = str(exc)
+        if "last admin" in message:
+            return redirect(url_for("admin_users", error="Нельзя снять роль с последнего админа"))
+        return redirect(url_for("admin_users", error="Некорректная роль"))
+    if updated is None:
+        abort(404, "user not found")
+    return redirect(url_for("admin_users", notice="Роль обновлена"))
+
+
+@app.post("/admin/users/<int:user_id>/rb-extras")
+def admin_users_set_rb_extras(user_id: int):
+    if not _is_admin():
+        return redirect(url_for("login", next=url_for("admin_users")))
+    path = require_db()
+    try:
+        privilege = _parse_usd_input(request.form.get("rb_privilege_usd"))
+        delivery = _parse_usd_input(request.form.get("rb_delivery_usd"))
+    except ValueError:
+        return redirect(url_for("admin_users", error="Некорректная сумма RB"))
+    updated = update_user_rb_extras(
+        path,
+        user_id,
+        privilege_usd=privilege,
+        delivery_usd=delivery,
+    )
+    if updated is None:
+        abort(404, "user not found")
+    return redirect(url_for("admin_users", notice="RB-параметры сохранены"))
+
+
+@app.post("/admin/users/<int:user_id>/password")
+def admin_users_set_password(user_id: int):
+    if not _is_admin():
+        return redirect(url_for("login", next=url_for("admin_users")))
+    path = require_db()
+    password = request.form.get("password") or ""
+    if len(password) < 6:
+        return redirect(url_for("admin_users", error="Пароль: минимум 6 символов"))
+    try:
+        updated = set_user_password(path, user_id, password)
+    except ValueError:
+        return redirect(url_for("admin_users", error="Не удалось сменить пароль"))
+    if updated is None:
+        abort(404, "user not found")
+    return redirect(url_for("admin_users", notice="Пароль обновлён"))
 
 
 def _director_short(full_name: str) -> str:
