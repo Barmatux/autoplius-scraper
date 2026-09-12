@@ -1,0 +1,11 @@
+{
+  "name": "autoplius-scraper",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "autoplius-ui",
+      "command": "source .venv/bin/activate && DATA_DIR=data UI_HOST=0.0.0.0 UI_PORT=8080 FLASK_SECRET_KEY=dev-secret-change-me python -m ui.app"
+    }
+  ],
+  "ports": [8080]
+}
