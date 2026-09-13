@@ -94,10 +94,13 @@ def _flag_enabled(values: list[str] | None, *, default: bool) -> bool:
 
 
 def parse_alert_query_string(raw: str) -> tuple[ListingFilters, str]:
-    """Parse catalog query/URL into ListingFilters + normalized query string."""
+    """Parse catalog query/URL into ListingFilters + normalized query string.
+
+    Empty / ``*`` / ``all`` means match any listing (only market gap still applies).
+    """
     text = (raw or "").strip()
-    if not text:
-        raise ValueError("empty query")
+    if not text or text in {"*", "all"}:
+        text = "tab=all"
     if "://" in text or text.startswith("/"):
         parts = urlsplit(text)
         query = parts.query
@@ -179,13 +182,14 @@ def filter_candidate_ids(
 
 
 # Only alert when landed BY price is at least this far below RB market average (USD).
-STAFF_ALERT_MIN_MARKET_SAVINGS_USD = 1000.0
+STAFF_ALERT_DEFAULT_MIN_GAP_USD = 1000.0
+STAFF_ALERT_MIN_MARKET_SAVINGS_USD = STAFF_ALERT_DEFAULT_MIN_GAP_USD  # backward-compatible alias
 
 
 def listing_has_market_deal(
     item: dict[str, Any],
     *,
-    min_savings_usd: float = STAFF_ALERT_MIN_MARKET_SAVINGS_USD,
+    min_savings_usd: float = STAFF_ALERT_DEFAULT_MIN_GAP_USD,
 ) -> bool:
     """True when listing is cheaper than RB market average by >= min_savings_usd."""
     try:
@@ -206,7 +210,7 @@ def filter_ids_by_market_deal(
     db_path: Path,
     candidate_ids: list[int],
     *,
-    min_savings_usd: float = STAFF_ALERT_MIN_MARKET_SAVINGS_USD,
+    min_savings_usd: float = STAFF_ALERT_DEFAULT_MIN_GAP_USD,
 ) -> list[int]:
     """Keep ids whose BY landed price beats RB market avg by min_savings_usd."""
     if not candidate_ids:
@@ -226,6 +230,41 @@ def filter_ids_by_market_deal(
     ]
 
 
+ADMIN_CATCH_ALL_ALERT_NAME = "Любое объявление (гэп рынок РБ)"
+_CATCH_ALL_QUERY_MARKERS = frozenset({"", "tab=all", "*", "all"})
+
+
+def ensure_admin_catch_all_alert_rule(
+    db_path: Path,
+    *,
+    user_id: int,
+    min_gap_usd: float = STAFF_ALERT_DEFAULT_MIN_GAP_USD,
+    name: str = ADMIN_CATCH_ALL_ALERT_NAME,
+) -> dict[str, Any]:
+    """Ensure the admin has a match-all rule with the given market-gap threshold.
+
+    Empty / ``tab=all`` query matches any newly scraped listing; only ``min_gap_usd``
+    (price vs RB market average) gates the alert.
+    """
+    from scraper.db import create_staff_alert_rule, list_staff_alert_rules
+
+    rules = list_staff_alert_rules(db_path, user_id=int(user_id))
+    for rule in rules:
+        qs = (rule.get("query_string") or "").strip().lower()
+        if qs in _CATCH_ALL_QUERY_MARKERS or (rule.get("name") or "") == name:
+            return rule
+    filters, query = parse_alert_query_string("tab=all")
+    return create_staff_alert_rule(
+        db_path,
+        user_id=int(user_id),
+        name=name,
+        filters_json=listing_filters_to_json(filters),
+        query_string=query,
+        min_gap_usd=min_gap_usd,
+        enabled=True,
+    )
+
+
 def process_staff_alerts_for_new_listings(
     db_path: Path,
     new_listing_ids: list[int],
@@ -242,16 +281,6 @@ def process_staff_alerts_for_new_listings(
     if not rules:
         return 0
 
-    # Shared market-deal gate: cheaper than RB average by >= $1000.
-    deal_ids = set(filter_ids_by_market_deal(db_path, candidates))
-    if not deal_ids:
-        logger.info(
-            "staff alerts: 0 market deals (>= $%s below avg) among %s candidate(s)",
-            int(STAFF_ALERT_MIN_MARKET_SAVINGS_USD),
-            len(candidates),
-        )
-        return 0
-
     to_insert: list[tuple[int, int, int]] = []
     for rule in rules:
         user = get_user_by_id(db_path, int(rule["user_id"]))
@@ -262,8 +291,19 @@ def process_staff_alerts_for_new_listings(
         except (TypeError, ValueError, json.JSONDecodeError):
             logger.warning("skip alert rule %s: invalid filters_json", rule.get("id"))
             continue
-        matched_ids = filter_candidate_ids(db_path, filters, sorted(deal_ids))
-        for autoplius_id in matched_ids:
+        try:
+            min_gap = float(rule.get("min_gap_usd") if rule.get("min_gap_usd") is not None else STAFF_ALERT_DEFAULT_MIN_GAP_USD)
+        except (TypeError, ValueError):
+            min_gap = float(STAFF_ALERT_DEFAULT_MIN_GAP_USD)
+        matched_ids = filter_candidate_ids(db_path, filters, candidates)
+        if not matched_ids:
+            continue
+        deal_ids = filter_ids_by_market_deal(
+            db_path,
+            matched_ids,
+            min_savings_usd=min_gap,
+        )
+        for autoplius_id in deal_ids:
             to_insert.append((int(rule["id"]), int(rule["user_id"]), int(autoplius_id)))
 
     if not to_insert:

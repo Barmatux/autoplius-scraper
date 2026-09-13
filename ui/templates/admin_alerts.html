@@ -25,8 +25,9 @@
     <section class="auth-panel cabinet-panel">
       <h1 class="auth-title">Алерты по фильтрам</h1>
       <p class="auth-lead">
-        Сохраните фильтр с каталога. Совпадение появится здесь только если цена в BY
-        ниже средней по рынку РБ минимум на $1000 (пока без email/Telegram).
+        Совпадения появляются здесь после нового парсинга, если объявление проходит
+        ваш фильтр и цена в BY ниже средней по рынку РБ минимум на указанный гэп
+        (пока без email/Telegram).
       </p>
       <div class="cabinet-actions">
         <a class="admin-enter-link" href="{{ url_for('index') }}">К каталогу</a>
@@ -36,20 +37,39 @@
       {% if error %}<p class="admin-users-error">{{ error }}</p>{% endif %}
     </section>
 
+    <section class="auth-panel cabinet-panel admin-alerts-help">
+      <h2 class="cabinet-section-title">Как создать правило</h2>
+      <ol class="admin-alerts-steps">
+        <li>Откройте каталог и выставьте нужные фильтры (марка, цена, год и т.д.).</li>
+        <li>Скопируйте query из адресной строки после <code>?</code>, например
+          <code>make=BMW&amp;max_price=20000&amp;over_3y=1</code>.
+          Можно вставить и полный URL.</li>
+        <li>Ниже укажите название, вставьте query и задайте
+          <strong>мин. гэп к рынку РБ ($)</strong> — насколько BY-цена должна быть
+          ниже средней по РБ. По умолчанию 1000.</li>
+        <li>Для правила «любое объявление» оставьте query пустым (или напишите
+          <code>*</code> / <code>all</code>) и укажите только гэп.</li>
+        <li>Сохраните. Алерт сработает только на <em>новые</em> объявления из
+          следующего парсинга — уже лежащие в базе задним числом не подтягиваются.</li>
+      </ol>
+    </section>
+
     {% if can_create %}
     <section class="auth-panel cabinet-panel">
       <h2 class="cabinet-section-title">Новый алерт</h2>
-      <p class="muted">Скопируйте query из адресной строки каталога, например:
-        <code>make=BMW&amp;max_price=20000&amp;over_3y=1</code>
-      </p>
+      <p class="muted">Пустой query = любое объявление. Гэп настраивается отдельно для каждого правила.</p>
       <form class="admin-alerts-create" method="post" action="{{ url_for('admin_alerts_create') }}">
         <label>
           Название
           <input type="text" name="name" required minlength="2" maxlength="80" placeholder="BMW до 20к">
         </label>
         <label class="admin-alerts-query">
-          Query / URL фильтра
-          <textarea name="query" required rows="3" placeholder="make=BMW&max_price=20000">{{ save_query }}</textarea>
+          Query / URL фильтра (необязательно)
+          <textarea name="query" rows="3" placeholder="make=BMW&max_price=20000 или пусто = любое">{{ save_query }}</textarea>
+        </label>
+        <label>
+          Мин. гэп к рынку РБ ($)
+          <input type="number" name="min_gap_usd" min="0" max="1000000" step="1" value="1000" required>
         </label>
         <button type="submit" class="admin-enter-link">Сохранить</button>
       </form>
@@ -67,6 +87,7 @@
             <tr>
               <th>Название</th>
               <th>Query</th>
+              <th>Гэп $</th>
               <th>Статус</th>
               <th></th>
             </tr>
@@ -75,7 +96,8 @@
             {% for rule in rules %}
             <tr>
               <td>{{ rule.name }}</td>
-              <td class="mono"><code>{{ rule.query_string or '—' }}</code></td>
+              <td class="mono"><code>{{ rule.query_string or 'любое' }}</code></td>
+              <td class="mono">${{ '%.0f'|format(rule.min_gap_usd|float) }}</td>
               <td>{% if rule.enabled %}вкл{% else %}выкл{% endif %}</td>
               <td>
                 {% if can_create %}

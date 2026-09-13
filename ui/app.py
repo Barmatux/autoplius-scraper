@@ -31,6 +31,7 @@ from scraper.db import (
     default_db_path,
     delete_service_contract,
     delete_staff_alert_rule,
+    ensure_env_admin_user,
     fetch_engine_catalog,
     fetch_feedback_messages,
     fetch_listing,
@@ -893,9 +894,28 @@ def login():
         elif _check_admin_form_credentials(username, password):
             session.permanent = True
             session["admin"] = True
-            session.pop("user_id", None)
-            session.pop("username", None)
             session.pop("contract_user", None)
+            # Bind/create DB admin so /admin/alerts can own rules for this login.
+            try:
+                db_admin = ensure_env_admin_user(
+                    require_db(),
+                    username=username,
+                    password=password,
+                )
+                session["user_id"] = int(db_admin["id"])
+                session["username"] = db_admin["username"]
+                from scraper.staff_alerts import ensure_admin_catch_all_alert_rule
+
+                ensure_admin_catch_all_alert_rule(
+                    require_db(),
+                    user_id=int(db_admin["id"]),
+                )
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "failed to bind env admin to DB user for staff alerts"
+                )
+                session.pop("user_id", None)
+                session.pop("username", None)
             return redirect(_safe_redirect_target(next_url or url_for("index", sort=DEFAULT_LIST_SORT)))
         else:
             contract_login = _check_contract_form_credentials(username, password)
@@ -1192,6 +1212,35 @@ def admin_alerts():
     user = _current_user()
     notice = (request.args.get("notice") or "").strip()
     error = (request.args.get("error") or "").strip()
+    if user is None and _is_admin():
+        # Env admin session without user_id yet: try bind + seed catch-all.
+        admin_user, admin_password = _admin_credentials()
+        if admin_user and admin_password:
+            try:
+                db_admin = ensure_env_admin_user(
+                    path,
+                    username=admin_user,
+                    password=admin_password,
+                )
+                session["user_id"] = int(db_admin["id"])
+                session["username"] = db_admin["username"]
+                user = db_admin
+                from scraper.staff_alerts import ensure_admin_catch_all_alert_rule
+
+                ensure_admin_catch_all_alert_rule(path, user_id=int(db_admin["id"]))
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "failed to ensure env admin catch-all alert"
+                )
+    if user is not None and _user_role(user) == USER_ROLE_ADMIN:
+        try:
+            from scraper.staff_alerts import ensure_admin_catch_all_alert_rule
+
+            ensure_admin_catch_all_alert_rule(path, user_id=int(user["id"]))
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "failed to ensure admin catch-all alert"
+            )
     if user is None:
         # Env admin without DB user: overview only.
         rules = list_staff_alert_rules(path)
@@ -1203,9 +1252,15 @@ def admin_alerts():
                 "сотрудник или админ."
             )
     else:
-        rules = list_staff_alert_rules(path, user_id=int(user["id"]))
-        matches = list_staff_alert_matches(path, user_id=int(user["id"]), limit=100)
-        unseen = count_unseen_staff_alert_matches(path, user_id=int(user["id"]))
+        # DB admin sees all rules; employees see only their own.
+        if _user_role(user) == USER_ROLE_ADMIN:
+            rules = list_staff_alert_rules(path)
+            matches = list_staff_alert_matches(path, user_id=int(user["id"]), limit=100)
+            unseen = count_unseen_staff_alert_matches(path, user_id=int(user["id"]))
+        else:
+            rules = list_staff_alert_rules(path, user_id=int(user["id"]))
+            matches = list_staff_alert_matches(path, user_id=int(user["id"]), limit=100)
+            unseen = count_unseen_staff_alert_matches(path, user_id=int(user["id"]))
     return render_template(
         "admin_alerts.html",
         rules=rules,
@@ -1227,10 +1282,9 @@ def admin_alerts_create():
     path = require_db()
     name = (request.form.get("name") or "").strip()
     query = (request.form.get("query") or "").strip()
+    min_gap_raw = (request.form.get("min_gap_usd") or "").strip()
     if len(name) < 2:
         return redirect(url_for("admin_alerts", error="Укажите название алерта"))
-    if not query:
-        return redirect(url_for("admin_alerts", error="Вставьте query с каталога"))
     try:
         from scraper.staff_alerts import listing_filters_to_json, parse_alert_query_string
 
@@ -1241,6 +1295,7 @@ def admin_alerts_create():
             name=name,
             filters_json=listing_filters_to_json(filters),
             query_string=normalized_query,
+            min_gap_usd=min_gap_raw if min_gap_raw else 1000,
             enabled=True,
         )
     except ValueError as exc:
