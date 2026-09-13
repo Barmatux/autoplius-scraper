@@ -4974,6 +4974,21 @@ body.cookie-consent-visible .feedback-fab {
   font: inherit;
 }
 
+.admin-alerts-steps {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  line-height: 1.55;
+  color: var(--muted, #5b6470);
+}
+
+.admin-alerts-steps li + li {
+  margin-top: 0.4rem;
+}
+
+.admin-alerts-steps code {
+  font-size: 0.92em;
+}
+
 .admin-alerts-page tr.is-unseen td {
   font-weight: 600;
 }

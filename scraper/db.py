@@ -183,6 +183,7 @@ CREATE TABLE IF NOT EXISTS staff_alert_rules (
     name TEXT NOT NULL,
     filters_json TEXT NOT NULL,
     query_string TEXT,
+    min_gap_usd REAL NOT NULL DEFAULT 1000,
     enabled INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
@@ -427,6 +428,7 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
             name TEXT NOT NULL,
             filters_json TEXT NOT NULL,
             query_string TEXT,
+            min_gap_usd REAL NOT NULL DEFAULT 1000,
             enabled INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
@@ -438,6 +440,11 @@ def _ensure_columns(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_staff_alert_rules_user "
         "ON staff_alert_rules(user_id, enabled, updated_at DESC)"
     )
+    rule_cols = {row[1] for row in conn.execute("PRAGMA table_info(staff_alert_rules)")}
+    if rule_cols and "min_gap_usd" not in rule_cols:
+        conn.execute(
+            "ALTER TABLE staff_alert_rules ADD COLUMN min_gap_usd REAL NOT NULL DEFAULT 1000"
+        )
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS staff_alert_matches (
@@ -2348,6 +2355,38 @@ def set_user_password(db_path: Path, user_id: int, password: str) -> dict[str, A
     return _user_row_to_dict(row) if row else None
 
 
+def ensure_env_admin_user(
+    db_path: Path,
+    *,
+    username: str,
+    password: str,
+) -> dict[str, Any]:
+    """Ensure a DB user exists for env ADMIN_USER so staff alerts can attach to it.
+
+    Creates the user with role=admin when missing; promotes existing non-admin.
+    Does not overwrite an existing password hash (env login remains the source of truth).
+    """
+    name = (username or "").strip()
+    if len(name) < 3:
+        raise ValueError("admin username must be at least 3 characters")
+    if not password:
+        raise ValueError("admin password required")
+    existing = get_user_by_username(db_path, name)
+    if existing is None:
+        return create_user(
+            db_path,
+            name,
+            password,
+            display_name="Admin",
+            role=USER_ROLE_ADMIN,
+        )
+    if existing.get("role") != USER_ROLE_ADMIN:
+        updated = set_user_role(db_path, int(existing["id"]), USER_ROLE_ADMIN)
+        if updated is not None:
+            return updated
+    return existing
+
+
 def fetch_user_favorite_ids(db_path: Path, user_id: int) -> list[int]:
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2795,12 +2834,19 @@ STAFF_ALERT_ROLES = frozenset({USER_ROLE_EMPLOYEE, USER_ROLE_ADMIN})
 def _staff_alert_rule_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
     if row is None:
         return None
+    keys = row.keys()
+    raw_gap = row["min_gap_usd"] if "min_gap_usd" in keys else 1000
+    try:
+        min_gap_usd = float(raw_gap if raw_gap is not None else 1000)
+    except (TypeError, ValueError):
+        min_gap_usd = 1000.0
     return {
         "id": int(row["id"]),
         "user_id": int(row["user_id"]),
         "name": str(row["name"] or ""),
         "filters_json": str(row["filters_json"] or "{}"),
         "query_string": (row["query_string"] or None),
+        "min_gap_usd": min_gap_usd,
         "enabled": bool(int(row["enabled"] or 0)),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
@@ -2825,6 +2871,20 @@ def _staff_alert_match_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
     }
 
 
+def _normalize_min_gap_usd(value: float | int | str | None, *, default: float = 1000.0) -> float:
+    if value is None or value == "":
+        return float(default)
+    try:
+        gap = float(str(value).strip().replace(",", ".").replace(" ", ""))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("min_gap_usd must be a number") from exc
+    if gap < 0:
+        raise ValueError("min_gap_usd must be >= 0")
+    if gap > 1_000_000:
+        raise ValueError("min_gap_usd too large")
+    return round(gap, 2)
+
+
 def create_staff_alert_rule(
     db_path: Path,
     *,
@@ -2832,6 +2892,7 @@ def create_staff_alert_rule(
     name: str,
     filters_json: str,
     query_string: str | None = None,
+    min_gap_usd: float | int | str | None = 1000,
     enabled: bool = True,
 ) -> dict[str, Any]:
     init_db(db_path)
@@ -2843,6 +2904,7 @@ def create_staff_alert_rule(
         raise ValueError("filters_json required")
     # validate JSON
     json.loads(payload)
+    gap = _normalize_min_gap_usd(min_gap_usd)
     now = _utc_now()
     with connect(db_path) as conn:
         user = conn.execute(
@@ -2857,14 +2919,16 @@ def create_staff_alert_rule(
         cur = conn.execute(
             """
             INSERT INTO staff_alert_rules (
-                user_id, name, filters_json, query_string, enabled, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                user_id, name, filters_json, query_string, min_gap_usd,
+                enabled, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 int(user_id),
                 title,
                 payload,
                 (query_string or "").strip() or None,
+                gap,
                 1 if enabled else 0,
                 now,
                 now,
