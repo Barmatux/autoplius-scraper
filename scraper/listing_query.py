@@ -9,40 +9,64 @@ from typing import Any
 from autoplius.engine_volume import engine_volume_liters
 from autoplius.labels import mileage_from_parameters, parse_mileage_km
 from scraper.db import (
-    LISTING_COLUMNS_FILTER,
     _listing_sort_sql,
+    _row_scalar,
     connect,
     row_to_listing,
 )
+from scraper.db_backend import db_ready, using_postgres
 from scraper.listing_sql_filters import ListingFilters, build_listing_where
+from scraper.sql_dialect import (
+    listing_id_expr,
+    listing_pk_where,
+    listing_select_columns,
+    listings_source_clause,
+    parameters_col,
+)
 
 
 def _volume_item_from_row(row: Any) -> dict[str, Any]:
+    raw = row["parameters_json"] if "parameters_json" in row.keys() else row.get("parameters")
+    if isinstance(raw, dict):
+        parameters = raw
+    else:
+        try:
+            parameters = json.loads(raw or "{}")
+        except (TypeError, json.JSONDecodeError):
+            parameters = {}
     return {
         "title": row["title"],
         "engine": row["engine"],
         "description": row["description"],
         "description_ru": row["description_ru"],
-        "parameters": json.loads(row["parameters_json"] or "{}"),
+        "parameters": parameters if isinstance(parameters, dict) else {},
     }
 
 
 def _parameters_from_row(row: Any) -> dict[str, Any]:
+    raw = None
+    keys = row.keys() if hasattr(row, "keys") else ()
+    if "parameters_json" in keys:
+        raw = row["parameters_json"]
+    elif isinstance(row, dict) and "parameters" in row:
+        raw = row["parameters"]
+    if isinstance(raw, dict):
+        return raw
     try:
-        parsed = json.loads(row["parameters_json"] or "{}")
+        parsed = json.loads(raw or "{}")
     except (TypeError, json.JSONDecodeError, KeyError):
         return {}
     return parsed if isinstance(parsed, dict) else {}
 
 
 def count_listings(db_path: Path, filters: ListingFilters) -> int:
-    if not db_path.is_file():
+    if not db_ready(db_path):
         return 0
     clauses, params = build_listing_where(filters)
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-    sql = f"SELECT COUNT(*) FROM listings {where}"
+    sql = f"SELECT COUNT(*) AS c FROM listings {where}"
     with connect(db_path) as conn:
-        return int(conn.execute(sql, params).fetchone()[0])
+        return int(_row_scalar(conn.execute(sql, params).fetchone()) or 0)
 
 
 def fetch_listing_ids(
@@ -52,12 +76,13 @@ def fetch_listing_ids(
     limit: int | None = None,
     offset: int | None = None,
 ) -> list[int]:
-    if not db_path.is_file():
+    if not db_ready(db_path):
         return []
     clauses, params = build_listing_where(filters)
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    id_expr = listing_id_expr()
     sql = (
-        f"SELECT autoplius_id FROM listings {where} "
+        f"SELECT {id_expr} AS autoplius_id FROM listings {where} "
         f"ORDER BY {_listing_sort_sql(filters.sort)}"
     )
     query_params = list(params)
@@ -69,25 +94,29 @@ def fetch_listing_ids(
             query_params.append(int(offset))
     with connect(db_path) as conn:
         rows = conn.execute(sql, query_params).fetchall()
-    return [int(row[0]) for row in rows]
+    return [int(row["autoplius_id"]) for row in rows]
 
 
 def fetch_listings_for_options(
     db_path: Path,
     filters: ListingFilters,
 ) -> list[dict[str, Any]]:
-    if not db_path.is_file():
+    if not db_ready(db_path):
         return []
     clauses, params = build_listing_where(filters)
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-    sql = f"SELECT {LISTING_COLUMNS_FILTER} FROM listings {where}"
+    columns = listing_select_columns("filter")
+    sql = f"SELECT {columns} FROM listings {where}"
     with connect(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
     return [row_to_listing(row) for row in rows]
 
 
 def backfill_engine_liters(db_path: Path, *, batch_size: int = 500, force: bool = False) -> int:
-    if not db_path.is_file():
+    if using_postgres():
+        # Listing maintenance is owned by scrape-platform after cutover.
+        return 0
+    if not db_ready(db_path):
         return 0
     updated = 0
     with connect(db_path) as conn:
@@ -133,7 +162,9 @@ def backfill_engine_liters(db_path: Path, *, batch_size: int = 500, force: bool 
 
 def backfill_mileage_km(db_path: Path, *, batch_size: int = 500, force: bool = False) -> int:
     """Fill mileage_km from parameters_json when the column is empty."""
-    if not db_path.is_file():
+    if using_postgres():
+        return 0
+    if not db_ready(db_path):
         return 0
     updated = 0
     with connect(db_path) as conn:

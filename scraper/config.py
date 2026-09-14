@@ -52,6 +52,7 @@ class Settings:
     profile_dir: Path
     logs_dir: Path
     db_path: Path
+    database_url: str
     auto_captcha: bool
     headless: bool
     timeout_sec: float
@@ -95,6 +96,7 @@ class Settings:
             profile_dir=Path(os.environ.get("PROFILE_DIR", root / ".browser-profile")),
             logs_dir=Path(os.environ.get("LOGS_DIR", root / "logs")),
             db_path=db_path,
+            database_url=os.environ.get("DATABASE_URL", "").strip(),
             auto_captcha=_env_bool("AUTO_CAPTCHA", True),
             headless=_env_bool("HEADLESS", True),
             timeout_sec=_env_float("SCRAPE_TIMEOUT_SEC", 180.0),
