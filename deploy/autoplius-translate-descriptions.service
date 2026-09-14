@@ -1,0 +1,21 @@
+[Unit]
+Description=Autoplius backfill missing Russian listing descriptions
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/autoplius-scraper
+EnvironmentFile=-/opt/autoplius-scraper/.env
+# Catch up on missing LT→RU descriptions without blocking deploys.
+ExecStart=/opt/autoplius-scraper/.venv/bin/python /opt/autoplius-scraper/backfill_descriptions_ru.py --active-only --limit 120
+User=autoplius
+Group=autoplius
+Nice=10
+TimeoutStartSec=45m
+
+Environment=DATA_DIR=/var/lib/autoplius-scraper/data
+Environment=LOGS_DIR=/var/log/autoplius-scraper
+
+[Install]
+WantedBy=multi-user.target

@@ -65,10 +65,16 @@ fi
 if [[ -f "$APP/deploy/autoplius-nightly-reconcile.service" ]]; then
   sudo cp "$APP/deploy/autoplius-nightly-reconcile.service" "$APP/deploy/autoplius-nightly-reconcile.timer" /etc/systemd/system/
 fi
+if [[ -f "$APP/deploy/autoplius-translate-descriptions.service" ]]; then
+  sudo cp "$APP/deploy/autoplius-translate-descriptions.service" "$APP/deploy/autoplius-translate-descriptions.timer" /etc/systemd/system/
+fi
 sudo systemctl daemon-reload
 sudo systemctl enable autoplius-scraper.timer autoplius-ui.service
 if [[ -f /etc/systemd/system/autoplius-nightly-reconcile.timer ]]; then
   sudo systemctl enable --now autoplius-nightly-reconcile.timer
+fi
+if [[ -f /etc/systemd/system/autoplius-translate-descriptions.timer ]]; then
+  sudo systemctl enable --now autoplius-translate-descriptions.timer
 fi
 
 if [[ -f "$APP/deploy/post-deploy-vm.sh" ]]; then
