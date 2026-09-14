@@ -12,6 +12,8 @@ from typing import Any, TypeVar
 
 from scraper.listing_sql_filters import ListingFilters
 
+from scraper.db_backend import cache_token
+
 T = TypeVar("T")
 
 _DEFAULT_TTL_SEC = 180
@@ -34,11 +36,7 @@ def invalidate_query_cache() -> None:
 
 
 def _db_cache_token(db_path: Path) -> str:
-    try:
-        stat = db_path.resolve().stat()
-    except OSError:
-        return str(db_path.resolve())
-    return f"{db_path.resolve()}:{stat.st_mtime_ns}:{stat.st_size}"
+    return cache_token(db_path)
 
 
 def _filters_cache_key(db_path: Path, filters: ListingFilters) -> str:

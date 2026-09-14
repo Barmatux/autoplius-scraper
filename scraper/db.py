@@ -24,6 +24,20 @@ from scraper.listing_sync import (
     merge_listing_row,
     parse_manual_overrides,
 )
+from scraper.db_backend import database_url, db_ready, using_postgres
+from scraper.sql_dialect import (
+    adapt_sql_for_postgres,
+    listing_id_expr,
+    listing_pk_where,
+    listing_select_columns,
+    listing_write_column,
+    listings_source_clause,
+    manual_overrides_col,
+    parameters_col,
+    photo_urls_col,
+    qmark_to_percent,
+    truthy_int_bool_sql,
+)
 from scraper.query_cache import cached_db_stats
 
 
@@ -213,6 +227,188 @@ CREATE INDEX IF NOT EXISTS idx_staff_alert_matches_unseen
     ON staff_alert_matches(user_id, seen_at, matched_at DESC);
 """
 
+# UI-owned tables only on Postgres. Listings / scrape_runs / engine_catalog are
+# owned by scrape-platform (see docs/autoplius-postgres).
+SCHEMA_PG_UI = """
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    display_name TEXT,
+    role TEXT NOT NULL DEFAULT 'user',
+    rb_privilege_usd DOUBLE PRECISION NOT NULL DEFAULT 0,
+    rb_delivery_usd DOUBLE PRECISION NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    last_login_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS user_favorites (
+    user_id BIGINT NOT NULL,
+    autoplius_id BIGINT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, autoplius_id),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_favorites_user ON user_favorites(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS feedback_messages (
+    id BIGSERIAL PRIMARY KEY,
+    kind TEXT NOT NULL,
+    phone TEXT,
+    name TEXT,
+    body TEXT,
+    user_id BIGINT,
+    status TEXT NOT NULL DEFAULT 'new',
+    created_at TEXT NOT NULL,
+    read_at TEXT,
+    page_url TEXT,
+    user_agent TEXT,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_messages_created ON feedback_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feedback_messages_status ON feedback_messages(status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS service_contracts (
+    id BIGSERIAL PRIMARY KEY,
+    contract_number TEXT,
+    client_name TEXT,
+    amount TEXT,
+    payload TEXT NOT NULL,
+    created_by TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_service_contracts_updated ON service_contracts(updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS exchange_rates (
+    id BIGSERIAL PRIMARY KEY,
+    pair TEXT NOT NULL,
+    rate DOUBLE PRECISION NOT NULL,
+    fetched_at TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'myfin'
+);
+
+CREATE INDEX IF NOT EXISTS idx_exchange_rates_pair_time ON exchange_rates(pair, fetched_at DESC);
+
+CREATE TABLE IF NOT EXISTS staff_alert_rules (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    name TEXT NOT NULL,
+    filters_json TEXT NOT NULL,
+    query_string TEXT,
+    min_gap_usd DOUBLE PRECISION NOT NULL DEFAULT 1000,
+    enabled SMALLINT NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_alert_rules_user
+    ON staff_alert_rules(user_id, enabled, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS staff_alert_matches (
+    id BIGSERIAL PRIMARY KEY,
+    rule_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    autoplius_id BIGINT NOT NULL,
+    matched_at TEXT NOT NULL,
+    seen_at TEXT,
+    UNIQUE(rule_id, autoplius_id),
+    FOREIGN KEY(rule_id) REFERENCES staff_alert_rules(id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_alert_matches_user
+    ON staff_alert_matches(user_id, matched_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_staff_alert_matches_unseen
+    ON staff_alert_matches(user_id, seen_at, matched_at DESC);
+"""
+
+
+class PgCursor:
+    """Thin cursor wrapper mimicking sqlite3 cursor used by this codebase."""
+
+    def __init__(self, cursor: Any, *, lastrowid: int | None = None) -> None:
+        self._cursor = cursor
+        self.lastrowid = lastrowid
+
+    def fetchone(self) -> Any:
+        return self._cursor.fetchone()
+
+    def fetchall(self) -> list[Any]:
+        return list(self._cursor.fetchall())
+
+    def fetchmany(self, size: int | None = None) -> list[Any]:
+        if size is None:
+            return list(self._cursor.fetchmany())
+        return list(self._cursor.fetchmany(size))
+
+    @property
+    def rowcount(self) -> int:
+        return int(self._cursor.rowcount or 0)
+
+    @property
+    def description(self) -> Any:
+        return self._cursor.description
+
+    def close(self) -> None:
+        self._cursor.close()
+
+    def __iter__(self) -> Iterator[Any]:
+        return iter(self._cursor)
+
+
+class PgConnection:
+    """psycopg connection wrapper: ``?`` → ``%s``, dict rows, sqlite-like API."""
+
+    def __init__(self, conn: Any) -> None:
+        self._conn = conn
+        self.lastrowid: int | None = None
+
+    @property
+    def raw(self) -> Any:
+        return self._conn
+
+    def execute(self, sql: str, params: Any = None) -> PgCursor:
+        converted = adapt_sql_for_postgres(sql)
+        cur = self._conn.cursor()
+        if params is None:
+            cur.execute(converted)
+        else:
+            cur.execute(converted, params)
+        if cur.description:
+            # Capture RETURNING id when present.
+            # Peek without consuming: psycopg buffers; callers that need lastrowid
+            # should use RETURNING and read the row themselves. Keep attribute for API parity.
+            pass
+        return PgCursor(cur, lastrowid=self.lastrowid)
+
+    def executemany(self, sql: str, params_seq: Any) -> PgCursor:
+        converted = adapt_sql_for_postgres(sql)
+        cur = self._conn.cursor()
+        cur.executemany(converted, params_seq)
+        return PgCursor(cur, lastrowid=self.lastrowid)
+
+    def executescript(self, script: str) -> None:
+        for chunk in script.split(";"):
+            stmt = chunk.strip()
+            if not stmt:
+                continue
+            self.execute(stmt)
+
+    def commit(self) -> None:
+        self._conn.commit()
+
+    def rollback(self) -> None:
+        self._conn.rollback()
+
+    def close(self) -> None:
+        self._conn.close()
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -223,7 +419,26 @@ def default_db_path(data_dir: Path) -> Path:
 
 
 @contextmanager
-def connect(db_path: Path) -> Iterator[sqlite3.Connection]:
+def connect(db_path: Path) -> Iterator[sqlite3.Connection | PgConnection]:
+    if using_postgres():
+        import psycopg
+        from psycopg.rows import dict_row
+
+        url = database_url()
+        if not url:
+            raise RuntimeError("DATABASE_URL is required for Postgres mode")
+        raw = psycopg.connect(url, row_factory=dict_row)
+        conn = PgConnection(raw)
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return
+
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -241,9 +456,50 @@ def connect(db_path: Path) -> Iterator[sqlite3.Connection]:
 
 
 def init_db(db_path: Path) -> None:
+    if using_postgres():
+        with connect(db_path) as conn:
+            conn.executescript(SCHEMA_PG_UI)
+            _ensure_pg_ui_columns(conn)
+        return
     with connect(db_path) as conn:
         conn.executescript(SCHEMA)
         _ensure_columns(conn)
+
+
+def _ensure_pg_ui_columns(conn: PgConnection) -> None:
+    """Additive migrations for UI tables on Postgres (listings owned elsewhere)."""
+
+    def _columns(table: str) -> set[str]:
+        rows = conn.execute(
+            """
+            SELECT column_name AS name
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = ?
+            """,
+            (table,),
+        ).fetchall()
+        return {str(row["name"]) for row in rows}
+
+    user_cols = _columns("users")
+    if user_cols:
+        if "rb_privilege_usd" not in user_cols:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN rb_privilege_usd DOUBLE PRECISION NOT NULL DEFAULT 0"
+            )
+        if "rb_delivery_usd" not in user_cols:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN rb_delivery_usd DOUBLE PRECISION NOT NULL DEFAULT 0"
+            )
+        if "role" not in user_cols:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'"
+            )
+
+    rule_cols = _columns("staff_alert_rules")
+    if rule_cols and "min_gap_usd" not in rule_cols:
+        conn.execute(
+            "ALTER TABLE staff_alert_rules ADD COLUMN min_gap_usd DOUBLE PRECISION NOT NULL DEFAULT 1000"
+        )
 
 
 def _ensure_columns(conn: sqlite3.Connection) -> None:
@@ -793,6 +1049,11 @@ def save_payload_to_db(
     snapshot_path: str | None = None,
 ) -> tuple[int, int]:
     """Insert scrape run + upsert listings. Returns (run_id, archived_count)."""
+    if using_postgres():
+        raise RuntimeError(
+            "save_payload_to_db is disabled when DATABASE_URL is set; "
+            "use scrape-platform worker (adapter=autoplius) instead"
+        )
     init_db(db_path)
     snap = snapshot_path or ""
     finished_at = payload.get("finished_at") or _utc_now()
@@ -927,7 +1188,7 @@ def _count(db_path: Path, table: str) -> int:
 
 
 def load_known_ids(db_path: Path) -> set[int]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return set()
     with connect(db_path) as conn:
         rows = conn.execute("SELECT autoplius_id FROM listings").fetchall()
@@ -935,7 +1196,7 @@ def load_known_ids(db_path: Path) -> set[int]:
 
 
 def load_detail_scraped_ids(db_path: Path) -> set[int]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return set()
     with connect(db_path) as conn:
         rows = conn.execute(
@@ -946,7 +1207,7 @@ def load_detail_scraped_ids(db_path: Path) -> set[int]:
 
 def fetch_listings_pending_detail(db_path: Path) -> list[dict[str, Any]]:
     """Active listings that still need a successful detail scrape."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return []
     with connect(db_path) as conn:
         rows = conn.execute(
@@ -968,7 +1229,7 @@ def fetch_listings_pending_detail(db_path: Path) -> list[dict[str, Any]]:
 
 def hours_since_last_full_scrape(db_path: Path, *, min_listings: int = 50) -> float | None:
     """Hours since the last run that scraped many pages (full catalog refresh)."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return None
     with connect(db_path) as conn:
         row = conn.execute(
@@ -989,7 +1250,50 @@ def hours_since_last_full_scrape(db_path: Path, *, min_listings: int = 50) -> fl
     return delta.total_seconds() / 3600.0
 
 
-def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
+def _parse_json_object(raw: Any) -> dict[str, Any]:
+    if raw is None or raw == "":
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8")
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw or "{}")
+        except (TypeError, json.JSONDecodeError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
+def _parse_json_list(raw: Any) -> list[Any]:
+    if raw is None or raw == "":
+        return []
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8")
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw or "[]")
+        except (TypeError, json.JSONDecodeError):
+            return []
+        return parsed if isinstance(parsed, list) else []
+    return []
+
+
+def _as_iso_timestamp(value: Any) -> Any:
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        try:
+            return value.isoformat()
+        except Exception:
+            return str(value)
+    return value
+
+
+def row_to_listing(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
     keys = row.keys()
     listing = {
         "autoplius_id": row["autoplius_id"],
@@ -1012,8 +1316,8 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         "description_ru": row["description_ru"] if "description_ru" in keys else None,
         "phone": row["phone"] if "phone" in keys else None,
         "vin_masked": row["vin_masked"] if "vin_masked" in keys else None,
-        "parameters": json.loads(row["parameters_json"] or "{}") if "parameters_json" in keys else {},
-        "photo_urls": normalize_photo_list(json.loads(row["photo_urls_json"] or "[]"))
+        "parameters": _parse_json_object(row["parameters_json"]) if "parameters_json" in keys else {},
+        "photo_urls": normalize_photo_list(_parse_json_list(row["photo_urls_json"]))
         if "photo_urls_json" in keys
         else [],
         "detail_scraped": bool(row["detail_scraped"]) if "detail_scraped" in keys else False,
@@ -1021,11 +1325,11 @@ def row_to_listing(row: sqlite3.Row) -> dict[str, Any]:
         "manual_electric": int(row["manual_electric"] or 0) if "manual_electric" in keys else 0,
         "detail_error": row["detail_error"] if "detail_error" in keys else None,
         "status": row["status"] if "status" in keys else LISTING_STATUS_ACTIVE,
-        "archived_at": row["archived_at"] if "archived_at" in keys else None,
-        "first_seen_at": row["first_seen_at"] if "first_seen_at" in keys else None,
-        "last_seen_at": row["last_seen_at"] if "last_seen_at" in keys else None,
+        "archived_at": _as_iso_timestamp(row["archived_at"]) if "archived_at" in keys else None,
+        "first_seen_at": _as_iso_timestamp(row["first_seen_at"]) if "first_seen_at" in keys else None,
+        "last_seen_at": _as_iso_timestamp(row["last_seen_at"]) if "last_seen_at" in keys else None,
         "last_run_id": row["last_run_id"] if "last_run_id" in keys else None,
-        "updated_at": row["updated_at"] if "updated_at" in keys else None,
+        "updated_at": _as_iso_timestamp(row["updated_at"]) if "updated_at" in keys else None,
         "manual_overrides": parse_manual_overrides(
             row["manual_overrides_json"] if "manual_overrides_json" in keys else None
         ),
@@ -1078,8 +1382,11 @@ def _listing_sql_filters(
 ) -> tuple[list[str], list[Any]]:
     clauses: list[str] = []
     params: list[Any] = []
+    source = listings_source_clause()
+    if source:
+        clauses.append(source)
     if details_only:
-        clauses.append("detail_scraped = 1")
+        clauses.append(truthy_int_bool_sql("detail_scraped"))
     if listing_status == "active":
         clauses.append("(status IS NULL OR status = 'active')")
     elif listing_status == "archived":
@@ -1094,8 +1401,10 @@ def _listing_sql_filters(
         params.append(max_price)
     if q.strip():
         like = f"%{q.strip().lower()}%"
+        from scraper.sql_dialect import parameters_text_expr
+
         clauses.append(
-            """(
+            f"""(
                 lower(COALESCE(title,'')) LIKE ?
                 OR lower(COALESCE(city,'')) LIKE ?
                 OR lower(COALESCE(fuel,'')) LIKE ?
@@ -1103,8 +1412,8 @@ def _listing_sql_filters(
                 OR lower(COALESCE(vin_masked,'')) LIKE ?
                 OR lower(COALESCE(description,'')) LIKE ?
                 OR lower(COALESCE(description_ru,'')) LIKE ?
-                OR lower(COALESCE(parameters_json,'')) LIKE ?
-                OR CAST(autoplius_id AS TEXT) LIKE ?
+                OR lower({parameters_text_expr()}) LIKE ?
+                OR CAST({listing_id_expr()} AS TEXT) LIKE ?
             )"""
         )
         params.extend([like] * 9)
@@ -1155,12 +1464,77 @@ def _listing_python_filters(
     return listings
 
 
+def _sql_insert_ignore(table_cols_values: str) -> str:
+    """``INSERT …`` that ignores conflicts (SQLite OR IGNORE / PG ON CONFLICT DO NOTHING)."""
+    if using_postgres():
+        return f"INSERT INTO {table_cols_values} ON CONFLICT DO NOTHING"
+    return f"INSERT OR IGNORE INTO {table_cols_values}"
+
+
+def _sql_username_eq(param: str = "?") -> str:
+    if using_postgres():
+        return f"LOWER(username) = LOWER({param})"
+    return f"username = {param} COLLATE NOCASE"
+
+
+def _integrity_error() -> tuple[type[BaseException], ...]:
+    errors: list[type[BaseException]] = [sqlite3.IntegrityError]
+    try:
+        import psycopg
+
+        errors.append(psycopg.IntegrityError)
+    except ImportError:
+        pass
+    return tuple(errors)
+
+
+def _sql_order_username() -> str:
+    if using_postgres():
+        return "LOWER(username) ASC, id ASC"
+    return "username COLLATE NOCASE ASC, id ASC"
+
+
+def _sql_order_engine_catalog() -> str:
+    if using_postgres():
+        return "LOWER(make), LOWER(model), LOWER(engine_label)"
+    return "make COLLATE NOCASE, model COLLATE NOCASE, engine_label COLLATE NOCASE"
+
+
+def _db_available(db_path: Path) -> bool:
+    return db_ready(db_path)
+
+
+def _row_scalar(row: Any) -> Any:
+    if row is None:
+        return None
+    if isinstance(row, dict):
+        return next(iter(row.values()))
+    try:
+        return row[0]
+    except (KeyError, IndexError, TypeError):
+        if hasattr(row, "keys"):
+            keys = list(row.keys())
+            if keys:
+                return row[keys[0]]
+        raise
+
+
 def _listing_columns(*, lite: bool = False, profile: str | None = None) -> str:
     if profile == "filter":
-        return LISTING_COLUMNS_FILTER
+        return listing_select_columns("filter")
     if profile in {"page", "lite"} or lite:
-        return LISTING_COLUMNS_LITE
-    return "*"
+        return listing_select_columns("lite")
+    return listing_select_columns("full")
+
+
+def _listings_where(extra_clauses: list[str] | None = None) -> str:
+    clauses: list[str] = []
+    source = listings_source_clause()
+    if source:
+        clauses.append(source)
+    if extra_clauses:
+        clauses.extend(extra_clauses)
+    return f"WHERE {' AND '.join(clauses)}" if clauses else ""
 
 
 def fetch_listings(
@@ -1182,7 +1556,7 @@ def fetch_listings(
     limit: int | None = None,
     offset: int | None = None,
 ) -> list[dict[str, Any]]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return []
 
     clauses, params = _listing_sql_filters(
@@ -1223,16 +1597,19 @@ def fetch_listings_by_ids(
     *,
     lite: bool = True,
 ) -> list[dict[str, Any]]:
-    if not listing_ids or not db_path.is_file():
+    if not listing_ids or not _db_available(db_path):
         return []
 
     columns = _listing_columns(lite=lite, profile="page" if lite else None)
     placeholders = ",".join("?" for _ in listing_ids)
+    id_expr = listing_id_expr()
     order_cases = " ".join(f"WHEN ? THEN {idx}" for idx in range(len(listing_ids)))
+    source = listings_source_clause()
+    source_sql = f"{source} AND " if source else ""
     sql = (
         f"SELECT {columns} FROM listings "
-        f"WHERE autoplius_id IN ({placeholders}) "
-        f"ORDER BY CASE autoplius_id {order_cases} END"
+        f"WHERE {source_sql}{id_expr} IN ({placeholders}) "
+        f"ORDER BY CASE {id_expr} {order_cases} END"
     )
     params = [*listing_ids, *listing_ids]
 
@@ -1240,12 +1617,14 @@ def fetch_listings_by_ids(
         rows = conn.execute(sql, params).fetchall()
         return [row_to_listing(r) for r in rows]
 
+
 def fetch_listing(db_path: Path, listing_id: int) -> dict[str, Any] | None:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return None
+    columns = listing_select_columns("full")
     with connect(db_path) as conn:
         row = conn.execute(
-            "SELECT * FROM listings WHERE autoplius_id = ?",
+            f"SELECT {columns} FROM listings WHERE {listing_pk_where()}",
             (listing_id,),
         ).fetchone()
         return row_to_listing(row) if row else None
@@ -1270,7 +1649,7 @@ def update_listing_description_ru(
 
 def fetch_sitemap_listings(db_path: Path, *, limit: int = 45000) -> list[dict[str, Any]]:
     """Active listings for sitemap.xml (id + lastmod)."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return []
     with connect(db_path) as conn:
         rows = conn.execute(
@@ -1294,7 +1673,7 @@ def fetch_sitemap_listings(db_path: Path, *, limit: int = 45000) -> list[dict[st
 
 
 def fetch_all_listings(db_path: Path) -> list[dict[str, Any]]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return []
     with connect(db_path) as conn:
         rows = conn.execute("SELECT * FROM listings ORDER BY autoplius_id ASC").fetchall()
@@ -1469,16 +1848,35 @@ def update_listing_admin(
         return fetch_listing(db_path, listing_id)
 
     with connect(db_path) as conn:
+        overrides_col = manual_overrides_col()
         existing = conn.execute(
-            "SELECT manual_overrides_json FROM listings WHERE autoplius_id = ?",
+            f"SELECT {overrides_col} AS manual_overrides_json FROM listings WHERE {listing_pk_where()}",
             (listing_id,),
         ).fetchone()
         if existing is None:
             return None
 
-        locked = set() if clear_overrides else parse_manual_overrides(existing["manual_overrides_json"])
+        locked = (
+            set()
+            if clear_overrides
+            else parse_manual_overrides(existing["manual_overrides_json"])
+        )
         locked.update(key for key in normalized if key in ADMIN_EDITABLE_FIELDS)
-        normalized["manual_overrides_json"] = encode_manual_overrides(locked)
+        if using_postgres():
+            payload: dict[str, Any] = {name: True for name in locked}
+            raw_existing = existing["manual_overrides_json"]
+            existing_obj = (
+                raw_existing
+                if isinstance(raw_existing, dict)
+                else _parse_json_object(raw_existing)
+            )
+            if not clear_overrides and existing_obj.get("manual_electric") in {1, "1", True}:
+                payload["manual_electric"] = 1
+            normalized["manual_overrides_json"] = (
+                json.dumps(payload, ensure_ascii=False) if payload else None
+            )
+        else:
+            normalized["manual_overrides_json"] = encode_manual_overrides(locked)
 
         if normalized.get("status") == LISTING_STATUS_ARCHIVED and not normalized.get("archived_at"):
             normalized["archived_at"] = _utc_now()
@@ -1488,11 +1886,22 @@ def update_listing_admin(
         assignments = []
         params: dict[str, Any] = {"autoplius_id": listing_id, "updated_at": _utc_now()}
         for key, value in normalized.items():
-            assignments.append(f"{key} = :{key}")
-            params[key] = value
+            col = listing_write_column(key)
+            assignments.append(f"{col} = :{key}")
+            if using_postgres() and key.endswith("_json") and isinstance(value, str):
+                # Pass JSON text; PG JSONB accepts cast from text via driver / ::jsonb if needed.
+                params[key] = value
+            else:
+                params[key] = value
         assignments.append("updated_at = :updated_at")
+        if using_postgres():
+            # external_id is text on scrape-platform
+            params["autoplius_id"] = str(listing_id)
+            where = "source = 'autoplius' AND external_id = :autoplius_id"
+        else:
+            where = "autoplius_id = :autoplius_id"
         conn.execute(
-            f"UPDATE listings SET {', '.join(assignments)} WHERE autoplius_id = :autoplius_id",
+            f"UPDATE listings SET {', '.join(assignments)} WHERE {where}",
             params,
         )
     return fetch_listing(db_path, listing_id)
@@ -1515,10 +1924,10 @@ def set_listing_engine_volume(
         return None
     with connect(db_path) as conn:
         conn.execute(
-            """
+            f"""
             UPDATE listings
             SET engine_liters = ?, updated_at = ?
-            WHERE autoplius_id = ?
+            WHERE {listing_pk_where()}
             """,
             (liters, _utc_now(), listing_id),
         )
@@ -1533,12 +1942,51 @@ def set_listing_manual_electric(
 ) -> dict[str, Any] | None:
     """Mark listing as pure electric for the Электро tab (admin no-volume action)."""
     init_db(db_path)
+    if using_postgres():
+        with connect(db_path) as conn:
+            row = conn.execute(
+                f"SELECT {manual_overrides_col()} AS ov FROM listings WHERE {listing_pk_where()}",
+                (listing_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            raw = row["ov"]
+            locks = parse_manual_overrides(raw)
+            payload: dict[str, Any] = {name: True for name in locks}
+            # Preserve non-lock extras from existing object form.
+            if isinstance(raw, dict):
+                for key, value in raw.items():
+                    if key not in ADMIN_EDITABLE_FIELDS and key != "manual_electric":
+                        payload[key] = value
+            elif isinstance(raw, str):
+                try:
+                    parsed = json.loads(raw)
+                except json.JSONDecodeError:
+                    parsed = None
+                if isinstance(parsed, dict):
+                    for key, value in parsed.items():
+                        if key not in ADMIN_EDITABLE_FIELDS and key != "manual_electric":
+                            payload[key] = value
+            if enabled:
+                payload["manual_electric"] = 1
+            else:
+                payload.pop("manual_electric", None)
+            conn.execute(
+                f"""
+                UPDATE listings
+                SET {manual_overrides_col()} = CAST(? AS jsonb), updated_at = ?
+                WHERE {listing_pk_where()}
+                """,
+                (json.dumps(payload, ensure_ascii=False), _utc_now(), listing_id),
+            )
+        return fetch_listing(db_path, listing_id)
+
     with connect(db_path) as conn:
         cur = conn.execute(
-            """
+            f"""
             UPDATE listings
             SET manual_electric = ?, updated_at = ?
-            WHERE autoplius_id = ?
+            WHERE {listing_pk_where()}
             """,
             (1 if enabled else 0, _utc_now(), listing_id),
         )
@@ -1639,7 +2087,7 @@ def purge_blocked_makes(db_path: Path) -> dict[str, int]:
 
 def repair_invalid_listing_titles(db_path: Path) -> int:
     """Replace Autoplius error-page titles with labels recovered from listing URLs."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     repaired = 0
@@ -1676,7 +2124,7 @@ def repair_invalid_listing_titles(db_path: Path) -> int:
 
 def repair_stale_detail_errors(db_path: Path) -> int:
     """Clear false 'Page not found' detail errors when search-level data exists."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     with connect(db_path) as conn:
@@ -1701,36 +2149,66 @@ def db_stats(db_path: Path) -> dict[str, Any]:
 
 
 def _load_db_stats(db_path: Path) -> dict[str, Any]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return {"exists": False}
+    source = listings_source_clause()
+    source_and = f"{source} AND " if source else ""
+    source_where = f"WHERE {source}" if source else ""
     with connect(db_path) as conn:
-        listings = conn.execute("SELECT COUNT(*) AS c FROM listings").fetchone()["c"]
+        listings = conn.execute(
+            f"SELECT COUNT(*) AS c FROM listings {source_where}"
+        ).fetchone()["c"]
         active = conn.execute(
-            """
+            f"""
             SELECT COUNT(*) AS c FROM listings
-            WHERE status IS NULL OR status = 'active'
+            WHERE {source_and}(status IS NULL OR status = 'active')
             """
         ).fetchone()["c"]
         archived = conn.execute(
-            "SELECT COUNT(*) AS c FROM listings WHERE status = 'archived'"
+            f"SELECT COUNT(*) AS c FROM listings WHERE {source_and}status = 'archived'"
         ).fetchone()["c"]
         runs = conn.execute("SELECT COUNT(*) AS c FROM scrape_runs").fetchone()["c"]
         enriched = conn.execute(
-            "SELECT COUNT(*) AS c FROM listings WHERE detail_scraped = 1"
+            f"SELECT COUNT(*) AS c FROM listings WHERE {source_and}{truthy_int_bool_sql('detail_scraped')}"
         ).fetchone()["c"]
         phones = conn.execute(
-            "SELECT COUNT(*) AS c FROM listings WHERE phone IS NOT NULL AND phone != ''"
+            f"SELECT COUNT(*) AS c FROM listings WHERE {source_and}phone IS NOT NULL AND phone != ''"
         ).fetchone()["c"]
         vins = conn.execute(
-            "SELECT COUNT(*) AS c FROM listings WHERE vin_masked IS NOT NULL AND vin_masked != ''"
+            f"SELECT COUNT(*) AS c FROM listings WHERE {source_and}vin_masked IS NOT NULL AND vin_masked != ''"
         ).fetchone()["c"]
-        last = conn.execute(
-            """
-            SELECT finished_at, listing_count, details_scraped, scrape_mode,
-                   new_listings_found, duration_sec
-            FROM scrape_runs ORDER BY id DESC LIMIT 1
-            """
-        ).fetchone()
+        if using_postgres():
+            last = conn.execute(
+                """
+                SELECT finished_at, duration_sec, scrape_mode, counters, status, started_at
+                FROM scrape_runs
+                ORDER BY id DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            last_run = None
+            if last is not None:
+                counters = last["counters"] if isinstance(last["counters"], dict) else _parse_json_object(last["counters"])
+                last_run = {
+                    "finished_at": _as_iso_timestamp(last["finished_at"]),
+                    "started_at": _as_iso_timestamp(last["started_at"]),
+                    "duration_sec": last["duration_sec"],
+                    "scrape_mode": last["scrape_mode"],
+                    "status": last["status"],
+                    "listing_count": counters.get("listing_count") or counters.get("listings"),
+                    "details_scraped": counters.get("details_scraped") or counters.get("details"),
+                    "new_listings_found": counters.get("new_listings_found") or counters.get("new"),
+                    "counters": counters,
+                }
+        else:
+            last = conn.execute(
+                """
+                SELECT finished_at, listing_count, details_scraped, scrape_mode,
+                       new_listings_found, duration_sec
+                FROM scrape_runs ORDER BY id DESC LIMIT 1
+                """
+            ).fetchone()
+            last_run = dict(last) if last else None
     return {
         "exists": True,
         "path": str(db_path),
@@ -1741,11 +2219,53 @@ def _load_db_stats(db_path: Path) -> dict[str, Any]:
         "enriched": enriched,
         "with_phone": phones,
         "with_vin": vins,
-        "last_run": dict(last) if last else None,
+        "last_run": last_run,
+    }
+
+
+def _pg_autoplius_source_id(conn: Any) -> int | None:
+    row = conn.execute(
+        "SELECT id FROM sources WHERE key = ? LIMIT 1",
+        ("autoplius",),
+    ).fetchone()
+    if row is None:
+        return None
+    return int(row["id"])
+
+
+def _row_to_scrape_run_pg(row: Any) -> dict[str, Any]:
+    counters = row["counters"] if isinstance(row.get("counters"), dict) else _parse_json_object(row.get("counters"))
+    return {
+        "id": row["id"],
+        "mode": row.get("trigger") or row.get("status") or "run",
+        "scrape_mode": row.get("scrape_mode") or counters.get("scrape_mode"),
+        "started_at": _as_iso_timestamp(row.get("started_at")),
+        "finished_at": _as_iso_timestamp(row.get("finished_at")),
+        "duration_sec": row.get("duration_sec"),
+        "pages_scraped": counters.get("pages_scraped") or counters.get("pages"),
+        "listing_count": counters.get("listing_count") or counters.get("listings"),
+        "details_scraped": counters.get("details_scraped") or counters.get("details"),
+        "details_failed": counters.get("details_failed"),
+        "enrich_details": bool(counters.get("enrich_details")),
+        "enrich_new_only": bool(counters.get("enrich_new_only")),
+        "diff_new": counters.get("diff_new") or counters.get("new"),
+        "diff_removed": counters.get("diff_removed") or counters.get("removed"),
+        "diff_unchanged": counters.get("diff_unchanged"),
+        "new_listings_found": counters.get("new_listings_found") or counters.get("new"),
+        "photos_uploaded": counters.get("photos_uploaded") or counters.get("photos"),
+        "snapshot_path": counters.get("snapshot_path"),
+        "page_stats": counters.get("page_stats") or [],
+        "status": row.get("status"),
+        "trigger": row.get("trigger"),
+        "counters": counters,
     }
 
 
 def _row_to_scrape_run(row: sqlite3.Row) -> dict[str, Any]:
+    if using_postgres():
+        keys = set(row.keys()) if hasattr(row, "keys") else set()
+        if "counters" in keys:
+            return _row_to_scrape_run_pg(dict(row) if not isinstance(row, dict) else row)
     page_stats: list[dict[str, Any]] = []
     raw_stats = row["page_stats_json"]
     if raw_stats:
@@ -1789,11 +2309,20 @@ def _row_to_scrape_run(row: sqlite3.Row) -> dict[str, Any]:
 
 
 def count_scrape_runs(db_path: Path) -> int:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     with connect(db_path) as conn:
-        return int(conn.execute("SELECT COUNT(*) FROM scrape_runs").fetchone()[0])
+        if using_postgres():
+            source_id = _pg_autoplius_source_id(conn)
+            if source_id is None:
+                return 0
+            row = conn.execute(
+                "SELECT COUNT(*) AS c FROM scrape_runs WHERE source_id = ?",
+                (source_id,),
+            ).fetchone()
+            return int(_row_scalar(row) or 0)
+        return int(_row_scalar(conn.execute("SELECT COUNT(*) AS c FROM scrape_runs").fetchone()) or 0)
 
 
 def fetch_scrape_runs(
@@ -1802,10 +2331,27 @@ def fetch_scrape_runs(
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict[str, Any]]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return []
     init_db(db_path)
     with connect(db_path) as conn:
+        if using_postgres():
+            source_id = _pg_autoplius_source_id(conn)
+            if source_id is None:
+                return []
+            rows = conn.execute(
+                """
+                SELECT id, source_id, job_id, status, trigger, scrape_mode,
+                       config, counters, error_message, started_at, finished_at,
+                       duration_sec, created_at
+                FROM scrape_runs
+                WHERE source_id = ?
+                ORDER BY id DESC
+                LIMIT ? OFFSET ?
+                """,
+                (source_id, limit, offset),
+            ).fetchall()
+            return [_row_to_scrape_run_pg(dict(row)) for row in rows]
         rows = conn.execute(
             """
             SELECT id, mode, started_at, finished_at, duration_sec, pages_scraped,
@@ -1824,8 +2370,24 @@ def fetch_scrape_runs(
 
 def scrape_runs_analytics(db_path: Path, *, recent_limit: int = 24) -> dict[str, Any]:
     """Aggregate metrics for the analytics dashboard."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return {"exists": False}
+
+    if using_postgres():
+        # scrape-platform stores counters in JSONB; provide a light summary for Autoplius.
+        init_db(db_path)
+        runs = fetch_scrape_runs(db_path, limit=max(1, int(recent_limit)), offset=0)
+        return {
+            "exists": True,
+            "backend": "postgres",
+            "runs_total": count_scrape_runs(db_path),
+            "recent": runs,
+            "avg_duration_sec": None,
+            "total_listings_scraped": None,
+            "total_details_scraped": None,
+            "total_new_signal": None,
+            "total_photos_uploaded": None,
+        }
 
     init_db(db_path)
     with connect(db_path) as conn:
@@ -1908,7 +2470,7 @@ def fetch_engine_catalog(
     make: str = "",
     model: str = "",
 ) -> list[dict[str, Any]]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return []
     init_db(db_path)
 
@@ -1932,7 +2494,7 @@ def fetch_engine_catalog(
                listing_count, is_manual, is_new, notes, updated_at
         FROM engine_catalog
         WHERE {' AND '.join(clauses)}
-        ORDER BY make COLLATE NOCASE, model COLLATE NOCASE, engine_label COLLATE NOCASE
+        ORDER BY {_sql_order_engine_catalog()}
     """
     with connect(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
@@ -1940,7 +2502,7 @@ def fetch_engine_catalog(
 
 
 def fetch_engine_catalog_lookup(db_path: Path) -> dict[tuple[str, str, str, str], int]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return {}
     init_db(db_path)
     with connect(db_path) as conn:
@@ -1961,7 +2523,7 @@ def sync_engine_catalog_from_listings(
     db_path: Path,
     groups: list[dict[str, Any]],
 ) -> tuple[int, int]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0, 0
     init_db(db_path)
     inserted = 0
@@ -2032,7 +2594,7 @@ def update_engine_catalog_entry(
     customs_cm3: int | None,
     notes: str | None = None,
 ) -> bool:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return False
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2063,7 +2625,7 @@ def set_engine_catalog_auto160_item_id(
     *,
     catalog_item_id: int | None,
 ) -> bool:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return False
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2086,7 +2648,7 @@ def set_engine_catalog_auto160_item_id(
 
 
 def engine_catalog_new_count(db_path: Path) -> int:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2097,7 +2659,7 @@ def engine_catalog_new_count(db_path: Path) -> int:
 
 
 def engine_catalog_missing_count(db_path: Path) -> int:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2108,7 +2670,7 @@ def engine_catalog_missing_count(db_path: Path) -> int:
 
 
 def archive_pickup_listings(db_path: Path) -> int:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     now = _utc_now()
@@ -2208,10 +2770,10 @@ def create_user(
                     now,
                 ),
             )
-        except sqlite3.IntegrityError as exc:
+        except _integrity_error() as exc:
             raise ValueError(f"username already exists: {normalized}") from exc
         row = conn.execute(
-            "SELECT * FROM users WHERE username = ? COLLATE NOCASE",
+            f"SELECT * FROM users WHERE {_sql_username_eq()}",
             (normalized,),
         ).fetchone()
     if row is None:
@@ -2230,7 +2792,7 @@ def get_user_by_username(db_path: Path, username: str) -> dict[str, Any] | None:
     init_db(db_path)
     with connect(db_path) as conn:
         row = conn.execute(
-            "SELECT * FROM users WHERE username = ? COLLATE NOCASE",
+            f"SELECT * FROM users WHERE {_sql_username_eq()}",
             (username.strip(),),
         ).fetchone()
     return _user_row_to_dict(row) if row else None
@@ -2246,7 +2808,7 @@ def verify_user_password(
     init_db(db_path)
     with connect(db_path) as conn:
         row = conn.execute(
-            "SELECT * FROM users WHERE username = ? COLLATE NOCASE",
+            f"SELECT * FROM users WHERE {_sql_username_eq()}",
             (username.strip(),),
         ).fetchone()
         if row is None:
@@ -2292,10 +2854,10 @@ def list_users(db_path: Path, *, limit: int = 500) -> list[dict[str, Any]]:
     capped = max(1, min(int(limit), 2000))
     with connect(db_path) as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT *
             FROM users
-            ORDER BY username COLLATE NOCASE ASC, id ASC
+            ORDER BY {_sql_order_username()}
             LIMIT ?
             """,
             (capped,),
@@ -2431,10 +2993,9 @@ def add_user_favorite(db_path: Path, user_id: int, listing_id: int) -> bool:
     now = _utc_now()
     with connect(db_path) as conn:
         conn.execute(
-            """
-            INSERT OR IGNORE INTO user_favorites (user_id, autoplius_id, created_at)
-            VALUES (?, ?, ?)
-            """,
+            _sql_insert_ignore(
+                "user_favorites (user_id, autoplius_id, created_at) VALUES (?, ?, ?)"
+            ),
             (user_id, listing_id, now),
         )
         row = conn.execute(
@@ -2598,7 +3159,7 @@ def create_feedback_message(
 
 
 def count_unread_feedback(db_path: Path) -> int:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     with connect(db_path) as conn:
@@ -3055,11 +3616,10 @@ def insert_staff_alert_matches(
     with connect(db_path) as conn:
         for rule_id, user_id, autoplius_id in rows:
             cur = conn.execute(
-                """
-                INSERT OR IGNORE INTO staff_alert_matches (
-                    rule_id, user_id, autoplius_id, matched_at
-                ) VALUES (?, ?, ?, ?)
-                """,
+                _sql_insert_ignore(
+                    "staff_alert_matches (rule_id, user_id, autoplius_id, matched_at) "
+                    "VALUES (?, ?, ?, ?)"
+                ),
                 (int(rule_id), int(user_id), int(autoplius_id), when),
             )
             inserted += int(cur.rowcount or 0)

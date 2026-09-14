@@ -166,18 +166,22 @@ def filter_candidate_ids(
 ) -> list[int]:
     if not candidate_ids:
         return []
-    if not db_path.is_file():
+    from scraper.db_backend import db_ready
+    from scraper.sql_dialect import listing_id_expr
+
+    if not db_ready(db_path):
         return []
     unique_ids = sorted({int(x) for x in candidate_ids})
     clauses, params = build_listing_where(filters)
     placeholders = ",".join("?" for _ in unique_ids)
-    clauses.append(f"autoplius_id IN ({placeholders})")
+    id_expr = listing_id_expr()
+    clauses.append(f"{id_expr} IN ({placeholders})")
     params.extend(unique_ids)
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-    sql = f"SELECT autoplius_id FROM listings {where}"
+    sql = f"SELECT {id_expr} AS autoplius_id FROM listings {where}"
     with connect(db_path) as conn:
         rows = conn.execute(sql, params).fetchall()
-    return [int(row[0]) for row in rows]
+    return [int(row["autoplius_id"]) for row in rows]
 
 
 

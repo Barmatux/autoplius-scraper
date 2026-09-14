@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from autoplius.listing_display import listing_make_model
+from scraper.sql_dialect import manual_electric_sql_expr
 
 ELECTRIC_MARKERS = (
     "электр",
@@ -142,5 +143,5 @@ def electric_sql_clause(*, include: bool) -> str:
         AND lower(COALESCE(fuel, '')) NOT LIKE '%gasoline%'
     )"""
     known = _electric_make_model_sql()
-    expr = f"(COALESCE(manual_electric, 0) = 1 OR {auto} OR {known})"
+    expr = f"({manual_electric_sql_expr()} OR {auto} OR {known})"
     return expr if include else f"NOT {expr}"

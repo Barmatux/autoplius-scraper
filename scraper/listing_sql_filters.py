@@ -10,6 +10,14 @@ from autoplius.filter_catalogs import MILEAGE_OVER_400K_KM
 from autoplius.localize import expand_filter_value_variants
 from autoplius.make_model_filters import BLOCKED_MAKE_MODELS, BLOCKED_MAKES
 from autoplius.title_sql import title_make_expr, title_model_expr
+from scraper.sql_dialect import (
+    age_months_sql,
+    listing_id_expr,
+    listings_source_clause,
+    not_alnum_char_sql,
+    parameters_text_expr,
+    truthy_int_bool_sql,
+)
 
 MIN_CATALOG_YEAR = 2008
 PICKUP_BODY_MARKERS = ("%pikap%", "%pickup%", "%пикап%")
@@ -24,13 +32,7 @@ def _reg_month_expr() -> str:
 
 
 def _age_months_expr() -> str:
-    year_expr = _reg_year_expr()
-    month_expr = _reg_month_expr()
-    return (
-        f"(({year_expr} IS NOT NULL AND {year_expr} > 1900) * "
-        f"((CAST(strftime('%Y', 'now') AS INTEGER) - {year_expr}) * 12 + "
-        f"(CAST(strftime('%m', 'now') AS INTEGER) - {month_expr})))"
-    )
+    return age_months_sql(_reg_year_expr(), _reg_month_expr())
 
 
 def _title_make_expr() -> str:
@@ -81,8 +83,12 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
     clauses: list[str] = []
     params: list[Any] = []
 
+    source_clause = listings_source_clause()
+    if source_clause:
+        clauses.append(source_clause)
+
     if filters.details_only:
-        clauses.append("detail_scraped = 1")
+        clauses.append(truthy_int_bool_sql("detail_scraped"))
     if filters.listing_status == "active":
         clauses.append("(status IS NULL OR status = 'active')")
     elif filters.listing_status == "archived":
@@ -99,8 +105,10 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
 
     if filters.q.strip():
         like = f"%{filters.q.strip().lower()}%"
+        params_text = parameters_text_expr()
+        id_expr = listing_id_expr()
         clauses.append(
-            """(
+            f"""(
                 lower(COALESCE(title,'')) LIKE ?
                 OR lower(COALESCE(city,'')) LIKE ?
                 OR lower(COALESCE(fuel,'')) LIKE ?
@@ -108,8 +116,8 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
                 OR lower(COALESCE(vin_masked,'')) LIKE ?
                 OR lower(COALESCE(description,'')) LIKE ?
                 OR lower(COALESCE(description_ru,'')) LIKE ?
-                OR lower(COALESCE(parameters_json,'')) LIKE ?
-                OR CAST(autoplius_id AS TEXT) LIKE ?
+                OR lower({params_text}) LIKE ?
+                OR CAST({id_expr} AS TEXT) LIKE ?
             )"""
         )
         params.extend([like] * 9)
@@ -124,12 +132,13 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
         model_expr = _title_model_expr()
         for make, model in sorted(BLOCKED_MAKE_MODELS, key=lambda pair: (pair[0].casefold(), pair[1].casefold())):
             folded_model = model.casefold()
+            boundary = not_alnum_char_sql(f"substr({model_expr}, ? , 1)")
             model_checks = [
                 f"{model_expr} = ?",
                 f"{model_expr} LIKE ?",
                 (
                     f"({model_expr} LIKE ? AND length({model_expr}) > ? "
-                    f"AND substr({model_expr}, ? , 1) NOT GLOB '[a-z0-9]')"
+                    f"AND {boundary})"
                 ),
             ]
             model_params: list[Any] = [
@@ -141,13 +150,14 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
             ]
             if folded_model.endswith("+") and not folded_model[:-1].endswith(" "):
                 spaced = f"{folded_model[:-1]} +"
+                boundary = not_alnum_char_sql(f"substr({model_expr}, ? , 1)")
                 model_checks.extend(
                     [
                         f"{model_expr} = ?",
                         f"{model_expr} LIKE ?",
                         (
                             f"({model_expr} LIKE ? AND length({model_expr}) > ? "
-                            f"AND substr({model_expr}, ? , 1) NOT GLOB '[a-z0-9]')"
+                            f"AND {boundary})"
                         ),
                     ]
                 )

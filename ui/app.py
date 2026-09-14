@@ -15,6 +15,7 @@ from flask import Flask, abort, jsonify, make_response, redirect, render_templat
 
 from autoplius.contract_staff import check_contract_credentials
 from scraper.config import Settings
+from scraper.db_backend import cache_token, db_ready
 from scraper.db import (
     USER_ROLE_ADMIN,
     USER_ROLE_EMPLOYEE,
@@ -187,7 +188,7 @@ def inject_import_presets() -> dict[str, Any]:
     index_url = url_for("index")
     makes: list[str] = []
     try:
-        if path.is_file():
+        if db_ready(path):
             makes = top_makes_for_nav(path)
     except Exception:
         makes = []
@@ -506,7 +507,7 @@ def _current_user() -> dict[str, Any] | None:
     if raw_id is None:
         return None
     path = db_path()
-    if not path.is_file():
+    if not db_ready(path):
         return None
     try:
         init_db(path)
@@ -663,7 +664,7 @@ def inject_favorites():
     if user is None:
         return {"favorite_listing_ids": set()}
     path = db_path()
-    if not path.is_file():
+    if not db_ready(path):
         return {"favorite_listing_ids": set()}
     try:
         init_db(path)
@@ -1533,7 +1534,7 @@ def inject_tab_counts():
     /calculator do not pay four SQLite aggregations on every request.
     """
     path = db_path()
-    if not path.is_file():
+    if not db_ready(path):
         return {}
     try:
         return _tab_counts_for_request(path, admin=_is_admin())
@@ -1546,11 +1547,7 @@ _tab_counts_cache: dict[str, tuple[float, dict[str, int]]] = {}
 
 
 def _tab_counts_cache_token(db_file: Path) -> str:
-    try:
-        st = db_file.resolve().stat()
-        return f"{db_file.resolve()}:{st.st_mtime_ns}:{st.st_size}"
-    except OSError:
-        return str(db_file)
+    return cache_token(db_file)
 
 
 def _tab_counts_for_request(path: Path, *, admin: bool) -> dict[str, int]:
@@ -1598,8 +1595,11 @@ def db_path() -> Path:
 
 def require_db() -> Path:
     path = db_path()
-    if not path.is_file():
-        abort(503, "SQLite database not found. Run import_to_db.py first.")
+    if not db_ready(path):
+        abort(
+            503,
+            "Database not available. Set DATABASE_URL (Postgres) or run import_to_db.py for SQLite.",
+        )
     init_db(path)
     configure_catalog_db(path)
     return path
