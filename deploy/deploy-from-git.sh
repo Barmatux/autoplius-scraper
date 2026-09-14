@@ -56,6 +56,13 @@ for f in "$APP"/deploy/*.sh; do
 done
 # Do not git checkout deploy/ here: that resets the +x bit and breaks systemd ExecStart.
 
+# When DATABASE_URL is set, scrape-platform owns Autoplius listings — do not
+# (re-)enable local scraper / reconcile / translate timers on the UI host.
+PG_CONSUMER=0
+if grep -qE '^DATABASE_URL=.+' "$APP/.env" 2>/dev/null || [[ -n "${DATABASE_URL:-}" ]]; then
+  PG_CONSUMER=1
+fi
+
 echo "=== systemd units ==="
 sudo cp "$APP/deploy/autoplius-scraper.service" "$APP/deploy/autoplius-scraper.timer" /etc/systemd/system/
 sudo cp "$APP/deploy/autoplius-ui.service" /etc/systemd/system/
@@ -69,12 +76,21 @@ if [[ -f "$APP/deploy/autoplius-translate-descriptions.service" ]]; then
   sudo cp "$APP/deploy/autoplius-translate-descriptions.service" "$APP/deploy/autoplius-translate-descriptions.timer" /etc/systemd/system/
 fi
 sudo systemctl daemon-reload
-sudo systemctl enable autoplius-scraper.timer autoplius-ui.service
-if [[ -f /etc/systemd/system/autoplius-nightly-reconcile.timer ]]; then
-  sudo systemctl enable --now autoplius-nightly-reconcile.timer
-fi
-if [[ -f /etc/systemd/system/autoplius-translate-descriptions.timer ]]; then
-  sudo systemctl enable --now autoplius-translate-descriptions.timer
+sudo systemctl enable autoplius-ui.service
+if [[ "$PG_CONSUMER" == "1" ]]; then
+  echo "=== disable local scrape/reconcile/translate (DATABASE_URL set) ==="
+  sudo systemctl disable --now autoplius-scraper.timer 2>/dev/null || true
+  sudo systemctl disable --now autoplius-nightly-reconcile.timer 2>/dev/null || true
+  sudo systemctl disable --now autoplius-translate-descriptions.timer 2>/dev/null || true
+  sudo systemctl disable --now autoplius-target-resume.timer 2>/dev/null || true
+else
+  sudo systemctl enable autoplius-scraper.timer
+  if [[ -f /etc/systemd/system/autoplius-nightly-reconcile.timer ]]; then
+    sudo systemctl enable --now autoplius-nightly-reconcile.timer
+  fi
+  if [[ -f /etc/systemd/system/autoplius-translate-descriptions.timer ]]; then
+    sudo systemctl enable --now autoplius-translate-descriptions.timer
+  fi
 fi
 
 if [[ -f "$APP/deploy/post-deploy-vm.sh" ]]; then
