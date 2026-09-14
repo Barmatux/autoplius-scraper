@@ -7,6 +7,11 @@ PY="${DEPLOY_PY:-$APP/.venv/bin/python}"
 
 cd "$APP"
 
+# When UI consumes scrape-platform Postgres, skip SQLite-era listing maintenance.
+if grep -qE '^DATABASE_URL=.+' .env 2>/dev/null || [[ -n "${DATABASE_URL:-}" ]]; then
+  echo "=== skip listing backfill/purge (DATABASE_URL set; scrape-platform owns listings) ==="
+else
+
 echo "=== backfill engine_liters / mileage ==="
 sudo -u autoplius "$PY" - <<'PY'
 import sys
@@ -49,6 +54,8 @@ from tools.backfill_localize import backfill
 db = Settings.from_env().db_path
 print("backfill_localize:", backfill(db))
 PY
+
+fi
 
 echo "=== backfill description_ru (targeted + missing batch) ==="
 sudo -u autoplius "$PY" backfill_descriptions_ru.py --ids 32156004,32155944,32155948,32155970,32155940,32093378,32064212 || echo "WARNING: targeted description backfill failed"

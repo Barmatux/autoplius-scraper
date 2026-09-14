@@ -2008,6 +2008,15 @@ def set_listing_archived(
 
 def purge_blocked_makes(db_path: Path) -> dict[str, int]:
     """Archive hidden listings (blocked makes/models, pickups) and drop their catalog rows."""
+    if using_postgres():
+        # Listing/catalog maintenance is owned by scrape-platform after cutover.
+        return {
+            "skipped": 1,
+            "reason": "postgres_consumer",
+            "catalog_removed": 0,
+            "archived_blocked": 0,
+            "archived_pickups": 0,
+        }
     init_db(db_path)
     catalog_removed = 0
     with connect(db_path) as conn:
