@@ -2177,13 +2177,38 @@ def _load_db_stats(db_path: Path) -> dict[str, Any]:
         vins = conn.execute(
             f"SELECT COUNT(*) AS c FROM listings WHERE {source_and}vin_masked IS NOT NULL AND vin_masked != ''"
         ).fetchone()["c"]
-        last = conn.execute(
-            """
-            SELECT finished_at, listing_count, details_scraped, scrape_mode,
-                   new_listings_found, duration_sec
-            FROM scrape_runs ORDER BY id DESC LIMIT 1
-            """
-        ).fetchone()
+        if using_postgres():
+            last = conn.execute(
+                """
+                SELECT finished_at, duration_sec, scrape_mode, counters, status, started_at
+                FROM scrape_runs
+                ORDER BY id DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            last_run = None
+            if last is not None:
+                counters = last["counters"] if isinstance(last["counters"], dict) else _parse_json_object(last["counters"])
+                last_run = {
+                    "finished_at": _as_iso_timestamp(last["finished_at"]),
+                    "started_at": _as_iso_timestamp(last["started_at"]),
+                    "duration_sec": last["duration_sec"],
+                    "scrape_mode": last["scrape_mode"],
+                    "status": last["status"],
+                    "listing_count": counters.get("listing_count") or counters.get("listings"),
+                    "details_scraped": counters.get("details_scraped") or counters.get("details"),
+                    "new_listings_found": counters.get("new_listings_found") or counters.get("new"),
+                    "counters": counters,
+                }
+        else:
+            last = conn.execute(
+                """
+                SELECT finished_at, listing_count, details_scraped, scrape_mode,
+                       new_listings_found, duration_sec
+                FROM scrape_runs ORDER BY id DESC LIMIT 1
+                """
+            ).fetchone()
+            last_run = dict(last) if last else None
     return {
         "exists": True,
         "path": str(db_path),
@@ -2194,11 +2219,53 @@ def _load_db_stats(db_path: Path) -> dict[str, Any]:
         "enriched": enriched,
         "with_phone": phones,
         "with_vin": vins,
-        "last_run": dict(last) if last else None,
+        "last_run": last_run,
+    }
+
+
+def _pg_autoplius_source_id(conn: Any) -> int | None:
+    row = conn.execute(
+        "SELECT id FROM sources WHERE key = ? LIMIT 1",
+        ("autoplius",),
+    ).fetchone()
+    if row is None:
+        return None
+    return int(row["id"])
+
+
+def _row_to_scrape_run_pg(row: Any) -> dict[str, Any]:
+    counters = row["counters"] if isinstance(row.get("counters"), dict) else _parse_json_object(row.get("counters"))
+    return {
+        "id": row["id"],
+        "mode": row.get("trigger") or row.get("status") or "run",
+        "scrape_mode": row.get("scrape_mode") or counters.get("scrape_mode"),
+        "started_at": _as_iso_timestamp(row.get("started_at")),
+        "finished_at": _as_iso_timestamp(row.get("finished_at")),
+        "duration_sec": row.get("duration_sec"),
+        "pages_scraped": counters.get("pages_scraped") or counters.get("pages"),
+        "listing_count": counters.get("listing_count") or counters.get("listings"),
+        "details_scraped": counters.get("details_scraped") or counters.get("details"),
+        "details_failed": counters.get("details_failed"),
+        "enrich_details": bool(counters.get("enrich_details")),
+        "enrich_new_only": bool(counters.get("enrich_new_only")),
+        "diff_new": counters.get("diff_new") or counters.get("new"),
+        "diff_removed": counters.get("diff_removed") or counters.get("removed"),
+        "diff_unchanged": counters.get("diff_unchanged"),
+        "new_listings_found": counters.get("new_listings_found") or counters.get("new"),
+        "photos_uploaded": counters.get("photos_uploaded") or counters.get("photos"),
+        "snapshot_path": counters.get("snapshot_path"),
+        "page_stats": counters.get("page_stats") or [],
+        "status": row.get("status"),
+        "trigger": row.get("trigger"),
+        "counters": counters,
     }
 
 
 def _row_to_scrape_run(row: sqlite3.Row) -> dict[str, Any]:
+    if using_postgres():
+        keys = set(row.keys()) if hasattr(row, "keys") else set()
+        if "counters" in keys:
+            return _row_to_scrape_run_pg(dict(row) if not isinstance(row, dict) else row)
     page_stats: list[dict[str, Any]] = []
     raw_stats = row["page_stats_json"]
     if raw_stats:
@@ -2246,7 +2313,16 @@ def count_scrape_runs(db_path: Path) -> int:
         return 0
     init_db(db_path)
     with connect(db_path) as conn:
-        return int(conn.execute("SELECT COUNT(*) FROM scrape_runs").fetchone()[0])
+        if using_postgres():
+            source_id = _pg_autoplius_source_id(conn)
+            if source_id is None:
+                return 0
+            row = conn.execute(
+                "SELECT COUNT(*) AS c FROM scrape_runs WHERE source_id = ?",
+                (source_id,),
+            ).fetchone()
+            return int(_row_scalar(row) or 0)
+        return int(_row_scalar(conn.execute("SELECT COUNT(*) AS c FROM scrape_runs").fetchone()) or 0)
 
 
 def fetch_scrape_runs(
@@ -2259,6 +2335,23 @@ def fetch_scrape_runs(
         return []
     init_db(db_path)
     with connect(db_path) as conn:
+        if using_postgres():
+            source_id = _pg_autoplius_source_id(conn)
+            if source_id is None:
+                return []
+            rows = conn.execute(
+                """
+                SELECT id, source_id, job_id, status, trigger, scrape_mode,
+                       config, counters, error_message, started_at, finished_at,
+                       duration_sec, created_at
+                FROM scrape_runs
+                WHERE source_id = ?
+                ORDER BY id DESC
+                LIMIT ? OFFSET ?
+                """,
+                (source_id, limit, offset),
+            ).fetchall()
+            return [_row_to_scrape_run_pg(dict(row)) for row in rows]
         rows = conn.execute(
             """
             SELECT id, mode, started_at, finished_at, duration_sec, pages_scraped,
@@ -2279,6 +2372,22 @@ def scrape_runs_analytics(db_path: Path, *, recent_limit: int = 24) -> dict[str,
     """Aggregate metrics for the analytics dashboard."""
     if not _db_available(db_path):
         return {"exists": False}
+
+    if using_postgres():
+        # scrape-platform stores counters in JSONB; provide a light summary for Autoplius.
+        init_db(db_path)
+        runs = fetch_scrape_runs(db_path, limit=max(1, int(recent_limit)), offset=0)
+        return {
+            "exists": True,
+            "backend": "postgres",
+            "runs_total": count_scrape_runs(db_path),
+            "recent": runs,
+            "avg_duration_sec": None,
+            "total_listings_scraped": None,
+            "total_details_scraped": None,
+            "total_new_signal": None,
+            "total_photos_uploaded": None,
+        }
 
     init_db(db_path)
     with connect(db_path) as conn:
