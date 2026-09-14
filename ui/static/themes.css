@@ -157,6 +157,7 @@ html[data-theme="docs"] .filters .catalog-filter-field,
 html[data-theme="docs"] .vehicle-hierarchy-label,
 html[data-theme="docs"] .volume-range-label,
 html[data-theme="docs"] .year-range-label,
+html[data-theme="docs"] .mileage-range-label,
 html[data-theme="docs"] .summary,
 html[data-theme="docs"] .summary p,
 html[data-theme="docs"] .summary strong,
@@ -169,6 +170,7 @@ html[data-theme="docs"] .empty {
 }
 
 html[data-theme="docs"] .make-model-filters,
+html[data-theme="docs"] .year-mileage-filters,
 html[data-theme="docs"] .spec-filters-row {
   border-bottom-color: rgba(196, 180, 154, 0.28);
 }
@@ -177,6 +179,7 @@ html[data-theme="docs"] .filters input,
 html[data-theme="docs"] .filters select,
 html[data-theme="docs"] .vehicle-hierarchy-field select,
 html[data-theme="docs"] .year-range-inputs select,
+html[data-theme="docs"] .mileage-range-inputs select,
 html[data-theme="docs"] .volume-range-inputs select,
 html[data-theme="docs"] .cards-sort-select,
 html[data-theme="docs"] .catalog-multi-select-trigger {
@@ -191,6 +194,7 @@ html[data-theme="docs"] .catalog-multi-select-trigger::after {
 
 html[data-theme="docs"] .catalog-filter-field.is-active .catalog-multi-select-trigger,
 html[data-theme="docs"] .year-range-filters.is-active .year-range-inputs select,
+html[data-theme="docs"] .mileage-range-filters.is-active .mileage-range-inputs select,
 html[data-theme="docs"] .volume-range-filters.is-active .volume-range-inputs select {
   background: #1a3c34;
   color: #efe8dc;
@@ -849,6 +853,7 @@ html[data-theme="carbon"] .filters .catalog-filter-field,
 html[data-theme="carbon"] .vehicle-hierarchy-label,
 html[data-theme="carbon"] .volume-range-label,
 html[data-theme="carbon"] .year-range-label,
+html[data-theme="carbon"] .mileage-range-label,
 html[data-theme="carbon"] .summary,
 html[data-theme="carbon"] .summary p,
 html[data-theme="carbon"] .summary strong,
@@ -861,6 +866,7 @@ html[data-theme="carbon"] .empty {
 }
 
 html[data-theme="carbon"] .make-model-filters,
+html[data-theme="carbon"] .year-mileage-filters,
 html[data-theme="carbon"] .spec-filters-row {
   border-bottom-color: rgba(62, 198, 240, 0.18);
 }
@@ -869,6 +875,7 @@ html[data-theme="carbon"] .filters input,
 html[data-theme="carbon"] .filters select,
 html[data-theme="carbon"] .vehicle-hierarchy-field select,
 html[data-theme="carbon"] .year-range-inputs select,
+html[data-theme="carbon"] .mileage-range-inputs select,
 html[data-theme="carbon"] .volume-range-inputs select,
 html[data-theme="carbon"] .cards-sort-select,
 html[data-theme="carbon"] .catalog-multi-select-trigger {
@@ -883,6 +890,7 @@ html[data-theme="carbon"] .catalog-multi-select-trigger::after {
 
 html[data-theme="carbon"] .catalog-filter-field.is-active .catalog-multi-select-trigger,
 html[data-theme="carbon"] .year-range-filters.is-active .year-range-inputs select,
+html[data-theme="carbon"] .mileage-range-filters.is-active .mileage-range-inputs select,
 html[data-theme="carbon"] .volume-range-filters.is-active .volume-range-inputs select {
   background: rgba(62, 198, 240, 0.16);
   color: #fff;

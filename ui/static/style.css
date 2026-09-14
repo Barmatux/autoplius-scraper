@@ -1101,29 +1101,44 @@ main {
   background: rgba(15, 106, 79, 0.06);
 }
 
-.year-range-filters {
+.year-mileage-filters {
   grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.25rem;
   padding-bottom: 0.75rem;
   margin-bottom: 0.25rem;
   border-bottom: 1px solid var(--line);
+  align-items: end;
 }
 
-.year-range-label {
+.year-range-filters,
+.mileage-range-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.year-range-label,
+.mileage-range-label {
   font-size: 0.8rem;
   color: var(--muted);
 }
 
-.year-range-inputs {
+.year-range-inputs,
+.mileage-range-inputs {
   display: grid;
   grid-template-columns: repeat(2, minmax(120px, 1fr));
   gap: 0.75rem;
-  max-width: 360px;
+  max-width: none;
 }
 
-.year-range-inputs select {
+.year-range-inputs select,
+.mileage-range-inputs select {
   width: 100%;
   box-sizing: border-box;
   font: inherit;
@@ -1137,8 +1152,15 @@ main {
   cursor: pointer;
 }
 
-.year-range-filters.is-active .year-range-inputs select {
+.year-range-filters.is-active .year-range-inputs select,
+.mileage-range-filters.is-active .mileage-range-inputs select {
   border-color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .year-mileage-filters {
+    grid-template-columns: 1fr;
+  }
 }
 
 .spec-filters-row {

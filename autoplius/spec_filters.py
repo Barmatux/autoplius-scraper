@@ -169,6 +169,6 @@ def build_spec_filter_options(
         "transmission_checked": transmission_filter_checked_slugs(selected_transmissions),
         "volume_options": build_volume_options(listings),
         "body_type_display": multi_filter_selection_label(selected_body_types, "Любой"),
-        "fuel_display": multi_filter_selection_label(selected_fuels, "Любое"),
+        "fuel_display": multi_filter_selection_label(selected_fuels, "Любой"),
         "transmission_display": transmission_filter_display_label(selected_transmissions),
     }

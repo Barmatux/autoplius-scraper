@@ -38,7 +38,6 @@ FUEL_OPTIONS: tuple[str, ...] = (
     "Дизель / электричество",
     "Электричество",
     "Газ",
-    "Водород",
 )
 
 # Raw LT+RU strings used to map filter slugs → SQL IN values.
@@ -96,3 +95,34 @@ def static_year_options(
     if end < min_year:
         return []
     return list(range(end, min_year - 1, -1))
+
+
+# Sentinel: «более 400 тыс. км» (from → >400000; to → no upper bound).
+MILEAGE_OVER_400K_KM = 400_001
+
+
+def static_mileage_options() -> list[tuple[int, str]]:
+    """(value_km, label) for mileage from/to selects."""
+    options: list[tuple[int, str]] = []
+    for km in range(25_000, 200_001, 25_000):
+        options.append((km, f"{km // 1000} тыс. км"))
+    for km in range(250_000, 400_001, 50_000):
+        options.append((km, f"{km // 1000} тыс. км"))
+    options.append((MILEAGE_OVER_400K_KM, "более 400 тыс. км"))
+    return options
+
+
+def parse_optional_mileage_km(value: str | None) -> int | None:
+    if value is None:
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    try:
+        km = int(raw)
+    except ValueError:
+        return None
+    allowed = {item[0] for item in static_mileage_options()}
+    if km not in allowed:
+        return None
+    return km

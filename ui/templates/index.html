@@ -21,6 +21,8 @@
 {%- endfor -%}
 {%- if year_from -%}&year_from={{ year_from }}{%- endif -%}
 {%- if year_to -%}&year_to={{ year_to }}{%- endif -%}
+{%- if mileage_from -%}&mileage_from={{ mileage_from }}{%- endif -%}
+{%- if mileage_to -%}&mileage_to={{ mileage_to }}{%- endif -%}
 {%- endmacro %}
 {% macro spec_qs() -%}
 {%- for v in selected_body_types -%}&body_type={{ v|urlencode }}{%- endfor -%}
@@ -124,6 +126,7 @@
           <button type="button" class="vehicle-hierarchy-add">+ Марка</button>
         </div>
       </div>
+      <div class="year-mileage-filters">
       <div class="year-range-filters{% if year_from or year_to %} is-active{% endif %}">
         <span class="year-range-label">Год</span>
         <div class="year-range-inputs">
@@ -140,6 +143,24 @@
             {% endfor %}
           </select>
         </div>
+      </div>
+      <div class="mileage-range-filters{% if mileage_from or mileage_to %} is-active{% endif %}">
+        <span class="mileage-range-label">Пробег</span>
+        <div class="mileage-range-inputs">
+          <select name="mileage_from" aria-label="Пробег от">
+            <option value="" {% if not mileage_from %}selected{% endif %}>от</option>
+            {% for value, label in mileage_options %}
+            <option value="{{ value }}" {% if mileage_from == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <select name="mileage_to" aria-label="Пробег до">
+            <option value="" {% if not mileage_to %}selected{% endif %}>до</option>
+            {% for value, label in mileage_options %}
+            <option value="{{ value }}" {% if mileage_to == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
       </div>
       {% include "_spec_filters.html" %}
       <label>
@@ -292,6 +313,8 @@
                 {% endfor %}
                 {% if year_from %}<input type="hidden" name="year_from" value="{{ year_from }}">{% endif %}
                 {% if year_to %}<input type="hidden" name="year_to" value="{{ year_to }}">{% endif %}
+                {% if mileage_from %}<input type="hidden" name="mileage_from" value="{{ mileage_from }}">{% endif %}
+                {% if mileage_to %}<input type="hidden" name="mileage_to" value="{{ mileage_to }}">{% endif %}
                 {% for v in selected_body_types %}<input type="hidden" name="body_type" value="{{ v }}">{% endfor %}
                 {% for v in selected_fuels %}<input type="hidden" name="fuel" value="{{ v }}">{% endfor %}
                 {% for v in selected_transmissions %}<input type="hidden" name="transmission" value="{{ v }}">{% endfor %}

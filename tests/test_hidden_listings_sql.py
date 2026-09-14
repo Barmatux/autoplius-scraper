@@ -69,3 +69,30 @@ def test_skoda_hidden_when_catalog_filter_disabled():
     assert "skoda" in " ".join(str(p) for p in _params).lower() or any(
         "skoda" in str(p).lower() for p in _params
     )
+
+
+def test_mileage_range_sql():
+    from autoplius.filter_catalogs import MILEAGE_OVER_400K_KM
+
+    filters = ListingFilters(
+        mileage_from=50_000,
+        mileage_to=200_000,
+        catalog_filter=False,
+        exclude_blocked_makes=False,
+    )
+    where, params = build_listing_where(filters)
+    sql = " AND ".join(where)
+    assert "mileage_km IS NOT NULL AND mileage_km >= ?" in sql
+    assert "mileage_km IS NOT NULL AND mileage_km <= ?" in sql
+    assert 50_000 in params
+    assert 200_000 in params
+
+    over = ListingFilters(
+        mileage_from=MILEAGE_OVER_400K_KM,
+        catalog_filter=False,
+        exclude_blocked_makes=False,
+    )
+    where, params = build_listing_where(over)
+    sql = " AND ".join(where)
+    assert "mileage_km > ?" in sql
+    assert 400_000 in params

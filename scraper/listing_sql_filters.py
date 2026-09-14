@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from autoplius.electric import electric_sql_clause
+from autoplius.filter_catalogs import MILEAGE_OVER_400K_KM
 from autoplius.localize import expand_filter_value_variants
 from autoplius.make_model_filters import BLOCKED_MAKE_MODELS, BLOCKED_MAKES
 from autoplius.title_sql import title_make_expr, title_model_expr
@@ -72,6 +73,8 @@ class ListingFilters:
     vehicle_rows: list[dict[str, str]] = field(default_factory=list)
     year_from: int | None = None
     year_to: int | None = None
+    mileage_from: int | None = None
+    mileage_to: int | None = None
 
 
 def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
@@ -264,5 +267,16 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
     if filters.year_to is not None:
         clauses.append(f"{year_expr} <= ?")
         params.append(filters.year_to)
+
+    if filters.mileage_from is not None:
+        if filters.mileage_from >= MILEAGE_OVER_400K_KM:
+            clauses.append("mileage_km IS NOT NULL AND mileage_km > ?")
+            params.append(400_000)
+        else:
+            clauses.append("mileage_km IS NOT NULL AND mileage_km >= ?")
+            params.append(filters.mileage_from)
+    if filters.mileage_to is not None and filters.mileage_to < MILEAGE_OVER_400K_KM:
+        clauses.append("mileage_km IS NOT NULL AND mileage_km <= ?")
+        params.append(filters.mileage_to)
 
     return clauses, params

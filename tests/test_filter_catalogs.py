@@ -36,7 +36,21 @@ def test_static_year_options_descend_from_max():
 def test_static_body_and_fuel_are_russian_labels():
     assert "Седан" in BODY_TYPE_OPTIONS
     assert "Дизель" in FUEL_OPTIONS
+    assert "Водород" not in FUEL_OPTIONS
     assert "Sedanas" not in BODY_TYPE_OPTIONS
+
+
+def test_static_mileage_options_steps():
+    from autoplius.filter_catalogs import MILEAGE_OVER_400K_KM, static_mileage_options
+
+    options = static_mileage_options()
+    values = [km for km, _label in options]
+    assert 25_000 in values
+    assert 200_000 in values
+    assert 250_000 in values
+    assert 400_000 in values
+    assert MILEAGE_OVER_400K_KM in values
+    assert any(label == "более 400 тыс. км" for _km, label in options)
 
 
 def test_static_transmission_maps_slugs_to_db_values():

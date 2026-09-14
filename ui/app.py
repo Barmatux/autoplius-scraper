@@ -120,6 +120,7 @@ from autoplius.make_model_filters import (
     parse_vehicle_filter_rows,
     sanitize_vehicle_rows,
 )
+from autoplius.filter_catalogs import parse_optional_mileage_km, static_mileage_options
 from autoplius.spec_filters import (
     build_spec_filter_options,
     build_transmission_raw_values,
@@ -1817,6 +1818,8 @@ def _active_filter_count(
     vehicle_rows: list[dict[str, str]],
     year_from: str | int,
     year_to: str | int,
+    mileage_from: str | int,
+    mileage_to: str | int,
     selected_body_types: list[str],
     selected_fuels: list[str],
     selected_transmissions: list[str],
@@ -1838,6 +1841,8 @@ def _active_filter_count(
     if any((row.get("make") or row.get("model")) for row in vehicle_rows):
         count += 1
     if str(year_from or "").strip() or str(year_to or "").strip():
+        count += 1
+    if str(mileage_from or "").strip() or str(mileage_to or "").strip():
         count += 1
     if selected_body_types:
         count += 1
@@ -1914,10 +1919,19 @@ def index():
     year_to = parse_optional_year(request.args.get("year_to"))
     if year_from is not None and year_to is not None and year_from > year_to:
         year_from, year_to = year_to, year_from
+    mileage_from = parse_optional_mileage_km(request.args.get("mileage_from"))
+    mileage_to = parse_optional_mileage_km(request.args.get("mileage_to"))
+    if (
+        mileage_from is not None
+        and mileage_to is not None
+        and mileage_from > mileage_to
+    ):
+        mileage_from, mileage_to = mileage_to, mileage_from
 
     base_options = fetch_listing_filter_options(path, base_filters)
     make_model_options = base_options.make_model_options
     year_options = base_options.year_options
+    mileage_options = static_mileage_options()
     vehicle_rows = sanitize_vehicle_rows(vehicle_rows, make_model_options)
 
     selected_cities = _selected_cities()
@@ -1938,10 +1952,14 @@ def index():
         vehicle_rows=vehicle_rows,
         year_from=year_from,
         year_to=year_to,
+        mileage_from=mileage_from,
+        mileage_to=mileage_to,
     )
     has_vehicle_year = (
         year_from is not None
         or year_to is not None
+        or mileage_from is not None
+        or mileage_to is not None
         or any(
             (row.get("make") or "").strip() or (row.get("model") or "").strip()
             for row in vehicle_rows
@@ -2021,6 +2039,9 @@ def index():
         year_options=year_options,
         year_from=year_from if year_from is not None else "",
         year_to=year_to if year_to is not None else "",
+        mileage_options=mileage_options,
+        mileage_from=mileage_from if mileage_from is not None else "",
+        mileage_to=mileage_to if mileage_to is not None else "",
         tab=tab,
         active_tab=tab,
         page=page,
@@ -2037,6 +2058,8 @@ def index():
             vehicle_rows=vehicle_rows,
             year_from=year_from if year_from is not None else "",
             year_to=year_to if year_to is not None else "",
+            mileage_from=mileage_from if mileage_from is not None else "",
+            mileage_to=mileage_to if mileage_to is not None else "",
             selected_body_types=selected_body_types,
             selected_fuels=selected_fuels,
             selected_transmissions=selected_transmissions,
