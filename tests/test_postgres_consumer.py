@@ -38,11 +38,12 @@ def test_postgres_dialect_helpers(monkeypatch):
     assert "parameters AS parameters_json" in sql_dialect.listing_select_columns("full")
     assert "strpos(" in sql_dialect.instr_expr("title", "','")
     adapted = sql_dialect.adapt_sql_for_postgres(
-        "SELECT * FROM t WHERE id = ? AND name = :name AND x::text = ?"
+        "SELECT * FROM t WHERE id = ? AND name = :name AND x::text = ? AND y LIKE '%pikap%'"
     )
     assert "%s" in adapted
     assert "%(name)s" in adapted
     assert "::text" in adapted
+    assert "%%pikap%%" in adapted
 
 
 def test_build_listing_where_adds_source_on_postgres(monkeypatch):

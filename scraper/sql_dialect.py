@@ -88,8 +88,21 @@ def named_colon_to_pyformat(sql: str) -> str:
 
 
 def adapt_sql_for_postgres(sql: str) -> str:
-    """Apply placeholder rewrites for psycopg."""
-    return named_colon_to_pyformat(qmark_to_percent(sql))
+    """Apply placeholder rewrites for psycopg and escape literal ``%`` (LIKE patterns)."""
+    import re
+
+    converted = named_colon_to_pyformat(qmark_to_percent(sql))
+    holders: list[str] = []
+
+    def _protect(match: re.Match[str]) -> str:
+        holders.append(match.group(0))
+        return f"__PH{len(holders) - 1}__"
+
+    protected = re.sub(r"%\([A-Za-z_][A-Za-z0-9_]*\)s|%s", _protect, converted)
+    escaped = protected.replace("%", "%%")
+    for idx, token in enumerate(holders):
+        escaped = escaped.replace(f"__PH{idx}__", token)
+    return escaped
 
 
 def listing_pk_where(alias: str = "") -> str:
