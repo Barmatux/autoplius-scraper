@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from scraper.sql_dialect import instr_expr
+from scraper.sql_dialect import get_dialect, instr_expr
 
 MULTI_WORD_MAKES: tuple[str, ...] = (
     "Alfa Romeo",
@@ -21,10 +21,17 @@ def _sql_literal(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
+def _sql_max2(a: str, b: str) -> str:
+    """Two-argument max; SQLite ``max(a,b)`` vs Postgres ``GREATEST``."""
+    if get_dialect() == "postgres":
+        return f"GREATEST({a}, {b})"
+    return f"max({a}, {b})"
+
+
 def title_headline_expr(title_col: str = "title") -> str:
     text = f"COALESCE({title_col}, '')"
     comma_at = instr_expr(f"{text} || ','", "','")
-    return f"trim(substr({text}, 1, max(0, {comma_at} - 1)))"
+    return f"trim(substr({text}, 1, {_sql_max2('0', f'{comma_at} - 1')}))"
 
 
 def title_make_expr(title_col: str = "title") -> str:
