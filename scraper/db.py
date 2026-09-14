@@ -1638,10 +1638,10 @@ def update_listing_description_ru(
     init_db(db_path)
     with connect(db_path) as conn:
         conn.execute(
-            """
+            f"""
             UPDATE listings
             SET description_ru = ?, updated_at = ?
-            WHERE autoplius_id = ?
+            WHERE {listing_pk_where()}
             """,
             (description_ru, _utc_now(), int(listing_id)),
         )
