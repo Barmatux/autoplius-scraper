@@ -16,6 +16,7 @@ from scraper.sql_dialect import (
     listings_source_clause,
     not_alnum_char_sql,
     parameters_text_expr,
+    truthy_int_bool_sql,
 )
 
 MIN_CATALOG_YEAR = 2008
@@ -87,7 +88,7 @@ def build_listing_where(filters: ListingFilters) -> tuple[list[str], list[Any]]:
         clauses.append(source_clause)
 
     if filters.details_only:
-        clauses.append("detail_scraped = 1")
+        clauses.append(truthy_int_bool_sql("detail_scraped"))
     if filters.listing_status == "active":
         clauses.append("(status IS NULL OR status = 'active')")
     elif filters.listing_status == "archived":

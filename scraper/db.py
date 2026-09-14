@@ -36,6 +36,7 @@ from scraper.sql_dialect import (
     parameters_col,
     photo_urls_col,
     qmark_to_percent,
+    truthy_int_bool_sql,
 )
 from scraper.query_cache import cached_db_stats
 
@@ -1187,7 +1188,7 @@ def _count(db_path: Path, table: str) -> int:
 
 
 def load_known_ids(db_path: Path) -> set[int]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return set()
     with connect(db_path) as conn:
         rows = conn.execute("SELECT autoplius_id FROM listings").fetchall()
@@ -1195,7 +1196,7 @@ def load_known_ids(db_path: Path) -> set[int]:
 
 
 def load_detail_scraped_ids(db_path: Path) -> set[int]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return set()
     with connect(db_path) as conn:
         rows = conn.execute(
@@ -1206,7 +1207,7 @@ def load_detail_scraped_ids(db_path: Path) -> set[int]:
 
 def fetch_listings_pending_detail(db_path: Path) -> list[dict[str, Any]]:
     """Active listings that still need a successful detail scrape."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return []
     with connect(db_path) as conn:
         rows = conn.execute(
@@ -1228,7 +1229,7 @@ def fetch_listings_pending_detail(db_path: Path) -> list[dict[str, Any]]:
 
 def hours_since_last_full_scrape(db_path: Path, *, min_listings: int = 50) -> float | None:
     """Hours since the last run that scraped many pages (full catalog refresh)."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return None
     with connect(db_path) as conn:
         row = conn.execute(
@@ -1281,6 +1282,17 @@ def _parse_json_list(raw: Any) -> list[Any]:
     return []
 
 
+def _as_iso_timestamp(value: Any) -> Any:
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        try:
+            return value.isoformat()
+        except Exception:
+            return str(value)
+    return value
+
+
 def row_to_listing(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
     keys = row.keys()
     listing = {
@@ -1313,11 +1325,11 @@ def row_to_listing(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
         "manual_electric": int(row["manual_electric"] or 0) if "manual_electric" in keys else 0,
         "detail_error": row["detail_error"] if "detail_error" in keys else None,
         "status": row["status"] if "status" in keys else LISTING_STATUS_ACTIVE,
-        "archived_at": row["archived_at"] if "archived_at" in keys else None,
-        "first_seen_at": row["first_seen_at"] if "first_seen_at" in keys else None,
-        "last_seen_at": row["last_seen_at"] if "last_seen_at" in keys else None,
+        "archived_at": _as_iso_timestamp(row["archived_at"]) if "archived_at" in keys else None,
+        "first_seen_at": _as_iso_timestamp(row["first_seen_at"]) if "first_seen_at" in keys else None,
+        "last_seen_at": _as_iso_timestamp(row["last_seen_at"]) if "last_seen_at" in keys else None,
         "last_run_id": row["last_run_id"] if "last_run_id" in keys else None,
-        "updated_at": row["updated_at"] if "updated_at" in keys else None,
+        "updated_at": _as_iso_timestamp(row["updated_at"]) if "updated_at" in keys else None,
         "manual_overrides": parse_manual_overrides(
             row["manual_overrides_json"] if "manual_overrides_json" in keys else None
         ),
@@ -1374,7 +1386,7 @@ def _listing_sql_filters(
     if source:
         clauses.append(source)
     if details_only:
-        clauses.append("detail_scraped = 1")
+        clauses.append(truthy_int_bool_sql("detail_scraped"))
     if listing_status == "active":
         clauses.append("(status IS NULL OR status = 'active')")
     elif listing_status == "archived":
@@ -1637,7 +1649,7 @@ def update_listing_description_ru(
 
 def fetch_sitemap_listings(db_path: Path, *, limit: int = 45000) -> list[dict[str, Any]]:
     """Active listings for sitemap.xml (id + lastmod)."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return []
     with connect(db_path) as conn:
         rows = conn.execute(
@@ -1661,7 +1673,7 @@ def fetch_sitemap_listings(db_path: Path, *, limit: int = 45000) -> list[dict[st
 
 
 def fetch_all_listings(db_path: Path) -> list[dict[str, Any]]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return []
     with connect(db_path) as conn:
         rows = conn.execute("SELECT * FROM listings ORDER BY autoplius_id ASC").fetchall()
@@ -1850,7 +1862,21 @@ def update_listing_admin(
             else parse_manual_overrides(existing["manual_overrides_json"])
         )
         locked.update(key for key in normalized if key in ADMIN_EDITABLE_FIELDS)
-        normalized["manual_overrides_json"] = encode_manual_overrides(locked)
+        if using_postgres():
+            payload: dict[str, Any] = {name: True for name in locked}
+            raw_existing = existing["manual_overrides_json"]
+            existing_obj = (
+                raw_existing
+                if isinstance(raw_existing, dict)
+                else _parse_json_object(raw_existing)
+            )
+            if not clear_overrides and existing_obj.get("manual_electric") in {1, "1", True}:
+                payload["manual_electric"] = 1
+            normalized["manual_overrides_json"] = (
+                json.dumps(payload, ensure_ascii=False) if payload else None
+            )
+        else:
+            normalized["manual_overrides_json"] = encode_manual_overrides(locked)
 
         if normalized.get("status") == LISTING_STATUS_ARCHIVED and not normalized.get("archived_at"):
             normalized["archived_at"] = _utc_now()
@@ -1916,6 +1942,45 @@ def set_listing_manual_electric(
 ) -> dict[str, Any] | None:
     """Mark listing as pure electric for the Электро tab (admin no-volume action)."""
     init_db(db_path)
+    if using_postgres():
+        with connect(db_path) as conn:
+            row = conn.execute(
+                f"SELECT {manual_overrides_col()} AS ov FROM listings WHERE {listing_pk_where()}",
+                (listing_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            raw = row["ov"]
+            locks = parse_manual_overrides(raw)
+            payload: dict[str, Any] = {name: True for name in locks}
+            # Preserve non-lock extras from existing object form.
+            if isinstance(raw, dict):
+                for key, value in raw.items():
+                    if key not in ADMIN_EDITABLE_FIELDS and key != "manual_electric":
+                        payload[key] = value
+            elif isinstance(raw, str):
+                try:
+                    parsed = json.loads(raw)
+                except json.JSONDecodeError:
+                    parsed = None
+                if isinstance(parsed, dict):
+                    for key, value in parsed.items():
+                        if key not in ADMIN_EDITABLE_FIELDS and key != "manual_electric":
+                            payload[key] = value
+            if enabled:
+                payload["manual_electric"] = 1
+            else:
+                payload.pop("manual_electric", None)
+            conn.execute(
+                f"""
+                UPDATE listings
+                SET {manual_overrides_col()} = CAST(? AS jsonb), updated_at = ?
+                WHERE {listing_pk_where()}
+                """,
+                (json.dumps(payload, ensure_ascii=False), _utc_now(), listing_id),
+            )
+        return fetch_listing(db_path, listing_id)
+
     with connect(db_path) as conn:
         cur = conn.execute(
             f"""
@@ -2022,7 +2087,7 @@ def purge_blocked_makes(db_path: Path) -> dict[str, int]:
 
 def repair_invalid_listing_titles(db_path: Path) -> int:
     """Replace Autoplius error-page titles with labels recovered from listing URLs."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     repaired = 0
@@ -2059,7 +2124,7 @@ def repair_invalid_listing_titles(db_path: Path) -> int:
 
 def repair_stale_detail_errors(db_path: Path) -> int:
     """Clear false 'Page not found' detail errors when search-level data exists."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2084,28 +2149,33 @@ def db_stats(db_path: Path) -> dict[str, Any]:
 
 
 def _load_db_stats(db_path: Path) -> dict[str, Any]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return {"exists": False}
+    source = listings_source_clause()
+    source_and = f"{source} AND " if source else ""
+    source_where = f"WHERE {source}" if source else ""
     with connect(db_path) as conn:
-        listings = conn.execute("SELECT COUNT(*) AS c FROM listings").fetchone()["c"]
+        listings = conn.execute(
+            f"SELECT COUNT(*) AS c FROM listings {source_where}"
+        ).fetchone()["c"]
         active = conn.execute(
-            """
+            f"""
             SELECT COUNT(*) AS c FROM listings
-            WHERE status IS NULL OR status = 'active'
+            WHERE {source_and}(status IS NULL OR status = 'active')
             """
         ).fetchone()["c"]
         archived = conn.execute(
-            "SELECT COUNT(*) AS c FROM listings WHERE status = 'archived'"
+            f"SELECT COUNT(*) AS c FROM listings WHERE {source_and}status = 'archived'"
         ).fetchone()["c"]
         runs = conn.execute("SELECT COUNT(*) AS c FROM scrape_runs").fetchone()["c"]
         enriched = conn.execute(
-            "SELECT COUNT(*) AS c FROM listings WHERE detail_scraped = 1"
+            f"SELECT COUNT(*) AS c FROM listings WHERE {source_and}{truthy_int_bool_sql('detail_scraped')}"
         ).fetchone()["c"]
         phones = conn.execute(
-            "SELECT COUNT(*) AS c FROM listings WHERE phone IS NOT NULL AND phone != ''"
+            f"SELECT COUNT(*) AS c FROM listings WHERE {source_and}phone IS NOT NULL AND phone != ''"
         ).fetchone()["c"]
         vins = conn.execute(
-            "SELECT COUNT(*) AS c FROM listings WHERE vin_masked IS NOT NULL AND vin_masked != ''"
+            f"SELECT COUNT(*) AS c FROM listings WHERE {source_and}vin_masked IS NOT NULL AND vin_masked != ''"
         ).fetchone()["c"]
         last = conn.execute(
             """
@@ -2172,7 +2242,7 @@ def _row_to_scrape_run(row: sqlite3.Row) -> dict[str, Any]:
 
 
 def count_scrape_runs(db_path: Path) -> int:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2185,7 +2255,7 @@ def fetch_scrape_runs(
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict[str, Any]]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return []
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2207,7 +2277,7 @@ def fetch_scrape_runs(
 
 def scrape_runs_analytics(db_path: Path, *, recent_limit: int = 24) -> dict[str, Any]:
     """Aggregate metrics for the analytics dashboard."""
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return {"exists": False}
 
     init_db(db_path)
@@ -2291,7 +2361,7 @@ def fetch_engine_catalog(
     make: str = "",
     model: str = "",
 ) -> list[dict[str, Any]]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return []
     init_db(db_path)
 
@@ -2323,7 +2393,7 @@ def fetch_engine_catalog(
 
 
 def fetch_engine_catalog_lookup(db_path: Path) -> dict[tuple[str, str, str, str], int]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return {}
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2344,7 +2414,7 @@ def sync_engine_catalog_from_listings(
     db_path: Path,
     groups: list[dict[str, Any]],
 ) -> tuple[int, int]:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0, 0
     init_db(db_path)
     inserted = 0
@@ -2415,7 +2485,7 @@ def update_engine_catalog_entry(
     customs_cm3: int | None,
     notes: str | None = None,
 ) -> bool:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return False
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2446,7 +2516,7 @@ def set_engine_catalog_auto160_item_id(
     *,
     catalog_item_id: int | None,
 ) -> bool:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return False
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2469,7 +2539,7 @@ def set_engine_catalog_auto160_item_id(
 
 
 def engine_catalog_new_count(db_path: Path) -> int:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2480,7 +2550,7 @@ def engine_catalog_new_count(db_path: Path) -> int:
 
 
 def engine_catalog_missing_count(db_path: Path) -> int:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     with connect(db_path) as conn:
@@ -2491,7 +2561,7 @@ def engine_catalog_missing_count(db_path: Path) -> int:
 
 
 def archive_pickup_listings(db_path: Path) -> int:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     now = _utc_now()
@@ -2980,7 +3050,7 @@ def create_feedback_message(
 
 
 def count_unread_feedback(db_path: Path) -> int:
-    if not db_path.is_file():
+    if not _db_available(db_path):
         return 0
     init_db(db_path)
     with connect(db_path) as conn:

@@ -100,16 +100,20 @@ def listing_pk_where(alias: str = "") -> str:
     return f"{prefix}autoplius_id = ?"
 
 
-def listing_write_column(name: str) -> str:
-    """Map SQLite listing column names to Postgres physical columns for UPDATE/INSERT."""
-    if get_dialect() != "postgres":
-        return name
-    return {
-        "autoplius_id": "external_id",
-        "parameters_json": "parameters",
-        "photo_urls_json": "photo_urls",
-        "manual_overrides_json": "manual_overrides",
-    }.get(name, name)
+def truthy_int_bool_sql(column_sql: str) -> str:
+    """Compare a 0/1 SQLite flag or a Postgres boolean column as true."""
+    if get_dialect() == "postgres":
+        return f"({column_sql}) IS TRUE"
+    return f"({column_sql}) = 1"
+
+
+def manual_electric_sql_expr() -> str:
+    """Expression that is true when listing is manually marked electric."""
+    if get_dialect() == "postgres":
+        # Column not in scrape-platform schema; use manual_overrides JSONB.
+        return "COALESCE((manual_overrides->>'manual_electric')::int, 0) = 1"
+    return "COALESCE(manual_electric, 0) = 1"
+
 
 
 def instr_expr(haystack_sql: str, needle_sql: str) -> str:
@@ -237,7 +241,8 @@ _FULL_COLS_PG = (
     "phone, vin_masked, parameters AS parameters_json, "
     "photo_urls AS photo_urls_json, detail_scraped, detail_error, status, "
     "archived_at, first_seen_at, last_seen_at, last_run_id, updated_at, "
-    "manual_overrides AS manual_overrides_json, engine_liters, manual_electric"
+    "manual_overrides AS manual_overrides_json, engine_liters, "
+    "COALESCE((manual_overrides->>'manual_electric')::int, 0) AS manual_electric"
 )
 
 
@@ -256,3 +261,15 @@ def listing_select_columns(kind: Literal["filter", "lite", "full"]) -> str:
     if kind == "lite":
         return _LITE_COLS_SQLITE
     return _FULL_COLS_SQLITE
+
+
+def listing_write_column(name: str) -> str:
+    """Map SQLite listing column names to Postgres physical columns for UPDATE/INSERT."""
+    if get_dialect() != "postgres":
+        return name
+    return {
+        "autoplius_id": "external_id",
+        "parameters_json": "parameters",
+        "photo_urls_json": "photo_urls",
+        "manual_overrides_json": "manual_overrides",
+    }.get(name, name)

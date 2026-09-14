@@ -53,9 +53,12 @@ def test_build_listing_where_adds_source_on_postgres(monkeypatch):
     assert "source = 'autoplius'" in clauses
 
 
-def test_save_payload_disabled_on_postgres(monkeypatch, tmp_path):
-    monkeypatch.setenv("DATABASE_URL", "postgresql://scrape:scrape@127.0.0.1:5433/scrape")
-    from scraper import db
+def test_postgres_bool_and_manual_electric_sql(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://scrape:scrape@10.129.0.33:5433/scrape")
+    from scraper.sql_dialect import manual_electric_sql_expr, truthy_int_bool_sql
+    from autoplius.electric import electric_sql_clause
 
-    with pytest.raises(RuntimeError, match="scrape-platform"):
-        db.save_payload_to_db(tmp_path / "x.db", {"listings": []})
+    assert "IS TRUE" in truthy_int_bool_sql("detail_scraped")
+    assert "manual_overrides" in manual_electric_sql_expr()
+    assert "manual_overrides" in electric_sql_clause(include=True)
+    assert "COALESCE(manual_electric" not in electric_sql_clause(include=True)
