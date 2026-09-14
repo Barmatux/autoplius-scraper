@@ -58,8 +58,8 @@ def _load_top_makes(db_path: Path) -> list[str]:
               {prefix} {make_expr} != ''
               AND {make_expr} != '—'
               AND ({blocked_checks})
-            GROUP BY make
-            ORDER BY count DESC, {order_ci("make")}
+            GROUP BY {make_expr}
+            ORDER BY count DESC, {order_ci(make_expr)}
             LIMIT ?
             """,
             [*params, *blocked_params, POPULAR_MAKE_LIMIT],
