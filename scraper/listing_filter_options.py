@@ -25,12 +25,14 @@ from autoplius.spec_filters import (
 )
 from autoplius.title_sql import title_make_expr, title_model_expr
 from scraper.db import connect
+from scraper.db_backend import db_ready
 from scraper.listing_sql_filters import (
     BLOCKED_MAKES,
     ListingFilters,
     build_listing_where,
 )
 from scraper.query_cache import cached_listing_filter_options
+from scraper.sql_dialect import order_ci
 
 
 def _where_sql(filters: ListingFilters) -> tuple[str, list[Any]]:
@@ -95,7 +97,7 @@ def _load_listing_filter_options(
     filters: ListingFilters,
 ) -> ListingFilterOptions:
     static = _static_spec_options()
-    if not db_path.is_file():
+    if not db_ready(db_path):
         return ListingFilterOptions(
             [],
             {"makes": [], "modelMap": {}, "makeCounts": {}},
@@ -113,14 +115,15 @@ def _load_listing_filter_options(
     blocked_params = [f"{make.casefold()}%" for make in BLOCKED_MAKES]
 
     with connect(db_path) as conn:
+        city_name = "trim(COALESCE(city, ''))"
         city_rows = conn.execute(
             f"""
-            SELECT trim(COALESCE(city, '')) AS name, COUNT(*) AS count
+            SELECT {city_name} AS name, COUNT(*) AS count
             FROM listings
             {where}
-              {"AND" if where else "WHERE"} trim(COALESCE(city, '')) != ''
-            GROUP BY trim(COALESCE(city, ''))
-            ORDER BY count DESC, name COLLATE NOCASE
+              {"AND" if where else "WHERE"} {city_name} != ''
+            GROUP BY {city_name}
+            ORDER BY count DESC, {order_ci(city_name)}
             """,
             params,
         ).fetchall()
@@ -133,8 +136,8 @@ def _load_listing_filter_options(
               {"AND" if where else "WHERE"} {make_expr} != ''
               AND {make_expr} != '—'
               AND ({blocked_checks})
-            GROUP BY make, model
-            ORDER BY make COLLATE NOCASE, model COLLATE NOCASE
+            GROUP BY {make_expr}, {model_expr}
+            ORDER BY {order_ci(make_expr)}, {order_ci(model_expr)}
             """,
             [*params, *blocked_params],
         ).fetchall()

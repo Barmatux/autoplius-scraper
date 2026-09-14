@@ -57,6 +57,9 @@ PY
 
 fi
 
+if grep -qE '^DATABASE_URL=.+' .env 2>/dev/null || [[ -n "${DATABASE_URL:-}" ]]; then
+  echo "=== skip SQLite description/hybrid maintenance (DATABASE_URL set) ==="
+else
 echo "=== backfill description_ru (targeted + missing batch) ==="
 sudo -u autoplius "$PY" backfill_descriptions_ru.py --ids 32156004,32155944,32155948,32155970,32155940,32093378,32064212 || echo "WARNING: targeted description backfill failed"
 sudo -u autoplius "$PY" backfill_descriptions_ru.py --active-only --limit 250 || echo "WARNING: description backfill batch failed"
@@ -67,9 +70,10 @@ fi
 
 echo "=== hybrid make+model report ==="
 sudo -u autoplius "$PY" tools/list_hybrid_models.py || echo "WARNING: hybrid list failed"
+fi
 
 echo "=== exchange rates ==="
-echo "Rates are refreshed by GitHub Actions into SQLite (exchange_rates table)."
+echo "Rates are refreshed by GitHub Actions into the app DB (exchange_rates table)."
 
 echo "=== media cache dir ==="
 mkdir -p /var/lib/autoplius-scraper/media-cache
