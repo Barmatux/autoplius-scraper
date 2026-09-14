@@ -22,7 +22,6 @@ from autoplius.labels import promote_parameters
 from autoplius.localize import localize_listing
 from autoplius.photo_urls import normalize_photo_list
 from autoplius.search_query import SearchQuery
-from autoplius.translate import translate_to_russian
 from autoplius.urls import build_search_url, configure_base_url
 
 from scraper.config import Settings
@@ -100,14 +99,9 @@ def merge_preview_and_detail(
             row["photo_urls"] = []
         params = row["parameters"]
         promote_parameters(row, params)
-        original_description = row.get("description")
-        if settings and original_description:
-            translated = translate_to_russian(
-                original_description,
-                enabled=settings.translate_descriptions,
-                min_delay_sec=settings.translate_delay_sec,
-            )
-            row["description_ru"] = translated
+        # Keep scrape fast: Russian description is filled only in background
+        # (UI ensure daemon / scrape-platform / backfill_descriptions_ru CLI).
+        row.setdefault("description_ru", None)
         row["detail_scraped"] = True
         row["detail_error"] = None
     else:

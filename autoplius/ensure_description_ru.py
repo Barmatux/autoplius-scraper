@@ -1,4 +1,4 @@
-"""Ensure seller descriptions have a usable Russian translation."""
+"""Ensure seller descriptions have a usable Russian translation (background only)."""
 
 from __future__ import annotations
 
@@ -70,7 +70,11 @@ def ensure_listing_description_ru(
     item: dict[str, Any],
     settings: Settings | None = None,
 ) -> dict[str, Any]:
-    """Translate and persist description_ru when missing or still non-Russian."""
+    """Queue background translation when Russian description is missing.
+
+    Never blocks the request on translator HTTP calls — returns the item
+    unchanged and finishes translate+persist in a daemon thread.
+    """
     if not needs_description_translation(item):
         return item
     cfg = settings or Settings.from_env()
@@ -81,19 +85,9 @@ def ensure_listing_description_ru(
     if listing_id is None or not original:
         return item
     listing_id_int = int(listing_id)
-    try:
-        translated = _persist_translation(db_path, listing_id_int, str(original), cfg)
-    except Exception:
-        logger.exception("Failed to translate/store description_ru for listing #%s", listing_id_int)
-        translated = None
-    if translated:
-        updated = dict(item)
-        updated["description_ru"] = translated
-        return updated
-    # Keep the page responsive if translators are slow/blocked; finish in background.
     _schedule_background_translate(db_path, listing_id_int, str(original), cfg)
-    logger.warning(
-        "Serving original description for #%s; queued background Russian translation",
+    logger.info(
+        "Queued background Russian translation for #%s (request path stays sync-free)",
         listing_id_int,
     )
     return item
