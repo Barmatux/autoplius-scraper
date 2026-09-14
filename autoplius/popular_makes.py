@@ -10,7 +10,9 @@ from urllib.parse import urlencode
 from autoplius.make_model_filters import BLOCKED_MAKES
 from autoplius.title_sql import title_make_expr
 from scraper.db import connect
+from scraper.db_backend import cache_token, db_ready
 from scraper.listing_sql_filters import ListingFilters, build_listing_where
+from scraper.sql_dialect import order_ci
 
 FALLBACK_POPULAR_MAKES: tuple[str, ...] = (
     "Volkswagen",
@@ -32,15 +34,11 @@ _cache: dict[str, tuple[float, list[str]]] = {}
 
 
 def _db_token(db_path: Path) -> str:
-    try:
-        stat = db_path.resolve().stat()
-    except OSError:
-        return str(db_path)
-    return f"{db_path.resolve()}:{stat.st_mtime_ns}:{stat.st_size}"
+    return cache_token(db_path)
 
 
 def _load_top_makes(db_path: Path) -> list[str]:
-    if not db_path.is_file():
+    if not db_ready(db_path):
         return list(FALLBACK_POPULAR_MAKES[:POPULAR_MAKE_LIMIT])
 
     filters = ListingFilters(exclude_electric=True, catalog_filter=True)
@@ -61,7 +59,7 @@ def _load_top_makes(db_path: Path) -> list[str]:
               AND {make_expr} != '—'
               AND ({blocked_checks})
             GROUP BY make
-            ORDER BY count DESC, make COLLATE NOCASE
+            ORDER BY count DESC, {order_ci("make")}
             LIMIT ?
             """,
             [*params, *blocked_params, POPULAR_MAKE_LIMIT],

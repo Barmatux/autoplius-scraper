@@ -63,3 +63,13 @@ def test_postgres_bool_and_manual_electric_sql(monkeypatch):
     assert "manual_overrides" in manual_electric_sql_expr()
     assert "manual_overrides" in electric_sql_clause(include=True)
     assert "COALESCE(manual_electric" not in electric_sql_clause(include=True)
+
+
+def test_postgres_age_months_uses_case_not_bool_mul(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://scrape:scrape@127.0.0.1:5433/scrape")
+    from scraper.sql_dialect import age_months_sql, order_ci
+
+    expr = age_months_sql("y", "m")
+    assert "CASE WHEN" in expr
+    assert " * " not in expr.split("THEN", 1)[0]
+    assert "LOWER(name)" == order_ci("name")

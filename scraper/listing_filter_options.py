@@ -25,12 +25,14 @@ from autoplius.spec_filters import (
 )
 from autoplius.title_sql import title_make_expr, title_model_expr
 from scraper.db import connect
+from scraper.db_backend import db_ready
 from scraper.listing_sql_filters import (
     BLOCKED_MAKES,
     ListingFilters,
     build_listing_where,
 )
 from scraper.query_cache import cached_listing_filter_options
+from scraper.sql_dialect import order_ci
 
 
 def _where_sql(filters: ListingFilters) -> tuple[str, list[Any]]:
@@ -95,7 +97,7 @@ def _load_listing_filter_options(
     filters: ListingFilters,
 ) -> ListingFilterOptions:
     static = _static_spec_options()
-    if not db_path.is_file():
+    if not db_ready(db_path):
         return ListingFilterOptions(
             [],
             {"makes": [], "modelMap": {}, "makeCounts": {}},
@@ -120,7 +122,7 @@ def _load_listing_filter_options(
             {where}
               {"AND" if where else "WHERE"} trim(COALESCE(city, '')) != ''
             GROUP BY trim(COALESCE(city, ''))
-            ORDER BY count DESC, name COLLATE NOCASE
+            ORDER BY count DESC, {order_ci("name")}
             """,
             params,
         ).fetchall()
@@ -134,7 +136,7 @@ def _load_listing_filter_options(
               AND {make_expr} != '—'
               AND ({blocked_checks})
             GROUP BY make, model
-            ORDER BY make COLLATE NOCASE, model COLLATE NOCASE
+            ORDER BY {order_ci("make")}, {order_ci("model")}
             """,
             [*params, *blocked_params],
         ).fetchall()

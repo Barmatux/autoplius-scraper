@@ -137,17 +137,30 @@ def instr_expr(haystack_sql: str, needle_sql: str) -> str:
 
 def age_months_sql(year_expr: str, month_expr: str) -> str:
     """Age in months from registration year/month expressions (0 when year invalid)."""
+    # SQLite coerces boolean to 0/1 for ``cond * months``; Postgres needs CASE.
+    months_sqlite = (
+        f"((CAST(strftime('%Y', 'now') AS INTEGER) - {year_expr}) * 12 + "
+        f"(CAST(strftime('%m', 'now') AS INTEGER) - {month_expr}))"
+    )
+    months_pg = (
+        f"((EXTRACT(YEAR FROM CURRENT_DATE)::INTEGER - {year_expr}) * 12 + "
+        f"(EXTRACT(MONTH FROM CURRENT_DATE)::INTEGER - {month_expr}))"
+    )
     if get_dialect() == "postgres":
         return (
-            f"(({year_expr} IS NOT NULL AND {year_expr} > 1900) * "
-            f"((EXTRACT(YEAR FROM CURRENT_DATE)::INTEGER - {year_expr}) * 12 + "
-            f"(EXTRACT(MONTH FROM CURRENT_DATE)::INTEGER - {month_expr})))"
+            f"(CASE WHEN {year_expr} IS NOT NULL AND {year_expr} > 1900 "
+            f"THEN {months_pg} ELSE 0 END)"
         )
     return (
-        f"(({year_expr} IS NOT NULL AND {year_expr} > 1900) * "
-        f"((CAST(strftime('%Y', 'now') AS INTEGER) - {year_expr}) * 12 + "
-        f"(CAST(strftime('%m', 'now') AS INTEGER) - {month_expr})))"
+        f"(({year_expr} IS NOT NULL AND {year_expr} > 1900) * {months_sqlite})"
     )
+
+
+def order_ci(expr: str) -> str:
+    """Case-insensitive ORDER BY key (SQLite COLLATE NOCASE / Postgres LOWER)."""
+    if get_dialect() == "postgres":
+        return f"LOWER({expr})"
+    return f"{expr} COLLATE NOCASE"
 
 
 def not_alnum_char_sql(char_expr: str) -> str:
