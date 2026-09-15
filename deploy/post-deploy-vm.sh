@@ -58,9 +58,18 @@ PY
 fi
 
 # Description RU backfill is allowed on Postgres too (UI/consumer write path).
-echo "=== backfill description_ru (targeted + missing batch) ==="
-sudo -u autoplius "$PY" backfill_descriptions_ru.py --ids 32156004,32155944,32155948,32155970,32155940,32093378,32064212 || echo "WARNING: targeted description backfill failed"
-sudo -u autoplius "$PY" backfill_descriptions_ru.py --active-only --limit 250 || echo "WARNING: description backfill batch failed"
+# Run async: a large batch can exceed the Actions 15m deploy timeout.
+echo "=== backfill description_ru (background) ==="
+TRANSLATE_LOG=/var/log/autoplius-scraper/translate-backfill.log
+mkdir -p /var/log/autoplius-scraper
+touch "$TRANSLATE_LOG"
+chown autoplius:autoplius "$TRANSLATE_LOG" || true
+nohup sudo -u autoplius bash -c "
+  set -e
+  '$PY' backfill_descriptions_ru.py --ids 32156004,32155944,32155948,32155970,32155940,32093378,32064212
+  '$PY' backfill_descriptions_ru.py --active-only --limit 250
+" >>"$TRANSLATE_LOG" 2>&1 &
+echo "translate backfill pid=$! (log: $TRANSLATE_LOG)"
 if systemctl list-unit-files autoplius-translate-descriptions.timer >/dev/null 2>&1; then
   sudo systemctl start autoplius-translate-descriptions.service || echo "WARNING: translate service start failed"
 fi
