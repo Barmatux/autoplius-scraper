@@ -2,7 +2,21 @@
   var STORAGE_KEY = "eu2-site-theme";
   var DEFAULT_THEME = "docs";
   var PUBLIC_THEMES = ["docs"];
-  var ADMIN_THEMES = ["original", "docs", "parchment", "forest", "carbon", "carwow", "carwow-soft", "carwow-night"];
+  var ADMIN_THEMES = [
+    "original",
+    "docs",
+    "docs.mod",
+    "parchment",
+    "forest",
+    "carbon",
+    "carbon.mod",
+    "carwow",
+    "carwow.mod",
+    "carwow-soft",
+    "carwow-soft.mod",
+    "carwow-night",
+    "carwow-night.mod",
+  ];
 
   function isAdmin() {
     return window.__EU2_IS_ADMIN__ === true || window.__EU2_IS_ADMIN__ === "true";

@@ -6,14 +6,22 @@ html[data-theme="forest"],
 html[data-theme="carbon"],
 html[data-theme="carwow"],
 html[data-theme="carwow-soft"],
-html[data-theme="carwow-night"] {
+html[data-theme="carwow-night"],
+html[data-theme="docs.mod"],
+html[data-theme="carbon.mod"],
+html[data-theme="carwow.mod"],
+html[data-theme="carwow-soft.mod"],
+html[data-theme="carwow-night.mod"] {
   --font: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
   --font-display: "Cormorant Garamond", Georgia, serif;
 }
 
 html[data-theme="carwow"],
 html[data-theme="carwow-soft"],
-html[data-theme="carwow-night"] {
+html[data-theme="carwow-night"],
+html[data-theme="carwow.mod"],
+html[data-theme="carwow-soft.mod"],
+html[data-theme="carwow-night.mod"] {
   --font: "DM Sans", "Segoe UI", system-ui, sans-serif;
   --font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
 }
@@ -24,7 +32,12 @@ html[data-theme="forest"] .brand-name,
 html[data-theme="carbon"] .brand-name,
 html[data-theme="carwow"] .brand-name,
 html[data-theme="carwow-soft"] .brand-name,
-html[data-theme="carwow-night"] .brand-name {
+html[data-theme="carwow-night"] .brand-name,
+html[data-theme="docs.mod"] .brand-name,
+html[data-theme="carbon.mod"] .brand-name,
+html[data-theme="carwow.mod"] .brand-name,
+html[data-theme="carwow-soft.mod"] .brand-name,
+html[data-theme="carwow-night.mod"] .brand-name {
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -1323,7 +1336,9 @@ html[data-theme="carbon"] .mobile-nav-link:hover {
 html[data-theme="docs"] .pill.accent,
 html[data-theme="parchment"] .pill.accent,
 html[data-theme="forest"] .pill.accent,
-html[data-theme="carbon"] .pill.accent {
+html[data-theme="carbon"] .pill.accent,
+html[data-theme="docs.mod"] .pill.accent,
+html[data-theme="carbon.mod"] .pill.accent {
   border-color: var(--accent-border);
 }
 
@@ -1774,6 +1789,2127 @@ html[data-theme="carwow-night"] .mobile-nav-link:hover {
   color: var(--accent);
 }
 
+
+
+/* ===== Taste-skill .mod variants (originals preserved above) ===== */
+html[data-theme="carwow.mod"],
+html[data-theme="carwow-soft.mod"],
+html[data-theme="carwow-night.mod"] {
+  --font: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+}
+
+html[data-theme="docs.mod"] {
+  --bg: #f3eee4;
+  --bg-glow: #e4ebe7;
+  --bg-top: #f3eee4;
+  --bg-bottom: #e8e0d2;
+  --ink: #1c1916;
+  --muted: #6b645b;
+  --line: #d3c6b0;
+  --card: #fffcf7;
+  --accent: #1a3c34;
+  --accent-soft: #e2ebe7;
+  --accent-border: #c4b49a;
+  --gold: #c4b49a;
+  --top-bg: #0e241f;
+  --top-ink: #efe8dc;
+  --shadow: 0 12px 28px rgba(14, 36, 31, 0.12);
+}
+
+html[data-theme="docs.mod"] .top {
+  backdrop-filter: none;
+  border-bottom: 0;
+}
+
+html[data-theme="docs.mod"] .brand-sub,
+html[data-theme="docs.mod"] .brand-tagline-domain,
+html[data-theme="docs.mod"] .brand-tagline-copy {
+  color: #cbbca3;
+}
+
+html[data-theme="docs.mod"] .brand-tagline-divider {
+  background: rgba(196, 180, 154, 0.45);
+}
+
+html[data-theme="docs.mod"] .brand-link:hover {
+  color: #fff;
+}
+
+html[data-theme="docs.mod"] .nav-btn {
+  color: #d8cebf;
+}
+
+html[data-theme="docs.mod"] .nav-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="docs.mod"] .nav-btn.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 -2px 0 #c4b49a;
+}
+
+html[data-theme="docs.mod"] .nav-auth-login,
+html[data-theme="docs.mod"] .nav-auth-login:hover {
+  background: #c62828 !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(198, 40, 40, 0.28);
+}
+
+html[data-theme="docs.mod"] .mobile-nav-toggle {
+  color: #efe8dc;
+  border-color: rgba(196, 180, 154, 0.55);
+}
+
+html[data-theme="docs.mod"] .pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(196, 180, 154, 0.45);
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .pill.accent {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #c4b49a;
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .admin-mode-link {
+  color: #c4b49a;
+}
+
+html[data-theme="docs.mod"] .admin-enter-link {
+  border-color: #c4b49a;
+  color: #efe8dc;
+  background: transparent;
+}
+
+html[data-theme="docs.mod"] .admin-enter-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+html[data-theme="docs.mod"] .panel,
+html[data-theme="docs.mod"] .listing-card,
+html[data-theme="docs.mod"] table.catalog,
+html[data-theme="docs.mod"] .auth-panel {
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="docs.mod"] {
+  --bg: #123028;
+  --bg-glow: #1a3c34;
+  --bg-top: #0e241f;
+  --bg-bottom: #0f2a22;
+}
+
+html[data-theme="docs.mod"] .tabs,
+html[data-theme="docs.mod"] .filters-panel,
+html[data-theme="docs.mod"] .filters,
+html[data-theme="docs.mod"] .summary,
+html[data-theme="docs.mod"] .catalog-summary-pills {
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .filters {
+  background: #0e241f;
+  border-color: rgba(196, 180, 154, 0.35);
+  box-shadow: none;
+}
+
+html[data-theme="docs.mod"] .filters-panel-toggle {
+  background: #0e241f;
+  border-color: rgba(196, 180, 154, 0.45);
+  color: #efe8dc;
+  box-shadow: none;
+}
+
+html[data-theme="docs.mod"] .filters-panel-badge {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #c4b49a;
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .filters > label,
+html[data-theme="docs.mod"] .filters .catalog-filter-field,
+html[data-theme="docs.mod"] .vehicle-hierarchy-label,
+html[data-theme="docs.mod"] .volume-range-label,
+html[data-theme="docs.mod"] .year-range-label,
+html[data-theme="docs.mod"] .mileage-range-label,
+html[data-theme="docs.mod"] .summary,
+html[data-theme="docs.mod"] .summary p,
+html[data-theme="docs.mod"] .summary strong,
+html[data-theme="docs.mod"] .cards-sort,
+html[data-theme="docs.mod"] .check,
+html[data-theme="docs.mod"] .check span,
+html[data-theme="docs.mod"] .pager,
+html[data-theme="docs.mod"] .empty {
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .make-model-filters,
+html[data-theme="docs.mod"] .year-mileage-filters,
+html[data-theme="docs.mod"] .spec-filters-row {
+  border-bottom-color: rgba(196, 180, 154, 0.28);
+}
+
+html[data-theme="docs.mod"] .filters input,
+html[data-theme="docs.mod"] .filters select,
+html[data-theme="docs.mod"] .vehicle-hierarchy-field select,
+html[data-theme="docs.mod"] .year-range-inputs select,
+html[data-theme="docs.mod"] .mileage-range-inputs select,
+html[data-theme="docs.mod"] .volume-range-inputs select,
+html[data-theme="docs.mod"] .cards-sort-select,
+html[data-theme="docs.mod"] .catalog-multi-select-trigger {
+  background: #fffcf7;
+  color: #1c1916;
+  border-color: #c4b49a;
+}
+
+html[data-theme="docs.mod"] .catalog-multi-select-trigger::after {
+  border-top-color: #6b645b;
+}
+
+html[data-theme="docs.mod"] .catalog-filter-field.is-active .catalog-multi-select-trigger,
+html[data-theme="docs.mod"] .year-range-filters.is-active .year-range-inputs select,
+html[data-theme="docs.mod"] .mileage-range-filters.is-active .mileage-range-inputs select,
+html[data-theme="docs.mod"] .volume-range-filters.is-active .volume-range-inputs select {
+  background: #1a3c34;
+  color: #efe8dc;
+  border-color: #c4b49a;
+}
+
+html[data-theme="docs.mod"] .catalog-filter-field.is-active .catalog-multi-select-trigger::after {
+  border-top-color: #c4b49a;
+}
+
+html[data-theme="docs.mod"] .catalog-multi-select-menu {
+  background: #fffcf7;
+  border-color: #d3c6b0;
+  color: #1c1916;
+  box-shadow: 0 12px 28px rgba(14, 36, 31, 0.28);
+}
+
+html[data-theme="docs.mod"] .filters label.catalog-multi-select-row,
+html[data-theme="docs.mod"] .filters label.catalog-multi-select-row-main,
+html[data-theme="docs.mod"] .catalog-multi-select-row,
+html[data-theme="docs.mod"] .catalog-multi-select-label {
+  color: #1c1916;
+}
+
+html[data-theme="docs.mod"] .catalog-multi-select-row:hover {
+  background: rgba(26, 60, 52, 0.08);
+}
+
+html[data-theme="docs.mod"] .catalog-multi-select-row.is-selected {
+  background: rgba(26, 60, 52, 0.14);
+  color: #1c1916;
+}
+
+html[data-theme="docs.mod"] .vehicle-hierarchy-field select:disabled {
+  background: #e8e0d2;
+  color: #6b645b;
+}
+
+html[data-theme="docs.mod"] .filters button {
+  background: #1a3c34;
+  border-color: #c4b49a;
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .filters button:hover {
+  filter: brightness(1.08);
+}
+
+html[data-theme="docs.mod"] .pager a {
+  color: #c4b49a;
+}
+
+html[data-theme="docs.mod"] .pager a:hover {
+  color: #fff;
+}
+
+html[data-theme="docs.mod"] .auth-page .auth-title,
+html[data-theme="docs.mod"] .auth-page .auth-lead,
+html[data-theme="docs.mod"] main > h1,
+html[data-theme="docs.mod"] main > .lead,
+html[data-theme="docs.mod"] .cabinet-title,
+html[data-theme="docs.mod"] .cabinet-lead {
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .auth-page .auth-lead,
+html[data-theme="docs.mod"] .cabinet-lead {
+  color: #cbbca3;
+}
+
+html[data-theme="docs.mod"] .cookie-consent {
+  background: #0e241f;
+  border-color: rgba(196, 180, 154, 0.45);
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .cookie-consent-text,
+html[data-theme="docs.mod"] .cookie-consent-link {
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .cookie-consent-link:hover {
+  color: #fff;
+}
+
+html[data-theme="docs.mod"] .tab {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(196, 180, 154, 0.4);
+  color: #d8cebf;
+}
+
+html[data-theme="docs.mod"] .tab:hover {
+  color: #fff;
+  border-color: #c4b49a;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="docs.mod"] .tab.active {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #c4b49a;
+  color: #fff;
+  box-shadow: inset 0 -2px 0 #c4b49a;
+}
+
+html[data-theme="docs.mod"] .tab-count {
+  color: #c4b49a;
+}
+
+html[data-theme="docs.mod"] .summary {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: #0e241f;
+  border: 1px solid rgba(196, 180, 154, 0.35);
+}
+
+html[data-theme="docs.mod"] .listings-view-toggle {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(196, 180, 154, 0.4);
+}
+
+html[data-theme="docs.mod"] .listings-view-btn {
+  color: #cbbca3;
+}
+
+html[data-theme="docs.mod"] .listings-view-btn + .listings-view-btn {
+  border-left-color: rgba(196, 180, 154, 0.35);
+}
+
+html[data-theme="docs.mod"] .listings-view-btn.is-active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+html[data-theme="docs.mod"] .listings-view-btn:hover:not(.is-active) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="docs.mod"] .listing-card {
+  background: #fffcf7;
+  color: #1c1916;
+  border-color: #d3c6b0;
+}
+
+html[data-theme="docs.mod"] .listing-card .muted,
+html[data-theme="docs.mod"] .listing-card-meta,
+html[data-theme="docs.mod"] .listing-card-date {
+  color: #6b645b;
+}
+
+html[data-theme="docs.mod"] .catalog.listings-feed {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1400px) {
+  html[data-theme="docs.mod"] .catalog.listings-feed {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  html[data-theme="docs.mod"] .catalog.listings-feed {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  html[data-theme="docs.mod"] .catalog.listings-feed {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  html[data-theme="docs.mod"] .catalog.listings-feed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+html[data-theme="docs.mod"] .legal-page,
+html[data-theme="docs.mod"] .legal-page .auth-title,
+html[data-theme="docs.mod"] .legal-page .auth-lead,
+html[data-theme="docs.mod"] .legal-section h2,
+html[data-theme="docs.mod"] .legal-section p,
+html[data-theme="docs.mod"] .legal-section li,
+html[data-theme="docs.mod"] .legal-note,
+html[data-theme="docs.mod"] .legal-disclaimer,
+html[data-theme="docs.mod"] .legal-links a,
+html[data-theme="docs.mod"] .legal-page a {
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .legal-page .auth-lead,
+html[data-theme="docs.mod"] .legal-note,
+html[data-theme="docs.mod"] .legal-disclaimer {
+  color: #cbbca3;
+}
+
+html[data-theme="docs.mod"] .catalog-make-title,
+html[data-theme="docs.mod"] .catalog-make-index-name,
+html[data-theme="docs.mod"] .catalog-make-index-link {
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .catalog-make-index-link {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(196, 180, 154, 0.4);
+}
+
+html[data-theme="docs.mod"] .catalog-make-index-link:hover,
+html[data-theme="docs.mod"] .catalog-make-index-link:focus-visible {
+  border-color: #c4b49a;
+  color: #fff;
+}
+
+html[data-theme="docs.mod"] .catalog-make-index-meta,
+html[data-theme="docs.mod"] .catalog-model-title {
+  color: #cbbca3;
+}
+
+html[data-theme="docs.mod"] .calc-form,
+html[data-theme="docs.mod"] .calc-aside,
+html[data-theme="docs.mod"] .calc-result,
+html[data-theme="docs.mod"] .calc-rates {
+  background: #f3eee3;
+  border-color: #c9bba3;
+  color: #1f2a22;
+}
+
+html[data-theme="docs.mod"] .calc-form .calc-field span,
+html[data-theme="docs.mod"] .calc-fieldset legend,
+html[data-theme="docs.mod"] .calc-radio,
+html[data-theme="docs.mod"] .calc-check,
+html[data-theme="docs.mod"] .calc-hint,
+html[data-theme="docs.mod"] .calc-aside h2,
+html[data-theme="docs.mod"] .calc-aside li,
+html[data-theme="docs.mod"] .calc-result-title,
+html[data-theme="docs.mod"] .calc-result-key,
+html[data-theme="docs.mod"] .calc-result-val,
+html[data-theme="docs.mod"] .calc-result-notes,
+html[data-theme="docs.mod"] .calc-result-total-label,
+html[data-theme="docs.mod"] .calc-result-total-values,
+html[data-theme="docs.mod"] .calc-rates h2,
+html[data-theme="docs.mod"] .calc-rates-block h3,
+html[data-theme="docs.mod"] .calc-rates-table,
+html[data-theme="docs.mod"] .calc-rates-src {
+  color: #1f2a22;
+}
+
+html[data-theme="docs.mod"] .calc-result-total {
+  background: #e4ecdf;
+}
+
+html[data-theme="docs.mod"] .calc-error {
+  background: #fdeceb;
+}
+
+html[data-theme="docs.mod"] .legal-dl > div {
+  background: #fffcf7;
+  border-color: #d3c6b0;
+  color: #1c1916;
+}
+
+html[data-theme="docs.mod"] .legal-dl dt {
+  color: #6b645b;
+}
+
+html[data-theme="docs.mod"] .legal-dl dd,
+html[data-theme="docs.mod"] .legal-dl dd a {
+  color: #1c1916;
+}
+
+html[data-theme="docs.mod"] .legal-dl dd a:hover {
+  color: #1a3c34;
+}
+
+html[data-theme="docs.mod"] .legal-placeholder {
+  color: #9a7b4f;
+}
+
+html[data-theme="docs.mod"] .legal-banner {
+  background: rgba(255, 252, 247, 0.1);
+  border-color: rgba(196, 180, 154, 0.45);
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .site-footer {
+  background: #0e241f;
+  border-top-color: rgba(196, 180, 154, 0.35);
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .site-footer-name,
+html[data-theme="docs.mod"] .site-footer-nav a {
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .site-footer-meta,
+html[data-theme="docs.mod"] .site-footer-hint,
+html[data-theme="docs.mod"] .site-footer-meta a {
+  color: #cbbca3;
+}
+
+html[data-theme="docs.mod"] .site-footer-nav a:hover,
+html[data-theme="docs.mod"] .site-footer-meta a:hover {
+  color: #fff;
+}
+
+html[data-theme="docs.mod"] .detail-title,
+html[data-theme="docs.mod"] .detail-title-link,
+html[data-theme="docs.mod"] .detail-back-link,
+html[data-theme="docs.mod"] .detail-scrape-note,
+html[data-theme="docs.mod"] .detail-scrape-note a,
+html[data-theme="docs.mod"] .detail-heading .muted {
+  color: #efe8dc;
+}
+
+html[data-theme="docs.mod"] .detail-back-link,
+html[data-theme="docs.mod"] .detail-scrape-note {
+  color: #cbbca3;
+}
+
+html[data-theme="docs.mod"] .detail-title-link:hover,
+html[data-theme="docs.mod"] .detail-back-link:hover,
+html[data-theme="docs.mod"] .detail-scrape-note a:hover {
+  color: #fff;
+}
+
+html[data-theme="docs.mod"] .detail-info {
+  background: #fffcf7;
+  border: 1px solid #d3c6b0;
+  border-radius: 14px;
+  padding: 1rem 1.1rem 1.15rem;
+  color: #1c1916;
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="docs.mod"] .detail-info h2,
+html[data-theme="docs.mod"] .detail-info .description,
+html[data-theme="docs.mod"] .detail-info .kv dd,
+html[data-theme="docs.mod"] .detail-info .kv dd a {
+  color: #1c1916;
+}
+
+html[data-theme="docs.mod"] .detail-info .kv dt,
+html[data-theme="docs.mod"] .detail-info .muted,
+html[data-theme="docs.mod"] .detail-info .description-original {
+  color: #6b645b;
+}
+
+html[data-theme="docs.mod"] .detail-info .kv > div {
+  border-bottom-color: #d3c6b0;
+}
+
+html[data-theme="docs.mod"] .detail-gallery {
+  background: #fffcf7;
+  border: 1px solid #d3c6b0;
+  border-radius: 14px;
+  padding: 0.75rem;
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="carbon.mod"] {
+  --bg: #0c0c0e;
+  --bg-glow: #16181c;
+  --bg-top: #09090b;
+  --bg-bottom: #12141a;
+  --ink: #e8eaed;
+  --muted: #9aa0a6;
+  --line: #3a3f48;
+  --card: #1c1f26;
+  --accent: #3ec6f0;
+  --accent-soft: rgba(62, 198, 240, 0.14);
+  --accent-border: #2a9fc4;
+  --accent-deep: #1e5bb8;
+  --offer: #2db84a;
+  --offer-deep: #1f6b3a;
+  --gold: #3ec6f0;
+  --top-bg: #09090b;
+  --top-ink: #e8eaed;
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 500px at 15% -10%, rgba(62, 198, 240, 0.12), transparent 55%),
+    radial-gradient(900px 420px at 90% 0%, rgba(45, 184, 74, 0.08), transparent 50%),
+    linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="carbon.mod"] .top {
+  backdrop-filter: none;
+  border-bottom: 1px solid rgba(62, 198, 240, 0.22);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="carbon.mod"] .brand-name {
+  color: #fff;
+  letter-spacing: 0.04em;
+}
+
+html[data-theme="carbon.mod"] .brand-sub,
+html[data-theme="carbon.mod"] .brand-tagline-domain,
+html[data-theme="carbon.mod"] .brand-tagline-copy {
+  color: #9aa0a6;
+}
+
+html[data-theme="carbon.mod"] .brand-tagline-divider {
+  background: rgba(62, 198, 240, 0.35);
+}
+
+html[data-theme="carbon.mod"] .brand-link:hover {
+  color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .nav-btn {
+  color: #b8c0c8;
+}
+
+html[data-theme="carbon.mod"] .nav-btn:hover {
+  color: #fff;
+  background: rgba(62, 198, 240, 0.1);
+}
+
+html[data-theme="carbon.mod"] .nav-btn.active {
+  color: #fff;
+  background: rgba(62, 198, 240, 0.14);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+html[data-theme="carbon.mod"] .nav-auth-login,
+html[data-theme="carbon.mod"] .nav-auth-login:hover,
+html[data-theme="carbon.mod"] .mobile-nav-login,
+html[data-theme="carbon.mod"] .mobile-nav-login:hover {
+  background: var(--accent) !important;
+  color: #041018 !important;
+  box-shadow: 0 6px 18px rgba(62, 198, 240, 0.35);
+}
+
+html[data-theme="carbon.mod"] .mobile-nav-toggle {
+  color: #e8eaed;
+  border-color: rgba(62, 198, 240, 0.4);
+}
+
+html[data-theme="carbon.mod"] .pill {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(62, 198, 240, 0.28);
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .pill.accent {
+  background: rgba(62, 198, 240, 0.12);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .admin-mode-link {
+  color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .admin-enter-link {
+  border-color: rgba(62, 198, 240, 0.45);
+  color: #e8eaed;
+  background: transparent;
+}
+
+html[data-theme="carbon.mod"] .admin-enter-link:hover {
+  background: rgba(62, 198, 240, 0.12);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .panel,
+html[data-theme="carbon.mod"] .listing-card,
+html[data-theme="carbon.mod"] table.catalog,
+html[data-theme="carbon.mod"] .auth-panel {
+  background: var(--card);
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+}
+
+html[data-theme="carbon.mod"] .tabs,
+html[data-theme="carbon.mod"] .filters-panel,
+html[data-theme="carbon.mod"] .filters,
+html[data-theme="carbon.mod"] .summary,
+html[data-theme="carbon.mod"] .catalog-summary-pills {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .filters {
+  background: #14171c;
+  border-color: rgba(62, 198, 240, 0.22);
+  box-shadow: none;
+}
+
+html[data-theme="carbon.mod"] .filters-panel-toggle {
+  background: #14171c;
+  border-color: rgba(62, 198, 240, 0.3);
+  color: #e8eaed;
+  box-shadow: none;
+}
+
+html[data-theme="carbon.mod"] .filters-panel-badge {
+  background: rgba(62, 198, 240, 0.14);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .filters > label,
+html[data-theme="carbon.mod"] .filters .catalog-filter-field,
+html[data-theme="carbon.mod"] .vehicle-hierarchy-label,
+html[data-theme="carbon.mod"] .volume-range-label,
+html[data-theme="carbon.mod"] .year-range-label,
+html[data-theme="carbon.mod"] .mileage-range-label,
+html[data-theme="carbon.mod"] .summary,
+html[data-theme="carbon.mod"] .summary p,
+html[data-theme="carbon.mod"] .summary strong,
+html[data-theme="carbon.mod"] .cards-sort,
+html[data-theme="carbon.mod"] .check,
+html[data-theme="carbon.mod"] .check span,
+html[data-theme="carbon.mod"] .pager,
+html[data-theme="carbon.mod"] .empty {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .make-model-filters,
+html[data-theme="carbon.mod"] .year-mileage-filters,
+html[data-theme="carbon.mod"] .spec-filters-row {
+  border-bottom-color: rgba(62, 198, 240, 0.18);
+}
+
+html[data-theme="carbon.mod"] .filters input,
+html[data-theme="carbon.mod"] .filters select,
+html[data-theme="carbon.mod"] .vehicle-hierarchy-field select,
+html[data-theme="carbon.mod"] .year-range-inputs select,
+html[data-theme="carbon.mod"] .mileage-range-inputs select,
+html[data-theme="carbon.mod"] .volume-range-inputs select,
+html[data-theme="carbon.mod"] .cards-sort-select,
+html[data-theme="carbon.mod"] .catalog-multi-select-trigger {
+  background: #252830;
+  color: #e8eaed;
+  border-color: #4a505a;
+}
+
+html[data-theme="carbon.mod"] .catalog-multi-select-trigger::after {
+  border-top-color: #9aa0a6;
+}
+
+html[data-theme="carbon.mod"] .catalog-filter-field.is-active .catalog-multi-select-trigger,
+html[data-theme="carbon.mod"] .year-range-filters.is-active .year-range-inputs select,
+html[data-theme="carbon.mod"] .mileage-range-filters.is-active .mileage-range-inputs select,
+html[data-theme="carbon.mod"] .volume-range-filters.is-active .volume-range-inputs select {
+  background: rgba(62, 198, 240, 0.16);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .catalog-filter-field.is-active .catalog-multi-select-trigger::after {
+  border-top-color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .catalog-multi-select-menu {
+  background: #1c1f26;
+  border-color: #3a3f48;
+  color: #e8eaed;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme="carbon.mod"] .filters label.catalog-multi-select-row,
+html[data-theme="carbon.mod"] .filters label.catalog-multi-select-row-main,
+html[data-theme="carbon.mod"] .catalog-multi-select-row,
+html[data-theme="carbon.mod"] .catalog-multi-select-label {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .catalog-multi-select-row:hover {
+  background: rgba(62, 198, 240, 0.1);
+}
+
+html[data-theme="carbon.mod"] .catalog-multi-select-row.is-selected {
+  background: rgba(62, 198, 240, 0.16);
+  color: #fff;
+}
+
+html[data-theme="carbon.mod"] .vehicle-hierarchy-field select:disabled {
+  background: #181a1f;
+  color: #6b717a;
+}
+
+html[data-theme="carbon.mod"] .filters button {
+  background: var(--accent-deep);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="carbon.mod"] .filters button:hover {
+  filter: brightness(1.1);
+}
+
+html[data-theme="carbon.mod"] .pager a {
+  color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .pager a:hover {
+  color: #fff;
+}
+
+html[data-theme="carbon.mod"] .auth-page .auth-title,
+html[data-theme="carbon.mod"] .auth-page .auth-lead,
+html[data-theme="carbon.mod"] main > h1,
+html[data-theme="carbon.mod"] main > .lead,
+html[data-theme="carbon.mod"] .cabinet-title,
+html[data-theme="carbon.mod"] .cabinet-lead,
+html[data-theme="carbon.mod"] .legal-page .auth-title,
+html[data-theme="carbon.mod"] .legal-section h2 {
+  color: #f2f4f7;
+}
+
+html[data-theme="carbon.mod"] .auth-page .auth-lead,
+html[data-theme="carbon.mod"] .cabinet-lead,
+html[data-theme="carbon.mod"] .legal-page .auth-lead,
+html[data-theme="carbon.mod"] .legal-note,
+html[data-theme="carbon.mod"] .legal-disclaimer {
+  color: #9aa0a6;
+}
+
+html[data-theme="carbon.mod"] .cookie-consent {
+  background: #14171c;
+  border-color: rgba(62, 198, 240, 0.28);
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .cookie-consent-text,
+html[data-theme="carbon.mod"] .cookie-consent-link {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .cookie-consent-link:hover {
+  color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .tab {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(62, 198, 240, 0.25);
+  color: #b8c0c8;
+}
+
+html[data-theme="carbon.mod"] .tab:hover {
+  color: #fff;
+  border-color: var(--accent);
+  background: rgba(62, 198, 240, 0.1);
+}
+
+html[data-theme="carbon.mod"] .tab.active {
+  background: rgba(62, 198, 240, 0.14);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+html[data-theme="carbon.mod"] .tab-count {
+  color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .summary {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: #14171c;
+  border: 1px solid rgba(62, 198, 240, 0.22);
+}
+
+html[data-theme="carbon.mod"] .listings-view-toggle {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(62, 198, 240, 0.25);
+}
+
+html[data-theme="carbon.mod"] .listings-view-btn {
+  color: #9aa0a6;
+}
+
+html[data-theme="carbon.mod"] .listings-view-btn + .listings-view-btn {
+  border-left-color: rgba(62, 198, 240, 0.2);
+}
+
+html[data-theme="carbon.mod"] .listings-view-btn.is-active {
+  background: rgba(62, 198, 240, 0.16);
+  color: #fff;
+}
+
+html[data-theme="carbon.mod"] .listings-view-btn:hover:not(.is-active) {
+  color: #fff;
+  background: rgba(62, 198, 240, 0.08);
+}
+
+html[data-theme="carbon.mod"] .listing-card {
+  background: #1c1f26;
+  color: #e8eaed;
+  border-color: #3a3f48;
+}
+
+html[data-theme="carbon.mod"] .listing-card .muted,
+html[data-theme="carbon.mod"] .listing-card-meta,
+html[data-theme="carbon.mod"] .listing-card-date {
+  color: #9aa0a6;
+}
+
+html[data-theme="carbon.mod"] .listing-card .price,
+html[data-theme="carbon.mod"] .price-rb,
+html[data-theme="carbon.mod"] .listing-card .price-rb-value {
+  color: var(--offer);
+}
+
+html[data-theme="carbon.mod"] .catalog.listings-feed {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1400px) {
+  html[data-theme="carbon.mod"] .catalog.listings-feed {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  html[data-theme="carbon.mod"] .catalog.listings-feed {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  html[data-theme="carbon.mod"] .catalog.listings-feed {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  html[data-theme="carbon.mod"] .catalog.listings-feed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+html[data-theme="carbon.mod"] .legal-page,
+html[data-theme="carbon.mod"] .legal-section p,
+html[data-theme="carbon.mod"] .legal-section li,
+html[data-theme="carbon.mod"] .legal-links a,
+html[data-theme="carbon.mod"] .legal-page a {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .legal-page a:hover {
+  color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .catalog-make-title,
+html[data-theme="carbon.mod"] .catalog-make-index-name,
+html[data-theme="carbon.mod"] .catalog-make-index-link {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .catalog-make-index-link {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(62, 198, 240, 0.28);
+}
+
+html[data-theme="carbon.mod"] .catalog-make-index-link:hover,
+html[data-theme="carbon.mod"] .catalog-make-index-link:focus-visible {
+  border-color: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="carbon.mod"] .catalog-make-index-meta,
+html[data-theme="carbon.mod"] .catalog-model-title {
+  color: #9aa0a6;
+}
+
+html[data-theme="carbon.mod"] .calc-form,
+html[data-theme="carbon.mod"] .calc-aside,
+html[data-theme="carbon.mod"] .calc-result,
+html[data-theme="carbon.mod"] .calc-rates {
+  background: #1c1f26;
+  border-color: #3a3f48;
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .calc-form .calc-field span,
+html[data-theme="carbon.mod"] .calc-fieldset legend,
+html[data-theme="carbon.mod"] .calc-radio,
+html[data-theme="carbon.mod"] .calc-check,
+html[data-theme="carbon.mod"] .calc-hint,
+html[data-theme="carbon.mod"] .calc-aside h2,
+html[data-theme="carbon.mod"] .calc-aside li,
+html[data-theme="carbon.mod"] .calc-result-title,
+html[data-theme="carbon.mod"] .calc-result-key,
+html[data-theme="carbon.mod"] .calc-result-val,
+html[data-theme="carbon.mod"] .calc-result-notes,
+html[data-theme="carbon.mod"] .calc-result-total-label,
+html[data-theme="carbon.mod"] .calc-result-total-values,
+html[data-theme="carbon.mod"] .calc-rates h2,
+html[data-theme="carbon.mod"] .calc-rates-block h3,
+html[data-theme="carbon.mod"] .calc-rates-table,
+html[data-theme="carbon.mod"] .calc-rates-src {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .calc-field input,
+html[data-theme="carbon.mod"] .calc-field select {
+  background: #252830;
+  color: #e8eaed;
+  border-color: #4a505a;
+}
+
+html[data-theme="carbon.mod"] .calc-fieldset {
+  border-color: #3a3f48;
+}
+
+html[data-theme="carbon.mod"] .calc-submit {
+  background: var(--accent);
+  color: #041018;
+  box-shadow: 0 8px 22px rgba(62, 198, 240, 0.35);
+}
+
+html[data-theme="carbon.mod"] .calc-submit:hover {
+  background: #62d4f5;
+  color: #041018;
+}
+
+html[data-theme="carbon.mod"] .calc-result-total {
+  background: rgba(45, 184, 74, 0.16);
+  border: 1px solid rgba(45, 184, 74, 0.35);
+}
+
+html[data-theme="carbon.mod"] .fx-up {
+  color: var(--offer);
+}
+
+html[data-theme="carbon.mod"] .calc-error {
+  background: rgba(198, 40, 40, 0.18);
+  border-color: #c62828;
+  color: #ffcdd2;
+}
+
+html[data-theme="carbon.mod"] .legal-dl > div {
+  background: #1c1f26;
+  border-color: #3a3f48;
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .legal-dl dt {
+  color: #9aa0a6;
+}
+
+html[data-theme="carbon.mod"] .legal-dl dd,
+html[data-theme="carbon.mod"] .legal-dl dd a {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .legal-dl dd a:hover {
+  color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .legal-placeholder {
+  color: #6b717a;
+}
+
+html[data-theme="carbon.mod"] .legal-banner {
+  background: rgba(62, 198, 240, 0.08);
+  border-color: rgba(62, 198, 240, 0.28);
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .site-footer {
+  background: #09090b;
+  border-top-color: rgba(62, 198, 240, 0.22);
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .site-footer-name,
+html[data-theme="carbon.mod"] .site-footer-nav a {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .site-footer-meta,
+html[data-theme="carbon.mod"] .site-footer-hint,
+html[data-theme="carbon.mod"] .site-footer-meta a {
+  color: #9aa0a6;
+}
+
+html[data-theme="carbon.mod"] .site-footer-nav a:hover,
+html[data-theme="carbon.mod"] .site-footer-meta a:hover {
+  color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .detail-title,
+html[data-theme="carbon.mod"] .detail-title-link,
+html[data-theme="carbon.mod"] .detail-back-link,
+html[data-theme="carbon.mod"] .detail-scrape-note,
+html[data-theme="carbon.mod"] .detail-scrape-note a,
+html[data-theme="carbon.mod"] .detail-heading .muted {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .detail-back-link,
+html[data-theme="carbon.mod"] .detail-scrape-note {
+  color: #9aa0a6;
+}
+
+html[data-theme="carbon.mod"] .detail-title-link:hover,
+html[data-theme="carbon.mod"] .detail-back-link:hover,
+html[data-theme="carbon.mod"] .detail-scrape-note a:hover {
+  color: var(--accent);
+}
+
+html[data-theme="carbon.mod"] .detail-info,
+html[data-theme="carbon.mod"] .detail-gallery {
+  background: #1c1f26;
+  border: 1px solid #3a3f48;
+  border-radius: 14px;
+  padding: 1rem 1.1rem 1.15rem;
+  color: #e8eaed;
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="carbon.mod"] .detail-info h2,
+html[data-theme="carbon.mod"] .detail-info .description,
+html[data-theme="carbon.mod"] .detail-info .kv dd,
+html[data-theme="carbon.mod"] .detail-info .kv dd a {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .detail-info .kv dt,
+html[data-theme="carbon.mod"] .detail-info .muted,
+html[data-theme="carbon.mod"] .detail-info .description-original {
+  color: #9aa0a6;
+}
+
+html[data-theme="carbon.mod"] .detail-info .kv > div {
+  border-bottom-color: #3a3f48;
+}
+
+html[data-theme="carbon.mod"] .feedback-fab {
+  background: var(--accent);
+  color: #041018;
+  box-shadow: 0 10px 28px rgba(62, 198, 240, 0.4);
+}
+
+html[data-theme="carbon.mod"] .feedback-cta {
+  background: var(--accent);
+  color: #041018;
+}
+
+html[data-theme="carbon.mod"] .mobile-nav-shell {
+  background: #0c0c0e;
+  border-color: #3a3f48;
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .mobile-nav-link {
+  color: #e8eaed;
+}
+
+html[data-theme="carbon.mod"] .mobile-nav-link.is-active,
+html[data-theme="carbon.mod"] .mobile-nav-link:hover {
+  color: var(--accent);
+}
+
+html[data-theme="carwow.mod"] {
+  --bg: #f1f1f1;
+  --bg-glow: #e7e7e7;
+  --bg-top: #fafafa;
+  --bg-bottom: #e7e7e7;
+  --ink: #171717;
+  --muted: #6e6e6e;
+  --line: #cfcfcf;
+  --card: #ffffff;
+  --accent: #1cdce8;
+  --accent-soft: #dbffff;
+  --accent-border: #00909c;
+  --accent-deep: #005d69;
+  --gold: #1cdce8;
+  --top-bg: #171717;
+  --top-ink: #ffffff;
+  --shadow: 0 2px 10px rgba(23, 23, 23, 0.12);
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="carwow.mod"] .top {
+  backdrop-filter: none;
+  border-bottom: 0;
+  box-shadow: 0 8px 24px rgba(23, 23, 23, 0.18);
+}
+
+html[data-theme="carwow.mod"] .brand-name {
+  color: #fff;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+html[data-theme="carwow.mod"] .brand-sub,
+html[data-theme="carwow.mod"] .brand-tagline-domain,
+html[data-theme="carwow.mod"] .brand-tagline-copy {
+  color: #a0a0a0;
+}
+
+html[data-theme="carwow.mod"] .brand-tagline-divider {
+  background: rgba(28, 220, 232, 0.45);
+}
+
+html[data-theme="carwow.mod"] .brand-link:hover {
+  color: var(--accent);
+}
+
+html[data-theme="carwow.mod"] .nav-btn {
+  color: #cfcfcf;
+}
+
+html[data-theme="carwow.mod"] .nav-btn:hover {
+  color: #fff;
+  background: rgba(28, 220, 232, 0.12);
+}
+
+html[data-theme="carwow.mod"] .nav-btn.active {
+  color: #fff;
+  background: rgba(28, 220, 232, 0.16);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+html[data-theme="carwow.mod"] .nav-auth-login,
+html[data-theme="carwow.mod"] .nav-auth-login:hover,
+html[data-theme="carwow.mod"] .mobile-nav-login,
+html[data-theme="carwow.mod"] .mobile-nav-login:hover {
+  background: var(--accent) !important;
+  color: #171717 !important;
+  box-shadow: 0 6px 18px rgba(28, 220, 232, 0.35);
+  border-radius: 999px;
+}
+
+html[data-theme="carwow.mod"] .mobile-nav-toggle {
+  color: #fff;
+  border-color: rgba(28, 220, 232, 0.45);
+}
+
+html[data-theme="carwow.mod"] .pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-radius: 999px;
+}
+
+html[data-theme="carwow.mod"] .pill.accent {
+  background: rgba(28, 220, 232, 0.18);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="carwow.mod"] .admin-mode-link {
+  color: var(--accent);
+}
+
+html[data-theme="carwow.mod"] .admin-enter-link {
+  border-color: var(--accent);
+  color: #171717;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+html[data-theme="carwow.mod"] .admin-enter-link:hover {
+  background: #33e9f2;
+  color: #171717;
+}
+
+html[data-theme="carwow.mod"] .panel,
+html[data-theme="carwow.mod"] .listing-card,
+html[data-theme="carwow.mod"] table.catalog,
+html[data-theme="carwow.mod"] .auth-panel,
+html[data-theme="carwow.mod"] .filters-panel {
+  background: var(--card);
+  border-color: var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="carwow.mod"] .tab {
+  border-radius: 999px;
+  background: #e7e7e7;
+  color: var(--ink);
+  border-color: transparent;
+}
+
+html[data-theme="carwow.mod"] .tab:hover {
+  background: #dbffff;
+}
+
+html[data-theme="carwow.mod"] .tab.active {
+  background: #171717;
+  color: #fff;
+  box-shadow: none;
+}
+
+html[data-theme="carwow.mod"] .filters button,
+html[data-theme="carwow.mod"] .catalog-save-btn,
+html[data-theme="carwow.mod"] .calc-submit {
+  background: var(--accent);
+  color: #171717;
+  border-color: var(--accent);
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+html[data-theme="carwow.mod"] .filters button:hover,
+html[data-theme="carwow.mod"] .calc-submit:hover {
+  background: #33e9f2;
+}
+
+html[data-theme="carwow.mod"] .filters-panel-toggle {
+  background: #171717;
+  color: #fff;
+  border-radius: 999px;
+}
+
+html[data-theme="carwow.mod"] .feedback-fab,
+html[data-theme="carwow.mod"] .feedback-cta {
+  background: var(--accent);
+  color: #171717;
+}
+
+html[data-theme="carwow-soft.mod"] {
+  --bg: #fafafa;
+  --bg-glow: #f1f1f1;
+  --bg-top: #ffffff;
+  --bg-bottom: #f1f1f1;
+  --ink: #171717;
+  --muted: #6e6e6e;
+  --line: #e7e7e7;
+  --card: #ffffff;
+  --accent: #1cdce8;
+  --accent-soft: #dbffff;
+  --accent-border: #00909c;
+  --gold: #00909c;
+  --top-bg: rgba(255, 255, 255, 0.96);
+  --top-ink: #171717;
+  --shadow: 0 2px 10px rgba(23, 23, 23, 0.08);
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="carwow-soft.mod"] .top {
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 0 rgba(28, 220, 232, 0.35);
+}
+
+html[data-theme="carwow-soft.mod"] .brand-name {
+  color: #171717;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 800;
+}
+
+html[data-theme="carwow-soft.mod"] .nav-btn {
+  color: #444;
+  border-radius: 999px;
+}
+
+html[data-theme="carwow-soft.mod"] .nav-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+html[data-theme="carwow-soft.mod"] .nav-btn.active {
+  background: transparent;
+  color: var(--accent-deep);
+  box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+html[data-theme="carwow-soft.mod"] .nav-auth-login,
+html[data-theme="carwow-soft.mod"] .nav-auth-login:hover,
+html[data-theme="carwow-soft.mod"] .mobile-nav-login,
+html[data-theme="carwow-soft.mod"] .mobile-nav-login:hover {
+  background: var(--accent) !important;
+  color: #171717 !important;
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(28, 220, 232, 0.28);
+}
+
+html[data-theme="carwow-soft.mod"] .pill.accent {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-deep);
+  border-radius: 999px;
+}
+
+html[data-theme="carwow-soft.mod"] .admin-enter-link {
+  border-radius: 999px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #171717;
+}
+
+html[data-theme="carwow-soft.mod"] .panel,
+html[data-theme="carwow-soft.mod"] .listing-card,
+html[data-theme="carwow-soft.mod"] table.catalog,
+html[data-theme="carwow-soft.mod"] .auth-panel {
+  background: var(--card);
+  border-color: var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="carwow-soft.mod"] .tab {
+  border-radius: 999px;
+  background: #f1f1f1;
+}
+
+html[data-theme="carwow-soft.mod"] .tab.active {
+  background: #171717;
+  color: #fff;
+}
+
+html[data-theme="carwow-soft.mod"] .filters button,
+html[data-theme="carwow-soft.mod"] .calc-submit,
+html[data-theme="carwow-soft.mod"] .feedback-fab,
+html[data-theme="carwow-soft.mod"] .feedback-cta {
+  background: var(--accent);
+  color: #171717;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+html[data-theme="carwow-night.mod"] {
+  --bg: #171717;
+  --bg-glow: #242424;
+  --bg-top: #111111;
+  --bg-bottom: #1c1c1c;
+  --ink: #fafafa;
+  --muted: #a0a0a0;
+  --line: #444444;
+  --card: #242424;
+  --accent: #1cdce8;
+  --accent-soft: rgba(28, 220, 232, 0.16);
+  --accent-border: #00909c;
+  --accent-deep: #005d69;
+  --offer: #38c498;
+  --gold: #1cdce8;
+  --top-bg: #111111;
+  --top-ink: #fafafa;
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+  color: var(--ink);
+  background:
+    radial-gradient(1000px 480px at 12% -8%, rgba(28, 220, 232, 0.14), transparent 55%),
+    linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="carwow-night.mod"] .top {
+  backdrop-filter: none;
+  border-bottom: 1px solid rgba(28, 220, 232, 0.22);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="carwow-night.mod"] .brand-name {
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 800;
+}
+
+html[data-theme="carwow-night.mod"] .brand-sub,
+html[data-theme="carwow-night.mod"] .brand-tagline-domain,
+html[data-theme="carwow-night.mod"] .brand-tagline-copy {
+  color: #a0a0a0;
+}
+
+html[data-theme="carwow-night.mod"] .brand-tagline-divider {
+  background: rgba(28, 220, 232, 0.4);
+}
+
+html[data-theme="carwow-night.mod"] .brand-link:hover {
+  color: var(--accent);
+}
+
+html[data-theme="carwow-night.mod"] .nav-btn {
+  color: #cfcfcf;
+}
+
+html[data-theme="carwow-night.mod"] .nav-btn:hover {
+  color: #fff;
+  background: rgba(28, 220, 232, 0.12);
+}
+
+html[data-theme="carwow-night.mod"] .nav-btn.active {
+  color: #fff;
+  background: rgba(28, 220, 232, 0.16);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+html[data-theme="carwow-night.mod"] .nav-auth-login,
+html[data-theme="carwow-night.mod"] .nav-auth-login:hover,
+html[data-theme="carwow-night.mod"] .mobile-nav-login,
+html[data-theme="carwow-night.mod"] .mobile-nav-login:hover {
+  background: var(--accent) !important;
+  color: #171717 !important;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(28, 220, 232, 0.35);
+}
+
+html[data-theme="carwow-night.mod"] .mobile-nav-toggle {
+  color: #fff;
+  border-color: rgba(28, 220, 232, 0.45);
+}
+
+html[data-theme="carwow-night.mod"] .pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #fafafa;
+  border-radius: 999px;
+}
+
+html[data-theme="carwow-night.mod"] .pill.accent {
+  background: rgba(28, 220, 232, 0.16);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="carwow-night.mod"] .admin-mode-link {
+  color: var(--accent);
+}
+
+html[data-theme="carwow-night.mod"] .admin-enter-link {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #171717;
+  border-radius: 999px;
+}
+
+html[data-theme="carwow-night.mod"] .panel,
+html[data-theme="carwow-night.mod"] .listing-card,
+html[data-theme="carwow-night.mod"] table.catalog,
+html[data-theme="carwow-night.mod"] .auth-panel,
+html[data-theme="carwow-night.mod"] .filters-panel,
+html[data-theme="carwow-night.mod"] .calc-form,
+html[data-theme="carwow-night.mod"] .calc-aside,
+html[data-theme="carwow-night.mod"] .calc-result,
+html[data-theme="carwow-night.mod"] .calc-rates {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--ink);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="carwow-night.mod"] .tab {
+  background: #333;
+  color: #fafafa;
+  border-radius: 999px;
+  border-color: transparent;
+}
+
+html[data-theme="carwow-night.mod"] .tab.active {
+  background: var(--accent);
+  color: #171717;
+}
+
+html[data-theme="carwow-night.mod"] .filters > label,
+html[data-theme="carwow-night.mod"] .summary,
+html[data-theme="carwow-night.mod"] .pager,
+html[data-theme="carwow-night.mod"] .empty,
+html[data-theme="carwow-night.mod"] .check span {
+  color: var(--ink);
+}
+
+html[data-theme="carwow-night.mod"] .filters input,
+html[data-theme="carwow-night.mod"] .filters select,
+html[data-theme="carwow-night.mod"] .catalog-multi-select-trigger,
+html[data-theme="carwow-night.mod"] .calc-field input,
+html[data-theme="carwow-night.mod"] .calc-field select {
+  background: #333;
+  color: #fafafa;
+  border-color: #555;
+  border-radius: 12px;
+}
+
+html[data-theme="carwow-night.mod"] .filters button,
+html[data-theme="carwow-night.mod"] .calc-submit,
+html[data-theme="carwow-night.mod"] .feedback-fab,
+html[data-theme="carwow-night.mod"] .feedback-cta {
+  background: var(--accent);
+  color: #171717;
+  border-radius: 999px;
+  font-weight: 700;
+  box-shadow: 0 8px 22px rgba(28, 220, 232, 0.3);
+}
+
+html[data-theme="carwow-night.mod"] .mobile-nav-shell {
+  background: #111;
+  border-color: #444;
+  color: #fafafa;
+}
+
+html[data-theme="carwow-night.mod"] .mobile-nav-link {
+  color: #fafafa;
+}
+
+html[data-theme="carwow-night.mod"] .mobile-nav-link.is-active,
+html[data-theme="carwow-night.mod"] .mobile-nav-link:hover {
+  color: var(--accent);
+}
+
+
+/* ----- Taste-skill redesign overrides for *.mod (dials: overhaul +2 var / +2 motion) ----- */
+
+/* docs.mod — Forest cold luxury: cool spruce chrome, bone paper cards, sans display, pewter accent (no warm cream/brass) */
+html[data-theme="docs.mod"] {
+  --font: "DM Sans", "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  --bg: #0b1f1a;
+  --bg-glow: #14352c;
+  --bg-top: #071612;
+  --bg-bottom: #0d241d;
+  --ink: #e8eeeb;
+  --muted: #9aada5;
+  --line: #2a4a40;
+  --card: #f3f6f4;
+  --accent: #1f6b55;
+  --accent-soft: rgba(31, 107, 85, 0.14);
+  --accent-border: #7a9a8e;
+  --gold: #7a9a8e;
+  --top-bg: #071612;
+  --top-ink: #e8eeeb;
+  --shadow: 0 10px 28px rgba(4, 16, 12, 0.35);
+  --radius: 8px;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 420px at 8% -12%, rgba(31, 107, 85, 0.22), transparent 55%),
+    linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="docs.mod"] .brand-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f3f6f4;
+}
+
+html[data-theme="docs.mod"] .brand-sub,
+html[data-theme="docs.mod"] .brand-tagline-domain,
+html[data-theme="docs.mod"] .brand-tagline-copy {
+  color: #9aada5;
+}
+
+html[data-theme="docs.mod"] .brand-tagline-divider,
+html[data-theme="docs.mod"] .nav-btn.active {
+  box-shadow: inset 0 -2px 0 #7a9a8e;
+}
+
+html[data-theme="docs.mod"] .nav-btn.active {
+  background: rgba(122, 154, 142, 0.12);
+  color: #fff;
+}
+
+html[data-theme="docs.mod"] .nav-btn {
+  color: #c5d4cd;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+html[data-theme="docs.mod"] .nav-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="docs.mod"] .pill,
+html[data-theme="docs.mod"] .pill.accent {
+  border-color: rgba(122, 154, 142, 0.5);
+  border-radius: var(--radius);
+}
+
+html[data-theme="docs.mod"] .filters,
+html[data-theme="docs.mod"] .filters-panel-toggle,
+html[data-theme="docs.mod"] .summary,
+html[data-theme="docs.mod"] .site-footer,
+html[data-theme="docs.mod"] .cookie-consent {
+  background: #071612;
+  border-color: rgba(122, 154, 142, 0.35);
+}
+
+html[data-theme="docs.mod"] .filters input,
+html[data-theme="docs.mod"] .filters select,
+html[data-theme="docs.mod"] .vehicle-hierarchy-field select,
+html[data-theme="docs.mod"] .year-range-inputs select,
+html[data-theme="docs.mod"] .mileage-range-inputs select,
+html[data-theme="docs.mod"] .volume-range-inputs select,
+html[data-theme="docs.mod"] .cards-sort-select,
+html[data-theme="docs.mod"] .catalog-multi-select-trigger,
+html[data-theme="docs.mod"] .catalog-multi-select-menu {
+  background: #f3f6f4;
+  color: #121a17;
+  border-color: #b7c9c0;
+  border-radius: var(--radius);
+}
+
+html[data-theme="docs.mod"] .filters button {
+  background: #1f6b55;
+  border-color: #7a9a8e;
+  color: #f3f6f4;
+  border-radius: var(--radius);
+  transition: filter 0.15s ease, transform 0.12s ease;
+}
+
+html[data-theme="docs.mod"] .filters button:active {
+  transform: scale(0.98);
+}
+
+html[data-theme="docs.mod"] .listing-card,
+html[data-theme="docs.mod"] .detail-info,
+html[data-theme="docs.mod"] .detail-gallery,
+html[data-theme="docs.mod"] .legal-dl > div,
+html[data-theme="docs.mod"] .panel,
+html[data-theme="docs.mod"] .auth-panel {
+  background: #f3f6f4;
+  color: #121a17;
+  border-color: #c5d4cd;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+html[data-theme="docs.mod"] .listing-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(4, 16, 12, 0.4);
+}
+
+html[data-theme="docs.mod"] .listing-card .muted,
+html[data-theme="docs.mod"] .listing-card-meta,
+html[data-theme="docs.mod"] .listing-card-date,
+html[data-theme="docs.mod"] .detail-info .kv dt {
+  color: #5c7369;
+}
+
+html[data-theme="docs.mod"] .tab {
+  border-radius: var(--radius);
+  border-color: rgba(122, 154, 142, 0.4);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+html[data-theme="docs.mod"] .tab.active {
+  box-shadow: inset 0 -2px 0 #7a9a8e;
+}
+
+html[data-theme="docs.mod"] .calc-form,
+html[data-theme="docs.mod"] .calc-aside,
+html[data-theme="docs.mod"] .calc-result,
+html[data-theme="docs.mod"] .calc-rates {
+  background: #eef2f0;
+  border-color: #b7c9c0;
+  color: #121a17;
+  border-radius: var(--radius);
+}
+
+html[data-theme="docs.mod"] .pager a {
+  color: #9aada5;
+  transition: color 0.15s ease;
+}
+
+/* carbon.mod — industrial IBM-adjacent: cool gray, electric blue accent, sharp corners, denser chrome */
+html[data-theme="carbon.mod"] {
+  --font: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  --bg: #0b0b0c;
+  --bg-glow: #1a1a1c;
+  --bg-top: #000000;
+  --bg-bottom: #121214;
+  --ink: #f4f4f5;
+  --muted: #a1a1aa;
+  --line: #3f3f46;
+  --card: #18181b;
+  --accent: #4589ff;
+  --accent-soft: rgba(69, 137, 255, 0.14);
+  --accent-border: #78a9ff;
+  --accent-deep: #0043ce;
+  --offer: #42be65;
+  --offer-deep: #198038;
+  --gold: #4589ff;
+  --top-bg: #000000;
+  --top-ink: #f4f4f5;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --radius: 2px;
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, rgba(69, 137, 255, 0.06), transparent 42%),
+    linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="carbon.mod"] .brand-name {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+html[data-theme="carbon.mod"] .top {
+  border-bottom: 1px solid rgba(69, 137, 255, 0.28);
+}
+
+html[data-theme="carbon.mod"] .nav-btn.active,
+html[data-theme="carbon.mod"] .tab.active {
+  box-shadow: inset 0 -2px 0 var(--accent);
+  background: rgba(69, 137, 255, 0.12);
+}
+
+html[data-theme="carbon.mod"] .nav-auth-login,
+html[data-theme="carbon.mod"] .nav-auth-login:hover,
+html[data-theme="carbon.mod"] .mobile-nav-login,
+html[data-theme="carbon.mod"] .mobile-nav-login:hover,
+html[data-theme="carbon.mod"] .filters button,
+html[data-theme="carbon.mod"] .calc-submit,
+html[data-theme="carbon.mod"] .feedback-fab,
+html[data-theme="carbon.mod"] .feedback-cta {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-radius: var(--radius);
+  border-color: var(--accent);
+  box-shadow: none;
+  transition: filter 0.15s ease, transform 0.12s ease;
+}
+
+html[data-theme="carbon.mod"] .filters button:active,
+html[data-theme="carbon.mod"] .calc-submit:active {
+  transform: scale(0.98);
+}
+
+html[data-theme="carbon.mod"] .panel,
+html[data-theme="carbon.mod"] .listing-card,
+html[data-theme="carbon.mod"] .auth-panel,
+html[data-theme="carbon.mod"] .detail-info,
+html[data-theme="carbon.mod"] .detail-gallery,
+html[data-theme="carbon.mod"] .filters,
+html[data-theme="carbon.mod"] .summary {
+  border-radius: var(--radius);
+  background: #18181b;
+  border-color: #3f3f46;
+}
+
+html[data-theme="carbon.mod"] .listing-card {
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+html[data-theme="carbon.mod"] .listing-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+html[data-theme="carbon.mod"] .listing-card .price,
+html[data-theme="carbon.mod"] .price-rb,
+html[data-theme="carbon.mod"] .listing-card .price-rb-value,
+html[data-theme="carbon.mod"] .fx-up {
+  color: var(--offer);
+}
+
+html[data-theme="carbon.mod"] .filters input,
+html[data-theme="carbon.mod"] .filters select,
+html[data-theme="carbon.mod"] .catalog-multi-select-trigger,
+html[data-theme="carbon.mod"] .calc-field input,
+html[data-theme="carbon.mod"] .calc-field select {
+  background: #27272a;
+  border-color: #52525b;
+  border-radius: var(--radius);
+  color: #f4f4f5;
+}
+
+html[data-theme="carbon.mod"] .pill,
+html[data-theme="carbon.mod"] .tab {
+  border-radius: var(--radius);
+}
+
+html[data-theme="carbon.mod"] .calc-result-total {
+  background: rgba(66, 190, 101, 0.14);
+  border: 1px solid rgba(66, 190, 101, 0.35);
+}
+
+/* carwow.mod — brand cyan locked; cooler zinc marketplace, sharper cards, motivated hover */
+html[data-theme="carwow.mod"] {
+  --bg: #ececef;
+  --bg-glow: #e4e4e7;
+  --bg-top: #f4f4f5;
+  --bg-bottom: #e4e4e7;
+  --ink: #18181b;
+  --muted: #71717a;
+  --line: #d4d4d8;
+  --card: #ffffff;
+  --accent: #1cdce8;
+  --accent-soft: #d8fbfe;
+  --accent-border: #0e9aa3;
+  --accent-deep: #0a6b73;
+  --gold: #1cdce8;
+  --top-bg: #18181b;
+  --top-ink: #fafafa;
+  --shadow: 0 4px 18px rgba(24, 24, 27, 0.1);
+  --radius: 12px;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="carwow.mod"] .brand-name {
+  letter-spacing: 0.08em;
+}
+
+html[data-theme="carwow.mod"] .top {
+  box-shadow: 0 10px 28px rgba(24, 24, 27, 0.22);
+}
+
+html[data-theme="carwow.mod"] .panel,
+html[data-theme="carwow.mod"] .listing-card,
+html[data-theme="carwow.mod"] table.catalog,
+html[data-theme="carwow.mod"] .auth-panel,
+html[data-theme="carwow.mod"] .filters-panel {
+  border-radius: var(--radius);
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+html[data-theme="carwow.mod"] .listing-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(28, 220, 232, 0.55);
+  box-shadow: 0 12px 28px rgba(24, 24, 27, 0.14);
+}
+
+html[data-theme="carwow.mod"] .tab {
+  border-radius: 999px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+html[data-theme="carwow.mod"] .tab.active {
+  background: #18181b;
+}
+
+html[data-theme="carwow.mod"] .filters button,
+html[data-theme="carwow.mod"] .catalog-save-btn,
+html[data-theme="carwow.mod"] .calc-submit,
+html[data-theme="carwow.mod"] .nav-auth-login,
+html[data-theme="carwow.mod"] .admin-enter-link,
+html[data-theme="carwow.mod"] .feedback-fab,
+html[data-theme="carwow.mod"] .feedback-cta {
+  border-radius: 999px;
+  transition: filter 0.15s ease, transform 0.12s ease;
+}
+
+html[data-theme="carwow.mod"] .filters button:active,
+html[data-theme="carwow.mod"] .calc-submit:active {
+  transform: scale(0.98);
+}
+
+/* carwow-soft.mod — pure monochrome + cyan pop; hairlines; CTAs pill, cards soft-square */
+html[data-theme="carwow-soft.mod"] {
+  --bg: #fafafa;
+  --bg-glow: #f4f4f5;
+  --bg-top: #ffffff;
+  --bg-bottom: #f4f4f5;
+  --ink: #18181b;
+  --muted: #71717a;
+  --line: #e4e4e7;
+  --card: #ffffff;
+  --accent: #14c4d0;
+  --accent-soft: #e6fcfe;
+  --accent-border: #0e9aa3;
+  --accent-deep: #0a6b73;
+  --gold: #0e9aa3;
+  --top-bg: rgba(255, 255, 255, 0.92);
+  --top-ink: #18181b;
+  --shadow: 0 1px 0 rgba(24, 24, 27, 0.04), 0 8px 24px rgba(24, 24, 27, 0.06);
+  --radius: 10px;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="carwow-soft.mod"] .top {
+  border-bottom: 1px solid var(--line);
+  box-shadow: inset 0 -2px 0 var(--accent);
+  backdrop-filter: blur(10px);
+}
+
+html[data-theme="carwow-soft.mod"] .brand-name {
+  letter-spacing: 0.1em;
+}
+
+html[data-theme="carwow-soft.mod"] .nav-btn {
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+html[data-theme="carwow-soft.mod"] .nav-btn.active {
+  box-shadow: inset 0 -2px 0 var(--accent);
+  color: var(--accent-deep);
+  background: transparent;
+}
+
+html[data-theme="carwow-soft.mod"] .panel,
+html[data-theme="carwow-soft.mod"] .listing-card,
+html[data-theme="carwow-soft.mod"] table.catalog,
+html[data-theme="carwow-soft.mod"] .auth-panel {
+  border-radius: var(--radius);
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+
+html[data-theme="carwow-soft.mod"] .listing-card:hover {
+  transform: translateY(-2px);
+  border-color: #d4d4d8;
+}
+
+html[data-theme="carwow-soft.mod"] .tab {
+  border-radius: 8px;
+  background: #f4f4f5;
+}
+
+html[data-theme="carwow-soft.mod"] .tab.active {
+  background: #18181b;
+  color: #fff;
+}
+
+html[data-theme="carwow-soft.mod"] .filters button,
+html[data-theme="carwow-soft.mod"] .calc-submit,
+html[data-theme="carwow-soft.mod"] .nav-auth-login,
+html[data-theme="carwow-soft.mod"] .admin-enter-link,
+html[data-theme="carwow-soft.mod"] .feedback-fab,
+html[data-theme="carwow-soft.mod"] .feedback-cta,
+html[data-theme="carwow-soft.mod"] .pill.accent {
+  border-radius: 999px;
+}
+
+/* carwow-night.mod — true near-black zinc + singular cyan; restrained atmosphere */
+html[data-theme="carwow-night.mod"] {
+  --bg: #09090b;
+  --bg-glow: #18181b;
+  --bg-top: #050505;
+  --bg-bottom: #0f0f12;
+  --ink: #fafafa;
+  --muted: #a1a1aa;
+  --line: #3f3f46;
+  --card: #18181b;
+  --accent: #1cdce8;
+  --accent-soft: rgba(28, 220, 232, 0.14);
+  --accent-border: #0e9aa3;
+  --accent-deep: #0a6b73;
+  --offer: #2dd4bf;
+  --gold: #1cdce8;
+  --top-bg: #050505;
+  --top-ink: #fafafa;
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --radius: 12px;
+  color: var(--ink);
+  background:
+    radial-gradient(800px 360px at 85% -5%, rgba(28, 220, 232, 0.1), transparent 50%),
+    linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="carwow-night.mod"] .top {
+  border-bottom: 1px solid rgba(28, 220, 232, 0.2);
+}
+
+html[data-theme="carwow.mod"] .brand-name,
+html[data-theme="carwow-soft.mod"] .brand-name,
+html[data-theme="carwow-night.mod"] .brand-name {
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+html[data-theme="carwow-night.mod"] .panel,
+html[data-theme="carwow-night.mod"] .listing-card,
+html[data-theme="carwow-night.mod"] table.catalog,
+html[data-theme="carwow-night.mod"] .auth-panel,
+html[data-theme="carwow-night.mod"] .filters-panel,
+html[data-theme="carwow-night.mod"] .calc-form,
+html[data-theme="carwow-night.mod"] .calc-aside,
+html[data-theme="carwow-night.mod"] .calc-result,
+html[data-theme="carwow-night.mod"] .calc-rates {
+  background: #18181b;
+  border-color: #3f3f46;
+  border-radius: var(--radius);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+html[data-theme="carwow-night.mod"] .listing-card:hover {
+  border-color: rgba(28, 220, 232, 0.45);
+  transform: translateY(-2px);
+}
+
+html[data-theme="carwow-night.mod"] .tab {
+  background: #27272a;
+  border-radius: 999px;
+}
+
+html[data-theme="carwow-night.mod"] .tab.active {
+  background: var(--accent);
+  color: #09090b;
+}
+
+html[data-theme="carwow-night.mod"] .filters input,
+html[data-theme="carwow-night.mod"] .filters select,
+html[data-theme="carwow-night.mod"] .catalog-multi-select-trigger,
+html[data-theme="carwow-night.mod"] .calc-field input,
+html[data-theme="carwow-night.mod"] .calc-field select {
+  background: #27272a;
+  border-color: #52525b;
+  color: #fafafa;
+  border-radius: 10px;
+}
+
+html[data-theme="carwow-night.mod"] .filters button,
+html[data-theme="carwow-night.mod"] .calc-submit,
+html[data-theme="carwow-night.mod"] .feedback-fab,
+html[data-theme="carwow-night.mod"] .feedback-cta,
+html[data-theme="carwow-night.mod"] .nav-auth-login {
+  border-radius: 999px;
+  transition: filter 0.15s ease, transform 0.12s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme="docs.mod"] .listing-card,
+  html[data-theme="carbon.mod"] .listing-card,
+  html[data-theme="carwow.mod"] .listing-card,
+  html[data-theme="carwow-soft.mod"] .listing-card,
+  html[data-theme="carwow-night.mod"] .listing-card,
+  html[data-theme="docs.mod"] .filters button,
+  html[data-theme="carbon.mod"] .filters button,
+  html[data-theme="carwow.mod"] .filters button,
+  html[data-theme="carwow-soft.mod"] .filters button,
+  html[data-theme="carwow-night.mod"] .filters button {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+
 /* Theme picker UI */
 .theme-picker-backdrop {
   position: fixed;
@@ -1783,6 +3919,8 @@ html[data-theme="carwow-night"] .mobile-nav-link:hover {
   display: grid;
   place-items: center;
   padding: 1rem;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .theme-picker-backdrop[hidden] {
@@ -1790,13 +3928,18 @@ html[data-theme="carwow-night"] .mobile-nav-link:hover {
 }
 
 .theme-picker {
-  width: min(720px, 100%);
+  width: min(860px, 100%);
+  max-height: min(92dvh, 920px);
+  display: flex;
+  flex-direction: column;
   background: var(--card);
   color: var(--ink);
   border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: var(--shadow);
   padding: 1.15rem 1.25rem 1.25rem;
+  margin: auto;
+  overflow: hidden;
 }
 
 .theme-picker-head {
@@ -1805,6 +3948,7 @@ html[data-theme="carwow-night"] .mobile-nav-link:hover {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
+  flex-shrink: 0;
 }
 
 .theme-picker-head h2 {
@@ -1838,6 +3982,12 @@ html[data-theme="carwow-night"] .mobile-nav-link:hover {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding-right: 0.15rem;
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 640px) {
@@ -1962,8 +4112,51 @@ html[data-theme="carwow-night"] .mobile-nav-link:hover {
   --swatch-bg: #171717;
 }
 
+
+.theme-option[data-theme-id="docs.mod"] .theme-option-swatch span:first-child {
+  background: #071612;
+}
+.theme-option[data-theme-id="docs.mod"] {
+  --swatch-top: #f3f6f4;
+  --swatch-bg: #e8eeeb;
+}
+
+.theme-option[data-theme-id="carbon.mod"] .theme-option-swatch span:first-child {
+  background: linear-gradient(135deg, #4589ff 0%, #0043ce 60%, #42be65 100%);
+}
+.theme-option[data-theme-id="carbon.mod"] {
+  --swatch-top: #18181b;
+  --swatch-bg: #0b0b0c;
+}
+
+.theme-option[data-theme-id="carwow.mod"] .theme-option-swatch span:first-child {
+  background: #18181b;
+}
+.theme-option[data-theme-id="carwow.mod"] {
+  --swatch-top: #1cdce8;
+  --swatch-bg: #e4e4e7;
+}
+
+.theme-option[data-theme-id="carwow-soft.mod"] .theme-option-swatch span:first-child {
+  background: #ffffff;
+  box-shadow: inset 0 -3px 0 #14c4d0;
+}
+.theme-option[data-theme-id="carwow-soft.mod"] {
+  --swatch-top: #fafafa;
+  --swatch-bg: #f4f4f5;
+}
+
+.theme-option[data-theme-id="carwow-night.mod"] .theme-option-swatch span:first-child {
+  background: linear-gradient(135deg, #1cdce8 0%, #0a6b73 100%);
+}
+.theme-option[data-theme-id="carwow-night.mod"] {
+  --swatch-top: #18181b;
+  --swatch-bg: #09090b;
+}
+
 .theme-picker-note {
   margin: 0.9rem 0 0;
   font-size: 0.8rem;
   color: var(--muted);
+  flex-shrink: 0;
 }
