@@ -13,7 +13,8 @@ if str(ROOT) not in sys.path:
 from autoplius.listing_description import needs_description_translation
 from autoplius.translate import is_translation_error, translate_to_russian
 from scraper.config import Settings
-from scraper.db import _utc_now, connect, init_db
+from scraper.db import connect, init_db, update_listing_description_ru
+from scraper.sql_dialect import listing_id_expr, listings_source_clause
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,12 @@ def _parse_ids(raw: str) -> list[int]:
     return ids
 
 
+def _and_source(clauses: list[str]) -> None:
+    source = listings_source_clause()
+    if source:
+        clauses.append(source)
+
+
 def _fetch_candidates(
     db_path: Path,
     *,
@@ -36,15 +43,22 @@ def _fetch_candidates(
     active_only: bool,
     limit: int,
 ) -> list:
+    id_expr = listing_id_expr()
     with connect(db_path) as conn:
         if id_filter:
             placeholders = ",".join("?" for _ in id_filter)
+            clauses = [
+                f"{id_expr} IN ({placeholders})",
+                "description IS NOT NULL",
+                "trim(description) != ''",
+            ]
+            _and_source(clauses)
             rows = conn.execute(
                 f"""
-                SELECT autoplius_id, description, description_ru FROM listings
-                WHERE autoplius_id IN ({placeholders})
-                  AND description IS NOT NULL AND trim(description) != ''
-                ORDER BY autoplius_id
+                SELECT {id_expr} AS autoplius_id, description, description_ru
+                FROM listings
+                WHERE {' AND '.join(clauses)}
+                ORDER BY {id_expr}
                 """,
                 id_filter,
             ).fetchall()
@@ -53,13 +67,10 @@ def _fetch_candidates(
                 "description IS NOT NULL",
                 "trim(description) != ''",
             ]
-            params: list = []
+            _and_source(clauses)
             if active_only:
                 clauses.append("(status IS NULL OR status = 'active')")
-            if repair_errors:
-                # Broad fetch; filter error markers in Python.
-                pass
-            elif not force:
+            if not repair_errors and not force:
                 clauses.append(
                     "("
                     "description_ru IS NULL OR trim(description_ru) = '' "
@@ -67,14 +78,17 @@ def _fetch_candidates(
                     ")"
                 )
             sql = (
-                "SELECT autoplius_id, description, description_ru FROM listings "
+                f"SELECT {id_expr} AS autoplius_id, description, description_ru "
+                "FROM listings "
                 f"WHERE {' AND '.join(clauses)} "
-                "ORDER BY COALESCE(updated_at, last_seen_at, first_seen_at) DESC, autoplius_id DESC"
+                "ORDER BY COALESCE(updated_at, last_seen_at, first_seen_at) DESC, "
+                f"{id_expr} DESC"
             )
-            # Over-fetch a bit: seller/usable filters run in Python.
             fetch_limit = max(limit * 4, 200) if limit > 0 else None
+            params: list = []
             if fetch_limit:
-                sql += f" LIMIT {int(fetch_limit)}"
+                sql += " LIMIT ?"
+                params.append(int(fetch_limit))
             rows = conn.execute(sql, params).fetchall()
 
     if id_filter:
@@ -102,7 +116,6 @@ def _fetch_candidates(
                 filtered.append(row)
             continue
         if force:
-            # Re-translate any real seller prose, even if RU already exists.
             if needs_description_translation(
                 {"description": row["description"], "description_ru": None}
             ):
@@ -149,8 +162,6 @@ def main() -> None:
 
     id_filter = _parse_ids(args.ids)
     active_only = not args.include_archived
-    if args.include_archived:
-        active_only = False
 
     rows = _fetch_candidates(
         settings.db_path,
@@ -173,22 +184,14 @@ def main() -> None:
         if not result:
             failed += 1
             if args.repair_errors:
-                with connect(settings.db_path) as conn:
-                    conn.execute(
-                        "UPDATE listings SET description_ru = NULL, updated_at = ? WHERE autoplius_id = ?",
-                        (_utc_now(), listing_id),
-                    )
+                update_listing_description_ru(settings.db_path, listing_id, None)
             logger.info("[%s/%s] #%s translate failed", idx, len(rows), listing_id)
             continue
         if not args.force and not args.repair_errors and result == original and row["description_ru"]:
             skipped += 1
             continue
 
-        with connect(settings.db_path) as conn:
-            conn.execute(
-                "UPDATE listings SET description_ru = ?, updated_at = ? WHERE autoplius_id = ?",
-                (result, _utc_now(), listing_id),
-            )
+        update_listing_description_ru(settings.db_path, listing_id, result)
         translated += 1
         logger.info("[%s/%s] #%s translated (%s chars)", idx, len(rows), listing_id, len(result))
 
