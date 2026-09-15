@@ -888,6 +888,10 @@ button {
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
   body {
     background: #fff;
   }
@@ -918,6 +922,9 @@ button {
     width: auto;
     min-height: 0;
     padding: 0;
+  }
+  .sheet-invoice {
+    max-width: 190mm;
   }
   .sheet-annex {
     break-before: page;

@@ -150,8 +150,13 @@ export function renderSheet(doc) {
 
 function wordStyles() {
   return `
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
   @page Section1 {
     size: 210mm 297mm;
+    mso-page-orientation: portrait;
     margin: 12mm 12mm 22mm 12mm;
     mso-header-margin: 6mm;
     mso-footer-margin: 8mm;
@@ -159,6 +164,7 @@ function wordStyles() {
   }
   @page Section2 {
     size: 210mm 297mm;
+    mso-page-orientation: portrait;
     margin: 12mm 12mm 14mm 12mm;
     mso-header-margin: 6mm;
     mso-footer-margin: 8mm;

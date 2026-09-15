@@ -1,6 +1,11 @@
 import { suggestInvoiceNumber, todayIso, formatDateLong, dash } from "./format.js";
 import { formatAmount, moneyToWords, computeVat, parseMoney } from "./money.js";
 
+/** Юр. адрес в счетах (ЕГР / реквизиты для оплаты). */
+export const INVOICE_LEGAL_ADDRESS = "г. Минск, ул. Скрыганова, дом 6, помещение 7";
+/** Площадка выдачи автомобиля. */
+export const INVOICE_PICKUP_ADDRESS = "г. Минск, ул. Максима Горецкого, 30";
+
 function executorFromPage() {
   const raw = typeof window !== "undefined" ? window.__CONTRACT_DEFAULTS__ : null;
   return raw && typeof raw === "object" ? raw : {};
@@ -15,18 +20,18 @@ export const INVOICE_COMPLIANCE = [
     fix: "Обязательные поля покупателя в форме; для юрлица — УНП.",
   },
   {
-    level: "critical",
-    title: "«Без НДС» без основания",
-    was: "В графе НДС указано «Без НДС» без ссылки на норму/режим.",
-    risk: "При проверке могут потребовать, почему НДС не выделен (УСН, освобождение и т.п.). Формулировка без основания выглядит как недооформление.",
-    fix: "Поле «Основание без НДС» + вывод строки под итогом.",
+    level: "important",
+    title: "НДС 20 %",
+    was: "В образце стояло «Без НДС».",
+    risk: "При работе с НДС сумма и графа НДС должны быть согласованы.",
+    fix: "По умолчанию НДС 20 % включён в стоимость; в таблице выводятся цена без НДС, сумма НДС и цена с НДС.",
   },
   {
     level: "important",
-    title: "Юридический адрес продавца",
-    was: "В образце: ул. Скрыганова, 6. На сайте и в company_info — ул. М. Горецкого, 30.",
-    risk: "Расхождение реквизитов в платёжных документах и ЕГР / договорах.",
-    fix: "В генераторе подставляется актуальный адрес из реквизитов компании на сайте.",
+    title: "Юридический адрес и выдача",
+    was: "В образце только Скрыганова 6.",
+    risk: "Клиент может приехать не на ту площадку.",
+    fix: "В реквизитах — Скрыганова 6; отдельно указано, что авто забирать с Горецкого 30.",
   },
   {
     level: "advice",
@@ -68,17 +73,17 @@ export function createInvoiceDefaultData() {
     vehicleVin: "",
     itemQty: "1",
     amount: "",
-    vatMode: "none",
-    vatBasis: "НДС не исчисляется (уточните режим налогообложения у бухгалтера)",
+    vatMode: "included20",
     currencyNote: "BYN",
 
     purpose: "",
     payDays: "3",
+    pickupAddress: INVOICE_PICKUP_ADDRESS,
 
     executorName: ex.executorName || "Общество с ограниченной ответственностью «Сканди Моторс»",
     executorShort: ex.executorShort || "ООО «Сканди Моторс»",
     executorUnp: ex.executorUnp || "193866357",
-    executorAddress: ex.executorAddress || "г. Минск, ул. Максима Горецкого, 30",
+    executorAddress: INVOICE_LEGAL_ADDRESS,
     executorEmail: ex.executorEmail || "scandimotorsby@gmail.com",
     executorPhone: ex.executorPhone || "+375 (33) 698-77-99",
     executorDirector: ex.executorDirector || "Герасимец Максим Сергеевич",
@@ -125,14 +130,15 @@ function buyerLine(d) {
 }
 
 export function buildInvoice(d) {
-  const vat = computeVat(d.amount, d.vatMode);
+  const vat = computeVat(d.amount, d.vatMode || "included20");
   const qty = Math.max(1, parseInt(String(d.itemQty || "1"), 10) || 1);
   const unitGross = vat.gross;
   const lineGross = Math.round(unitGross * qty * 100) / 100;
   const unitNet = vat.net;
   const unitVat = vat.vat;
-  const vatCell = d.vatMode === "none" ? "Без НДС" : formatAmount(unitVat);
-  const priceCell = formatAmount(d.vatMode === "onTop20" ? unitNet : unitGross);
+  const vatMode = d.vatMode || "included20";
+  const vatCell = vatMode === "none" ? "Без НДС" : formatAmount(unitVat);
+  const priceCell = formatAmount(vatMode === "none" ? unitGross : unitNet);
   const priceWithVatCell = formatAmount(unitGross);
   const totalCell = formatAmount(lineGross);
   const totalWords = moneyToWords(lineGross);
@@ -141,9 +147,12 @@ export function buildInvoice(d) {
     .replace(/» /, " ")
     .replace(/ г\.$/, "г.");
 
+  const legalAddress = String(d.executorAddress || "").trim() || INVOICE_LEGAL_ADDRESS;
+  const pickupAddress = String(d.pickupAddress || "").trim() || INVOICE_PICKUP_ADDRESS;
+
   const sellerHeader = [
     d.executorShort || d.executorName,
-    `Юридический адрес: ${d.executorAddress}`,
+    `Юридический адрес: ${legalAddress}`,
     `УНП: ${d.executorUnp}`,
     `Тел (Viber / WhatsApp / Telegram): ${String(d.executorPhone || "").replace(/\s/g, "")}`,
     d.executorEmail,
@@ -182,11 +191,13 @@ export function buildInvoice(d) {
       type: "p",
       text: `Итого к оплате: ${totalCell} руб. (${totalWords}).`,
     },
+    {
+      type: "note",
+      text: `Автомобиль забирать с площадки по адресу: ${pickupAddress}.`,
+    },
   ];
 
-  if (d.vatMode === "none" && String(d.vatBasis || "").trim()) {
-    blocks.push({ type: "note", text: String(d.vatBasis).trim() });
-  } else if (d.vatMode !== "none") {
+  if (vatMode !== "none") {
     blocks.push({ type: "note", text: vat.label });
   }
 
@@ -228,7 +239,7 @@ export function buildInvoice(d) {
 export function invoiceAmountLabel(d) {
   const { total } = parseMoney(d.amount);
   const qty = Math.max(1, parseInt(String(d.itemQty || "1"), 10) || 1);
-  const vat = computeVat(total, d.vatMode);
+  const vat = computeVat(total, d.vatMode || "included20");
   const gross = Math.round(vat.gross * qty * 100) / 100;
   return gross ? `${formatAmount(gross)} BYN` : "—";
 }

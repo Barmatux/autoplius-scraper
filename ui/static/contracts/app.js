@@ -117,6 +117,7 @@ async function paint() {
   document.getElementById("amount-box").textContent = amountLabel();
   document.getElementById("save-status").textContent =
     view === "editor" || tab === "commission" || tab === "invoice" ? saveState : "";
+  document.documentElement.classList.toggle("invoice-print", tab === "invoice");
 
   const screen = tab === "archive" ? "archive" : tab;
   document.getElementById("toolbar-title").textContent = titles[screen]?.h || "";

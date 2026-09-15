@@ -123,24 +123,25 @@ export function renderInvoiceForm(data) {
           }),
           ...itemFields,
           field("Количество", "itemQty", data),
-          field("Цена / сумма, BYN", "amount", data, { placeholder: "30888.00" }),
+          field("Цена / сумма, BYN", "amount", data, {
+            placeholder: "30888.00",
+            hint: "По умолчанию сумма с НДС 20 %",
+          }),
           field("НДС", "vatMode", data, {
             type: "select",
             options: [
-              ["none", "Без НДС"],
               ["included20", "20 % включён"],
               ["onTop20", "20 % сверх"],
+              ["none", "Без НДС"],
             ],
-          }),
-          field("Основание без НДС / примечание", "vatBasis", data, {
-            wide: true,
-            type: "textarea",
-            rows: 2,
-            hint: "Уточните у бухгалтера (УСН и т.п.)",
           }),
           field("Назначение платежа", "purpose", data, {
             wide: true,
             placeholder: "Оплата по счёту … за автомобиль VIN …",
+          }),
+          field("Выдача авто (площадка)", "pickupAddress", data, {
+            wide: true,
+            placeholder: "г. Минск, ул. Максима Горецкого, 30",
           }),
         ].join(""),
       )}
@@ -150,7 +151,10 @@ export function renderInvoiceForm(data) {
           ${field("Краткое наименование", "executorShort", data, { wide: true })}
           ${field("Полное", "executorName", data, { wide: true })}
           ${field("УНП", "executorUnp", data)}
-          ${field("Адрес", "executorAddress", data, { wide: true })}
+          ${field("Юридический адрес", "executorAddress", data, {
+            wide: true,
+            hint: "В счетах — Скрыганова 6",
+          })}
           ${field("Директор (подписи)", "executorDirectorShort", data)}
           ${field("Телефон", "executorPhone", data)}
           ${field("Email", "executorEmail", data)}
