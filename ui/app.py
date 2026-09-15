@@ -1406,8 +1406,12 @@ def admin_contracts():
 
 @app.get("/admin/api/contracts")
 def admin_api_contracts_list():
-    rows = list_service_contracts(require_db())
-    return jsonify(rows)
+    try:
+        rows = list_service_contracts(require_db())
+        return jsonify(rows)
+    except Exception as exc:
+        app.logger.exception("list_service_contracts failed")
+        return jsonify({"error": f"Не удалось загрузить архив: {exc}"}), 500
 
 
 @app.post("/admin/api/contracts")
@@ -1416,14 +1420,18 @@ def admin_api_contracts_create():
     payload = body.get("payload")
     if not isinstance(payload, dict):
         payload = {}
-    row = create_service_contract(
-        require_db(),
-        contract_number=body.get("contract_number"),
-        client_name=body.get("client_name"),
-        amount=body.get("amount"),
-        payload=payload,
-        created_by=_contracts_actor(),
-    )
+    try:
+        row = create_service_contract(
+            require_db(),
+            contract_number=body.get("contract_number"),
+            client_name=body.get("client_name"),
+            amount=body.get("amount"),
+            payload=payload,
+            created_by=_contracts_actor(),
+        )
+    except Exception as exc:
+        app.logger.exception("create_service_contract failed")
+        return jsonify({"error": f"Не удалось сохранить документ: {exc}"}), 500
     return jsonify(row), 201
 
 

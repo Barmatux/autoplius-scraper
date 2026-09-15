@@ -41,6 +41,16 @@ def test_service_contracts_crud(tmp_path: Path):
     kinds = {row["contract_number"]: row["doc_kind"] for row in list_service_contracts(db)}
     assert kinds["001-060526"] == "commission"
 
+    invoice = create_service_contract(
+        db,
+        contract_number="01-150926",
+        client_name="Покупатель",
+        amount="30888",
+        payload={"docType": "invoice", "invoiceNumber": "01-150926"},
+    )
+    kinds = {row["contract_number"]: row["doc_kind"] for row in list_service_contracts(db)}
+    assert kinds["01-150926"] == "invoice"
+
     got = get_service_contract(db, created["id"])
     assert got is not None
     assert got["client_name"] == "Иванов Иван Иванович"
@@ -61,4 +71,5 @@ def test_service_contracts_crud(tmp_path: Path):
     assert delete_service_contract(db, created["id"]) is True
     assert get_service_contract(db, created["id"]) is None
     assert delete_service_contract(db, commission["id"]) is True
+    assert delete_service_contract(db, invoice["id"]) is True
     assert list_service_contracts(db) == []

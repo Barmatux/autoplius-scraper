@@ -410,6 +410,20 @@ class PgConnection:
         self._conn.close()
 
 
+def _insert_returning_id(conn: Any, sql: str, params: tuple[Any, ...] | list[Any]) -> int:
+    """Insert a row and return its id (SQLite lastrowid / Postgres RETURNING)."""
+    if using_postgres():
+        returning_sql = f"{sql.rstrip().rstrip(';')} RETURNING id"
+        row = conn.execute(returning_sql, params).fetchone()
+        if row is None:
+            raise RuntimeError("insert failed: no RETURNING id")
+        return int(row["id"] if isinstance(row, dict) else row[0])
+    cur = conn.execute(sql, params)
+    if cur.lastrowid is None:
+        raise RuntimeError("insert failed: no lastrowid")
+    return int(cur.lastrowid)
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -3218,7 +3232,8 @@ def create_feedback_message(
             raise ValueError("phone or name required")
     created_at = _utc_now()
     with connect(db_path) as conn:
-        cur = conn.execute(
+        msg_id = _insert_returning_id(
+            conn,
             """
             INSERT INTO feedback_messages (
                 kind, phone, name, body, user_id, status, created_at, page_url, user_agent
@@ -3235,7 +3250,6 @@ def create_feedback_message(
                 (user_agent or "").strip()[:300] or None,
             ),
         )
-        msg_id = int(cur.lastrowid)
         row = conn.execute(
             "SELECT * FROM feedback_messages WHERE id = ?",
             (msg_id,),
@@ -3357,17 +3371,24 @@ def list_service_contracts(db_path: Path, *, limit: int = 500) -> list[dict[str,
         item["id"] = int(item["id"])
         payload_raw = item.pop("payload", None)
         doc_kind = "selection"
+        payload_obj: dict[str, Any] | None = None
+        if isinstance(payload_raw, dict):
+            payload_obj = payload_raw
+        elif isinstance(payload_raw, (bytes, bytearray)):
+            payload_raw = payload_raw.decode("utf-8", errors="replace")
         if isinstance(payload_raw, str) and payload_raw:
             try:
-                payload_obj = json.loads(payload_raw)
-                if isinstance(payload_obj, dict):
-                    dtype = payload_obj.get("docType")
-                    if dtype == "commission":
-                        doc_kind = "commission"
-                    elif dtype == "invoice":
-                        doc_kind = "invoice"
+                parsed = json.loads(payload_raw)
+                if isinstance(parsed, dict):
+                    payload_obj = parsed
             except json.JSONDecodeError:
-                pass
+                payload_obj = None
+        if payload_obj:
+            dtype = payload_obj.get("docType")
+            if dtype == "commission":
+                doc_kind = "commission"
+            elif dtype == "invoice":
+                doc_kind = "invoice"
         item["doc_kind"] = doc_kind
         out.append(item)
     return out
@@ -3396,7 +3417,8 @@ def create_service_contract(
     now = _utc_now()
     payload_obj = payload if isinstance(payload, dict) else {}
     with connect(db_path) as conn:
-        cur = conn.execute(
+        cid = _insert_returning_id(
+            conn,
             """
             INSERT INTO service_contracts (
                 contract_number, client_name, amount, payload, created_by, created_at, updated_at
@@ -3412,7 +3434,6 @@ def create_service_contract(
                 now,
             ),
         )
-        cid = int(cur.lastrowid)
         row = conn.execute(
             "SELECT * FROM service_contracts WHERE id = ?",
             (cid,),
@@ -3566,7 +3587,8 @@ def create_staff_alert_rule(
         role = str(user["role"] or USER_ROLE_USER)
         if role not in STAFF_ALERT_ROLES:
             raise ValueError("alerts are only for staff roles")
-        cur = conn.execute(
+        rule_id = _insert_returning_id(
+            conn,
             """
             INSERT INTO staff_alert_rules (
                 user_id, name, filters_json, query_string, min_gap_usd,
@@ -3586,7 +3608,7 @@ def create_staff_alert_rule(
         )
         row = conn.execute(
             "SELECT * FROM staff_alert_rules WHERE id = ?",
-            (int(cur.lastrowid),),
+            (rule_id,),
         ).fetchone()
     out = _staff_alert_rule_row(row)
     if out is None:
