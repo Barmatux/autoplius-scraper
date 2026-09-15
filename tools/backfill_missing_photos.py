@@ -87,9 +87,11 @@ def main() -> None:
             if part.isdigit():
                 forced.append(int(part))
         if forced:
-            listing_ids = sorted(set(listing_ids) | set(forced))
             print(f"forced_ids={len(forced)}")
 
+    # Keep forced IDs first so --limit cannot drop the ones we care about.
+    rest = [listing_id for listing_id in listing_ids if listing_id not in set(forced)]
+    listing_ids = list(dict.fromkeys([*forced, *rest]))
     if args.limit > 0:
         listing_ids = listing_ids[: args.limit]
     if not listing_ids:
