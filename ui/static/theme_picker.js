@@ -56,9 +56,19 @@
     });
   }
 
+  function mountPickerToBody() {
+    var backdrop = document.querySelector("[data-theme-backdrop]");
+    if (!backdrop) return null;
+    // Escape header stacking context (.top has backdrop-filter / sticky z-index).
+    if (backdrop.parentElement !== document.body) {
+      document.body.appendChild(backdrop);
+    }
+    return backdrop;
+  }
+
   function openPicker() {
     if (!isAdmin()) return;
-    var backdrop = document.querySelector("[data-theme-backdrop]");
+    var backdrop = mountPickerToBody();
     if (!backdrop) return;
     applyTheme(currentTheme());
     backdrop.hidden = false;
@@ -74,6 +84,7 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     applyTheme(currentTheme());
+    var backdrop = mountPickerToBody();
 
     document.querySelectorAll("[data-theme-open]").forEach(function (btn) {
       btn.addEventListener("click", function (e) {
@@ -89,7 +100,6 @@
       });
     });
 
-    var backdrop = document.querySelector("[data-theme-backdrop]");
     if (backdrop) {
       backdrop.addEventListener("click", function (e) {
         if (e.target === backdrop) closePicker();

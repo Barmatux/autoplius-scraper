@@ -3914,7 +3914,7 @@ html[data-theme="carwow-night.mod"] .nav-auth-login {
 .theme-picker-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 12000;
+  z-index: 100000;
   background: rgba(14, 36, 31, 0.45);
   display: grid;
   place-items: center;
