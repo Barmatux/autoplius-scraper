@@ -466,6 +466,51 @@ button {
   text-align: center;
 }
 
+.sheet-invoice .invoice-seller {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.sheet-invoice .invoice-seller p {
+  margin: 0 0 2px;
+}
+
+.sheet-invoice .invoice-title {
+  text-align: left;
+  font-size: 18px;
+  margin: 18px 0 12px;
+}
+
+.sheet-invoice .invoice-buyer {
+  margin: 0 0 12px;
+}
+
+.sheet-invoice .invoice-sign {
+  margin-top: 28px;
+  text-align: right;
+}
+
+.sheet-invoice-table td {
+  white-space: pre-line;
+}
+
+.findings-compact {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.findings-compact .finding {
+  padding: 10px 12px;
+}
+
+.findings-compact .finding-head h3 {
+  font-size: 14px;
+}
+
 .sheet-annex {
   margin-top: 24px;
   padding-top: 16px;

@@ -45,6 +45,13 @@ export function suggestContractNumber(iso) {
   return `П${String(p.d).padStart(2, "0")}${String(p.m).padStart(2, "0")}${String(p.y).slice(2)}`;
 }
 
+/** Sample style: 01-DDMMYY (serial prefix editable in the form). */
+export function suggestInvoiceNumber(iso, serial = "01") {
+  const p = parseIsoDate(iso) || parseIsoDate(todayIso());
+  const prefix = String(serial || "01").trim() || "01";
+  return `${prefix}-${String(p.d).padStart(2, "0")}${String(p.m).padStart(2, "0")}${String(p.y).slice(2)}`;
+}
+
 export function initialsFromFullName(fullName) {
   const parts = String(fullName || "")
     .trim()

@@ -22,11 +22,12 @@ function blockHtml(block) {
     return `<table class="sheet-kv" width="100%" cellspacing="0" cellpadding="4"><tbody>${rows}</tbody></table>`;
   }
   if (block.type === "table") {
+    const tableClass = block.invoice ? "sheet-table sheet-invoice-table" : "sheet-table";
     const head = block.columns.map((c) => `<th>${escapeHtml(c)}</th>`).join("");
     const body = block.rows
       .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`)
       .join("");
-    return `<table class="sheet-table" width="100%" cellspacing="0" cellpadding="4"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+    return `<table class="${tableClass}" width="100%" cellspacing="0" cellpadding="4"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
   }
   return "";
 }
@@ -94,6 +95,33 @@ function headerHtml(doc) {
     ${doc.preamble ? `<p class="sheet-p preamble">${escapeHtml(doc.preamble)}</p>` : ""}`;
 }
 
+function sellerHeaderHtml(lines = []) {
+  if (!lines.length) return "";
+  return `<div class="invoice-seller">${lines
+    .map((line) => `<p>${escapeHtml(line)}</p>`)
+    .join("")}</div>`;
+}
+
+function invoiceSignHtml(doc) {
+  const sig = doc.signatures || {};
+  return `<div class="invoice-sign">
+    <p class="sign-gap">&nbsp;</p>
+    <p class="sign-gap">&nbsp;</p>
+    <p class="sign-line">${escapeHtml(sig.rightSign || "")}</p>
+  </div>`;
+}
+
+function renderInvoiceSheet(doc) {
+  return `
+    <article class="sheet sheet-invoice">
+      ${sellerHeaderHtml(doc.sellerHeader)}
+      <h1 class="sheet-title invoice-title">${escapeHtml(doc.title)}</h1>
+      <p class="sheet-p invoice-buyer"><strong>Покупатель:</strong> ${escapeHtml(doc.buyer || "")}</p>
+      ${(doc.blocks || []).map(blockHtml).join("")}
+      ${invoiceSignHtml(doc)}
+    </article>`;
+}
+
 function splitRequisitesBlocks(blocks = []) {
   const idx = blocks.findIndex(
     (b) => b.type === "heading" && /РЕКВИЗИТЫ/i.test(String(b.text || "")),
@@ -106,6 +134,7 @@ function splitRequisitesBlocks(blocks = []) {
 
 /** Screen / print preview */
 export function renderSheet(doc) {
+  if (doc.kind === "invoice") return renderInvoiceSheet(doc);
   const stamps = stampOptions(doc);
   const annex = doc.annex1
     ? `<div class="sheet-annex">${doc.annex1.map(blockHtml).join("")}${signsHtml(doc.signatures, stamps)}</div>`
@@ -156,6 +185,14 @@ function wordStyles() {
   table.sheet-table th, table.sheet-table td { border: 1px solid #c4b49a; padding: 2pt 4pt; vertical-align: top; }
   table.sheet-kv th, table.sheet-table th { background: #efe8dc; text-align: left; font-weight: bold; }
   table.sheet-kv th { width: 34%; }
+  .invoice-seller { margin: 0 0 10pt; font-size: 10pt; line-height: 1.35; }
+  .invoice-seller p { margin: 0 0 1pt; }
+  .invoice-title { text-align: left; font-size: 13pt; margin: 12pt 0 8pt; }
+  .invoice-buyer { margin: 0 0 8pt; }
+  .invoice-sign { margin-top: 18pt; text-align: right; }
+  .invoice-sign .sign-line { margin: 0; }
+  .invoice-sign .sign-role { margin: 2pt 0 0; font-style: normal; color: inherit; }
+  table.sheet-invoice-table td { white-space: pre-line; }
   table.signs { width: 100%; border-collapse: collapse; margin-top: 10pt; font-size: 10pt; }
   table.signs td { border: 0; padding: 0; vertical-align: top; }
   .sign-title { font-weight: bold; margin: 0 0 4pt; }
@@ -199,6 +236,13 @@ function wordFooterPageOnly() {
 }
 
 function wordBodyHtml(doc) {
+  if (doc.kind === "invoice") {
+    return `
+<div class="Section2">
+  ${renderInvoiceSheet(doc).replace(/<\/?article[^>]*>/g, "")}
+</div>
+${wordFooterPageOnly()}`;
+  }
   const stamps = stampOptions(doc);
   if (doc.kind === "contract" && doc.annex1) {
     const { body, requisites } = splitRequisitesBlocks(doc.blocks || []);

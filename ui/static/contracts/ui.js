@@ -1,4 +1,5 @@
 import { FINDINGS, KEEP_LIST } from "./lib/recommendations.js";
+import { INVOICE_COMPLIANCE } from "./lib/invoice.js";
 import { escapeHtml } from "./render.js";
 import { formatDateTime } from "./lib/format.js";
 
@@ -26,6 +27,146 @@ function field(label, name, data, extra = {}) {
 
 function section(title, inner) {
   return `<section class="form-section"><h3>${escapeHtml(title)}</h3><div class="form-grid">${inner}</div></section>`;
+}
+
+function docKindLabel(kind) {
+  if (kind === "commission") return "Комиссия";
+  if (kind === "invoice") return "Счёт";
+  return "Подбор ЕС";
+}
+
+function docKindSearch(kind) {
+  if (kind === "commission") return "комиссия";
+  if (kind === "invoice") return "счёт счет";
+  return "подбор";
+}
+
+export function renderInvoiceForm(data) {
+  const buyerFields =
+    data.buyerType === "legal"
+      ? [
+          field("Наименование", "clientCompany", data, { wide: true, placeholder: "ООО «...»" }),
+          field("УНП", "clientUnp", data, { hint: "Желательно для юрлица" }),
+          field("Адрес", "clientAddress", data, { wide: true }),
+        ]
+      : [
+          field("ФИО полностью", "clientName", data, {
+            wide: true,
+            placeholder: "Иванов Иван Иванович",
+          }),
+          field("Адрес", "clientAddress", data, { wide: true }),
+        ];
+
+  const itemFields =
+    data.itemKind === "custom"
+      ? [field("Наименование", "itemName", data, { wide: true, type: "textarea", rows: 3 })]
+      : [
+          field("Заголовок позиции", "itemName", data, {
+            wide: true,
+            placeholder: "Легковой автомобиль",
+          }),
+          field("Марка", "vehicleMake", data, { placeholder: "Mitsubishi" }),
+          field("Модель", "vehicleModel", data, { placeholder: "Outlander" }),
+          field("Год выпуска", "vehicleYear", data, { placeholder: "2014" }),
+          field("VIN", "vehicleVin", data, { wide: true, placeholder: "Z8T…" }),
+        ];
+
+  const compliance = INVOICE_COMPLIANCE.map(
+    (item) => `
+      <li class="finding finding-${item.level}">
+        <div class="finding-head">
+          <span class="pill pill-${item.level}">${LEVELS[item.level]}</span>
+          <h3>${escapeHtml(item.title)}</h3>
+        </div>
+        <dl>
+          <div><dt>В образце</dt><dd>${escapeHtml(item.was)}</dd></div>
+          <div><dt>Риск</dt><dd>${escapeHtml(item.risk)}</dd></div>
+          <div><dt>В шаблоне</dt><dd>${escapeHtml(item.fix)}</dd></div>
+        </dl>
+      </li>`,
+  ).join("");
+
+  return `
+    <form class="form" id="invoice-form">
+      ${section(
+        "Счёт",
+        [
+          field("Номер", "invoiceNumber", data, { placeholder: "01-150926" }),
+          field("Дата", "invoiceDate", data, { type: "date" }),
+          field("Срок оплаты, банк. дн.", "payDays", data),
+        ].join(""),
+      )}
+      ${section(
+        "Покупатель",
+        [
+          field("Тип", "buyerType", data, {
+            type: "select",
+            options: [
+              ["individual", "Физическое лицо"],
+              ["legal", "Юридическое лицо"],
+            ],
+          }),
+          ...buyerFields,
+          field("Телефон", "clientPhone", data, { placeholder: "+375 (29) 000-00-00" }),
+          field("Email", "clientEmail", data),
+        ].join(""),
+      )}
+      ${section(
+        "Товар / услуга",
+        [
+          field("Тип позиции", "itemKind", data, {
+            type: "select",
+            options: [
+              ["vehicle", "Автомобиль"],
+              ["custom", "Свободное наименование"],
+            ],
+          }),
+          ...itemFields,
+          field("Количество", "itemQty", data),
+          field("Цена / сумма, BYN", "amount", data, { placeholder: "30888.00" }),
+          field("НДС", "vatMode", data, {
+            type: "select",
+            options: [
+              ["none", "Без НДС"],
+              ["included20", "20 % включён"],
+              ["onTop20", "20 % сверх"],
+            ],
+          }),
+          field("Основание без НДС / примечание", "vatBasis", data, {
+            wide: true,
+            type: "textarea",
+            rows: 2,
+            hint: "Уточните у бухгалтера (УСН и т.п.)",
+          }),
+          field("Назначение платежа", "purpose", data, {
+            wide: true,
+            placeholder: "Оплата по счёту … за автомобиль VIN …",
+          }),
+        ].join(""),
+      )}
+      <details class="executor-details">
+        <summary>Реквизиты продавца</summary>
+        <div class="form-grid">
+          ${field("Краткое наименование", "executorShort", data, { wide: true })}
+          ${field("Полное", "executorName", data, { wide: true })}
+          ${field("УНП", "executorUnp", data)}
+          ${field("Адрес", "executorAddress", data, { wide: true })}
+          ${field("Директор (подписи)", "executorDirectorShort", data)}
+          ${field("Телефон", "executorPhone", data)}
+          ${field("Email", "executorEmail", data)}
+          ${field("Расчётный счёт", "executorAccount", data, { wide: true })}
+          ${field("Банк", "executorBank", data, { wide: true })}
+          ${field("SWIFT", "executorSwift", data)}
+          ${field("УНП банка", "executorBankUnp", data)}
+          ${field("ОКПО", "executorOkpo", data)}
+        </div>
+      </details>
+      <details class="executor-details invoice-compliance">
+        <summary>Проверка образца по законодательству РБ</summary>
+        <ol class="findings findings-compact">${compliance}</ol>
+        <p class="field-hint">Не юридическая консультация: перед массовым использованием сверьте режим НДС и адрес с бухгалтером/юристом.</p>
+      </details>
+    </form>`;
 }
 
 export function renderForm(data) {
@@ -203,7 +344,7 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
   const filtered = rows.filter((row) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    const kind = row.doc_kind === "commission" ? "комиссия" : "подбор";
+    const kind = docKindSearch(row.doc_kind);
     return `${row.contract_number || ""} ${row.client_name || ""} ${row.created_by || ""} ${kind}`
       .toLowerCase()
       .includes(q);
@@ -211,7 +352,7 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
   const body = filtered.length
     ? filtered
         .map((row) => {
-          const label = row.doc_kind === "commission" ? "Комиссия" : "Подбор ЕС";
+          const label = docKindLabel(row.doc_kind);
           return `
         <tr data-action="open" data-id="${escapeHtml(row.id)}">
           <td>${escapeHtml(row.contract_number || "—")}</td>
@@ -238,6 +379,7 @@ export function renderArchive({ rows = [], query = "", error = "" } = {}) {
         <input name="search" value="${escapeHtml(query)}" placeholder="Поиск по клиенту, номеру или пользователю" data-action="search" />
         <button type="button" class="primary" data-action="new">Новый подбор</button>
         <button type="button" class="ghost" data-action="new-commission">Новая комиссия</button>
+        <button type="button" class="ghost" data-action="new-invoice">Новый счёт</button>
       </div>
       ${error ? `<p class="gate-error">${escapeHtml(error)}</p>` : ""}
       <table class="archive-table">

@@ -30,6 +30,18 @@ function metaFromPayload(payload) {
       payload,
     };
   }
+  if (payload?.docType === "invoice") {
+    const clientName =
+      payload.buyerType === "legal"
+        ? payload.clientCompany || ""
+        : payload.clientName || "";
+    return {
+      contract_number: payload.invoiceNumber || "",
+      client_name: clientName,
+      amount: String(payload.amount || ""),
+      payload,
+    };
+  }
   const clientName =
     payload.clientType === "legal" ? payload.clientCompany || "" : payload.clientName || "";
   return {

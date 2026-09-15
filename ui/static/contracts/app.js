@@ -1,10 +1,15 @@
 import { createDefaultData, SAMPLE_CLIENT } from "./lib/defaults.js";
 import { buildContract } from "./lib/contract.js";
 import { buildAct } from "./lib/act.js";
+import {
+  buildInvoice,
+  createInvoiceDefaultData,
+  invoiceAmountLabel,
+} from "./lib/invoice.js";
 import { moneyPhrase } from "./lib/money.js";
 import { suggestContractNumber, todayIso } from "./lib/format.js";
 import { downloadWord, renderSheet } from "./render.js";
-import { renderAnalysis, renderArchive, renderForm } from "./ui.js";
+import { renderAnalysis, renderArchive, renderForm, renderInvoiceForm } from "./ui.js";
 import {
   createContract,
   deleteContract,
@@ -21,7 +26,7 @@ import {
 const titles = {
   archive: {
     h: "Архив договоров",
-    p: "Подбор ЕС и комиссия. Откройте договор или создайте новый — всё сохраняется на сервере.",
+    p: "Подбор ЕС, комиссия и счета. Откройте документ или создайте новый — всё сохраняется на сервере.",
   },
   contract: {
     h: "Договор подбора ЕС",
@@ -34,6 +39,10 @@ const titles = {
   commission: {
     h: "Договор комиссии",
     p: "Бланк комиссии и акта приёма-передачи автомобиля. Скачайте Word после заполнения.",
+  },
+  invoice: {
+    h: "Счёт на оплату",
+    p: "По образцу Scandi Motors: реквизиты, покупатель, авто/VIN, НДС. Печать и Word справа.",
   },
   analysis: {
     h: "Предложения по договору",
@@ -55,6 +64,10 @@ let commissionMount = null;
 
 function isCommission(payload = data) {
   return payload?.docType === "commission";
+}
+
+function isInvoice(payload = data) {
+  return payload?.docType === "invoice";
 }
 
 function setSaveStatus(text) {
@@ -81,11 +94,18 @@ function scheduleSave() {
 }
 
 function amountLabel() {
+  if (isInvoice()) return invoiceAmountLabel(data);
   if (isCommission()) {
     const fee = parseFloat(data.fee_num) || 0;
     return fee ? moneyPhrase(fee) : moneyPhrase(data.price_num || 0);
   }
   return moneyPhrase(data.amount);
+}
+
+function currentPreviewDoc() {
+  if (isInvoice()) return buildInvoice(data);
+  if (tab === "act") return buildAct(data);
+  return buildContract(data);
 }
 
 async function paint() {
@@ -96,14 +116,18 @@ async function paint() {
 
   document.getElementById("amount-box").textContent = amountLabel();
   document.getElementById("save-status").textContent =
-    view === "editor" || tab === "commission" ? saveState : "";
+    view === "editor" || tab === "commission" || tab === "invoice" ? saveState : "";
 
   const screen = tab === "archive" ? "archive" : tab;
   document.getElementById("toolbar-title").textContent = titles[screen]?.h || "";
   document.getElementById("toolbar-lead").textContent = titles[screen]?.p || "";
   const selectionEditor = tab === "contract" || tab === "act";
-  document.getElementById("doc-actions").hidden = !selectionEditor || isCommission();
+  const invoiceEditor = tab === "invoice";
+  document.getElementById("doc-actions").hidden =
+    (!selectionEditor && !invoiceEditor) || isCommission();
   document.getElementById("btn-sample").hidden = tab !== "contract" || isCommission();
+  const btnBoth = document.getElementById("btn-both");
+  if (btnBoth) btnBoth.hidden = invoiceEditor;
 
   document.querySelectorAll(".rail nav button").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.tab === tab);
@@ -160,10 +184,10 @@ async function paint() {
   formPane.hidden = false;
   preview.hidden = false;
   if (formNeedsPaint) {
-    formPane.innerHTML = renderForm(data);
+    formPane.innerHTML = isInvoice() ? renderInvoiceForm(data) : renderForm(data);
     formNeedsPaint = false;
   }
-  preview.innerHTML = renderSheet(tab === "act" ? buildAct(data) : buildContract(data));
+  preview.innerHTML = renderSheet(currentPreviewDoc());
 }
 
 async function loadArchive() {
@@ -184,6 +208,10 @@ async function openRecord(id) {
   if (payload.docType === "commission") {
     data = { ...createCommissionDefaultData(), ...payload, docType: "commission" };
     tab = "commission";
+  } else if (payload.docType === "invoice") {
+    data = { ...createInvoiceDefaultData(), ...payload, docType: "invoice" };
+    formNeedsPaint = true;
+    tab = "invoice";
   } else {
     data = { ...createDefaultData(), ...payload, docType: "selection" };
     formNeedsPaint = true;
@@ -216,13 +244,24 @@ async function createNewCommission() {
   await paint();
 }
 
+async function createNewInvoice() {
+  data = createInvoiceDefaultData();
+  formNeedsPaint = true;
+  const row = await createContract(data);
+  recordId = row.id;
+  view = "editor";
+  tab = "invoice";
+  setSaveStatus("Сохранено");
+  await paint();
+}
+
 document.getElementById("form-pane").addEventListener("input", (e) => {
   if (isCommission()) return;
   const name = e.target.name;
   if (!name) return;
   const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
   data = { ...data, [name]: value };
-  if (name === "clientType") formNeedsPaint = true;
+  if (name === "clientType" || name === "buyerType" || name === "itemKind") formNeedsPaint = true;
   scheduleSave();
   paint();
 });
@@ -233,7 +272,7 @@ document.getElementById("form-pane").addEventListener("change", (e) => {
   if (!name) return;
   const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
   data = { ...data, [name]: value };
-  if (name === "clientType") formNeedsPaint = true;
+  if (name === "clientType" || name === "buyerType" || name === "itemKind") formNeedsPaint = true;
   scheduleSave();
   paint();
 });
@@ -250,8 +289,14 @@ document.querySelectorAll(".rail nav button").forEach((btn) => {
       } else if (tab === "commission") {
         if (!recordId || !isCommission()) await createNewCommission();
         else view = "editor";
+      } else if (tab === "invoice") {
+        if (!recordId || !isInvoice()) await createNewInvoice();
+        else {
+          view = "editor";
+          formNeedsPaint = true;
+        }
       } else {
-        if (!recordId || isCommission()) await createNewSelection();
+        if (!recordId || isCommission() || isInvoice()) await createNewSelection();
         else {
           view = "editor";
           formNeedsPaint = true;
@@ -281,6 +326,8 @@ document.body.addEventListener("click", async (e) => {
       await createNewSelection();
     } else if (action === "new-commission") {
       await createNewCommission();
+    } else if (action === "new-invoice") {
+      await createNewInvoice();
     } else if (action === "open") {
       await openRecord(btn.dataset.id);
     } else if (action === "delete") {
@@ -294,7 +341,7 @@ document.body.addEventListener("click", async (e) => {
       view = "archive";
       await paint();
     } else if (action === "sample") {
-      if (isCommission()) return;
+      if (isCommission() || isInvoice()) return;
       const date = data.contractDate || todayIso();
       data = {
         ...data,
@@ -312,12 +359,18 @@ document.body.addEventListener("click", async (e) => {
     } else if (action === "print") {
       window.print();
     } else if (action === "word") {
-      const stamp = data.contractNumber || "draft";
-      downloadWord(
-        tab === "act" ? buildAct(data) : buildContract(data),
-        `${tab === "act" ? "Akt" : "Dogovor"}_${stamp}.doc`,
-      );
+      if (isInvoice()) {
+        const stamp = data.invoiceNumber || "draft";
+        downloadWord(buildInvoice(data), `Schet_${stamp}.doc`);
+      } else {
+        const stamp = data.contractNumber || "draft";
+        downloadWord(
+          tab === "act" ? buildAct(data) : buildContract(data),
+          `${tab === "act" ? "Akt" : "Dogovor"}_${stamp}.doc`,
+        );
+      }
     } else if (action === "both") {
+      if (isInvoice()) return;
       const stamp = data.contractNumber || "draft";
       downloadWord(buildContract(data), `Dogovor_${stamp}.doc`);
       setTimeout(() => downloadWord(buildAct(data), `Akt_${stamp}.doc`), 400);

@@ -62,7 +62,7 @@ export function createDefaultData() {
     executorName: ex.executorName || "Общество с ограниченной ответственностью «Сканди Моторс»",
     executorShort: ex.executorShort || "ООО «Сканди Моторс»",
     executorUnp: ex.executorUnp || "193866357",
-    executorAddress: ex.executorAddress || "г. Минск, ул. Скрыганова, дом 6, помещение 7",
+    executorAddress: ex.executorAddress || "г. Минск, ул. Максима Горецкого, 30",
     executorEmail: ex.executorEmail || "scandimotorsby@gmail.com",
     executorPhone: ex.executorPhone || "+375 (33) 698-77-99",
     executorDirector: ex.executorDirector || "Герасимец Максим Сергеевич",

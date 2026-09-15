@@ -3360,8 +3360,12 @@ def list_service_contracts(db_path: Path, *, limit: int = 500) -> list[dict[str,
         if isinstance(payload_raw, str) and payload_raw:
             try:
                 payload_obj = json.loads(payload_raw)
-                if isinstance(payload_obj, dict) and payload_obj.get("docType") == "commission":
-                    doc_kind = "commission"
+                if isinstance(payload_obj, dict):
+                    dtype = payload_obj.get("docType")
+                    if dtype == "commission":
+                        doc_kind = "commission"
+                    elif dtype == "invoice":
+                        doc_kind = "invoice"
             except json.JSONDecodeError:
                 pass
         item["doc_kind"] = doc_kind
