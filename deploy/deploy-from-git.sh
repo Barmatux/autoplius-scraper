@@ -78,11 +78,14 @@ fi
 sudo systemctl daemon-reload
 sudo systemctl enable autoplius-ui.service
 if [[ "$PG_CONSUMER" == "1" ]]; then
-  echo "=== disable local scrape/reconcile/translate (DATABASE_URL set) ==="
+  echo "=== disable local scrape/reconcile (DATABASE_URL set) ==="
   sudo systemctl disable --now autoplius-scraper.timer 2>/dev/null || true
   sudo systemctl disable --now autoplius-nightly-reconcile.timer 2>/dev/null || true
-  sudo systemctl disable --now autoplius-translate-descriptions.timer 2>/dev/null || true
   sudo systemctl disable --now autoplius-target-resume.timer 2>/dev/null || true
+  # Keep description RU backfill: scrape-platform does not fill description_ru for eu2.by.
+  if [[ -f /etc/systemd/system/autoplius-translate-descriptions.timer ]]; then
+    sudo systemctl enable --now autoplius-translate-descriptions.timer
+  fi
 else
   sudo systemctl enable autoplius-scraper.timer
   if [[ -f /etc/systemd/system/autoplius-nightly-reconcile.timer ]]; then

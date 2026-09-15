@@ -72,7 +72,9 @@ nohup sudo -u autoplius env PYTHONPATH="$APP" "$PY" \
   >>"$TRANSLATE_LOG" 2>&1 &
 echo "translate backfill started (log: $TRANSLATE_LOG)"
 if systemctl list-unit-files autoplius-translate-descriptions.timer >/dev/null 2>&1; then
-  sudo systemctl start autoplius-translate-descriptions.service || echo "WARNING: translate service start failed"
+  # --no-block: oneshot translates many rows; do not stall deploy.
+  sudo systemctl start --no-block autoplius-translate-descriptions.service \
+    || echo "WARNING: translate service start failed"
 fi
 
 if grep -qE '^DATABASE_URL=.+' .env 2>/dev/null || [[ -n "${DATABASE_URL:-}" ]]; then
