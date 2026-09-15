@@ -103,21 +103,68 @@ function sellerHeaderHtml(lines = []) {
 }
 
 function invoiceSignHtml(doc) {
-  const sig = doc.signatures || {};
   return `<div class="invoice-sign">
     <p class="sign-gap">&nbsp;</p>
     <p class="sign-gap">&nbsp;</p>
-    <p class="sign-line">${escapeHtml(sig.rightSign || "")}</p>
+    <p class="sign-line">___________________ Директор ${escapeHtml(doc.directorShort || "")}</p>
   </div>`;
 }
 
 function renderInvoiceSheet(doc) {
+  const itemHtml = escapeHtml(doc.itemName || "")
+    .split("\n")
+    .map((line) => `<div>${line || "&nbsp;"}</div>`)
+    .join("");
   return `
     <article class="sheet sheet-invoice">
-      ${sellerHeaderHtml(doc.sellerHeader)}
+      <div class="invoice-top">
+        <div class="invoice-logo-wrap">
+          <img class="invoice-logo" src="${escapeHtml(doc.logoUrl || "/static/contracts/invoice/logo.png")}" alt="Сканди Моторс" />
+        </div>
+        <div class="invoice-seller">
+          <p>${escapeHtml(doc.companyShort || "")}</p>
+          <p>&nbsp;</p>
+          <p>Юридический адрес:</p>
+          <p>${escapeHtml(doc.legalAddress || "")}</p>
+          <p>УНП:${escapeHtml(doc.unp || "")}</p>
+          <p>Тел (Viber / WhatsApp / Telegram): ${escapeHtml(doc.phone || "")}</p>
+          <p>${escapeHtml(doc.email || "")}</p>
+          <p>Банковские реквизиты:</p>
+          <p>Р/c ${escapeHtml(doc.account || "")} в BYN</p>
+          <p>${escapeHtml(doc.bank || "")}</p>
+          <p>СВИФТ - ${escapeHtml(doc.swift || "")}, УНП ${escapeHtml(doc.bankUnp || "")}, ОКПО ${escapeHtml(doc.okpo || "")}.</p>
+        </div>
+      </div>
       <h1 class="sheet-title invoice-title">${escapeHtml(doc.title)}</h1>
-      <p class="sheet-p invoice-buyer"><strong>Покупатель:</strong> ${escapeHtml(doc.buyer || "")}</p>
-      ${(doc.blocks || []).map(blockHtml).join("")}
+      <p class="sheet-p invoice-buyer">Покупатель:</p>
+      <p class="sheet-p">${escapeHtml(doc.buyer || "")}</p>
+      <table class="sheet-table sheet-invoice-table" width="100%" cellspacing="0" cellpadding="4">
+        <thead>
+          <tr>
+            <th>№</th>
+            <th>Наименование товара, услуги</th>
+            <th>Кол-во</th>
+            <th>Цена, руб. коп.</th>
+            <th>НДС , руб. коп.</th>
+            <th>Цена с НДС, руб. коп.</th>
+            <th>Всего к оплате, руб. коп.</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td class="invoice-item-name">${itemHtml}</td>
+            <td>${escapeHtml(doc.qty || "1")}</td>
+            <td>${escapeHtml(doc.price || "")}</td>
+            <td>${escapeHtml(doc.vatCell || "")}</td>
+            <td>${escapeHtml(doc.priceVat || "")}</td>
+            <td>${escapeHtml(doc.total || "")}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="sheet-p">Итого к оплате: ${escapeHtml(doc.total || "")} руб. (${escapeHtml(doc.totalWords || "")}).</p>
+      <p class="sheet-note">${escapeHtml(doc.payNote || "")}</p>
+      <p class="sheet-note">${escapeHtml(doc.pickupNote || "")}</p>
       ${invoiceSignHtml(doc)}
     </article>`;
 }

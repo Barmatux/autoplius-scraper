@@ -466,33 +466,78 @@ button {
   text-align: center;
 }
 
+.sheet-invoice .invoice-top {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px 18px;
+  align-items: start;
+  margin: 0 0 18px;
+}
+
+.sheet-invoice .invoice-logo-wrap {
+  padding-top: 2px;
+}
+
+.sheet-invoice .invoice-logo {
+  display: block;
+  width: 110px;
+  height: auto;
+}
+
 .sheet-invoice .invoice-seller {
-  margin: 0 0 14px;
+  margin: 0;
   font-size: 13px;
   line-height: 1.35;
+  font-family: "Times New Roman", Times, serif;
 }
 
 .sheet-invoice .invoice-seller p {
-  margin: 0 0 2px;
+  margin: 0;
 }
 
 .sheet-invoice .invoice-title {
   text-align: left;
-  font-size: 18px;
-  margin: 18px 0 12px;
+  font-size: 16px;
+  margin: 10px 0 12px;
+  font-family: "Times New Roman", Times, serif;
 }
 
 .sheet-invoice .invoice-buyer {
-  margin: 0 0 12px;
+  margin: 0 0 4px;
+}
+
+.sheet-invoice .sheet-invoice-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 10px 0 12px;
+  font-size: 12px;
+  font-family: "Times New Roman", Times, serif;
+}
+
+.sheet-invoice .sheet-invoice-table th,
+.sheet-invoice .sheet-invoice-table td {
+  border: 1px solid #000 !important;
+  background: #fff !important;
+  padding: 4px 5px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.sheet-invoice .invoice-item-name {
+  text-align: center;
+  white-space: pre-line;
 }
 
 .sheet-invoice .invoice-sign {
-  margin-top: 28px;
-  text-align: right;
+  margin-top: 36px;
+  text-align: left;
 }
 
-.sheet-invoice-table td {
-  white-space: pre-line;
+.sheet-invoice .sheet-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-style: normal;
+  color: inherit;
 }
 
 .findings-compact {

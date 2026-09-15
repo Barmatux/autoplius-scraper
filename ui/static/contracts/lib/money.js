@@ -119,6 +119,16 @@ export function moneyToWords(value) {
   return `${rubWords} ${rubUnit} ${String(kopecks).padStart(2, "0")} (${kopWords}) ${kopUnit}`;
 }
 
+/** Sample invoice style: «… белорусских рублей ноль копеек». */
+export function invoiceMoneyWords(value) {
+  const { rubles, kopecks } = parseMoney(value);
+  const rubWords = integerToWords(rubles, "m");
+  const rubUnit = plural(rubles, "белорусский рубль", "белорусских рубля", "белорусских рублей");
+  const kopWords = integerToWords(kopecks, "f");
+  const kopUnit = plural(kopecks, "копейка", "копейки", "копеек");
+  return `${rubWords} ${rubUnit} ${kopWords} ${kopUnit}`;
+}
+
 export function moneyPhrase(value) {
   const { rubles, kopecks } = parseMoney(value);
   const words = integerToWords(rubles, "m");

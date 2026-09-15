@@ -1,51 +1,87 @@
 import { suggestInvoiceNumber, todayIso, formatDateLong, dash } from "./format.js";
-import { formatAmount, moneyToWords, computeVat, parseMoney } from "./money.js";
+import { computeVat, parseMoney, invoiceMoneyWords } from "./money.js";
 
-/** Юр. адрес в счетах (ЕГР / реквизиты для оплаты). */
-export const INVOICE_LEGAL_ADDRESS = "г. Минск, ул. Скрыганова, дом 6, помещение 7";
+/** Юр. адрес в счетах (не путать с площадкой выдачи). */
+export const INVOICE_LEGAL_ADDRESS = "г. Минск, ул. Скрыганова, дом 6, помещение 7.";
 /** Площадка выдачи автомобиля. */
 export const INVOICE_PICKUP_ADDRESS = "г. Минск, ул. Максима Горецкого, 30";
+
+const LOGO_URL = "/static/contracts/invoice/logo.png";
+
+const CDN = [
+  "https://unpkg.com/pizzip@3.1.6/dist/pizzip.js",
+  "https://unpkg.com/docxtemplater@3.50.0/build/docxtemplater.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js",
+];
+
+let libsPromise = null;
+let tplB64 = null;
 
 function executorFromPage() {
   const raw = typeof window !== "undefined" ? window.__CONTRACT_DEFAULTS__ : null;
   return raw && typeof raw === "object" ? raw : {};
 }
 
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if ([...document.scripts].some((s) => s.src === src)) {
+      resolve();
+      return;
+    }
+    const el = document.createElement("script");
+    el.src = src;
+    el.onload = () => resolve();
+    el.onerror = () => reject(new Error("Не удалось загрузить " + src));
+    document.head.appendChild(el);
+  });
+}
+
+async function ensureLibs() {
+  if (!libsPromise) {
+    libsPromise = CDN.reduce((p, src) => p.then(() => loadScript(src)), Promise.resolve());
+  }
+  await libsPromise;
+}
+
+async function ensureTemplate() {
+  if (tplB64) return tplB64;
+  const text = await fetch("/static/contracts/invoice/schet_tpl.b64").then((r) => r.text());
+  tplB64 = text.trim();
+  return tplB64;
+}
+
+/** 30888,00 like the paper sample (no thousands separator). */
+export function formatInvoiceAmount(value) {
+  const { total } = parseMoney(value);
+  return total.toFixed(2).replace(".", ",");
+}
+
+/** «… белорусских рублей ноль копеек» as in the sample. */
+export function invoiceTotalWords(value) {
+  return invoiceMoneyWords(value);
+}
+
 export const INVOICE_COMPLIANCE = [
   {
     level: "critical",
-    title: "Покупатель не заполнен",
-    was: "В образце поле «Покупатель» пустое.",
-    risk: "Счёт без идентификации плательщика слабо связывает платёж с договором/авто и усложняет учёт и претензии. Для юрлица желательны наименование и УНП.",
-    fix: "Обязательные поля покупателя в форме; для юрлица — УНП.",
+    title: "Покупатель",
+    was: "В образце поле пустое.",
+    risk: "Счёт без плательщика плохо стыкуется с оплатой.",
+    fix: "Заполняйте покупателя в форме.",
   },
   {
     level: "important",
-    title: "НДС 20 %",
-    was: "В образце стояло «Без НДС».",
-    risk: "При работе с НДС сумма и графа НДС должны быть согласованы.",
-    fix: "По умолчанию НДС 20 % включён в стоимость; в таблице выводятся цена без НДС, сумма НДС и цена с НДС.",
+    title: "НДС",
+    was: "Авто — без НДС; услуги — НДС 20 %.",
+    risk: "Неверная графа НДС в счёте.",
+    fix: "Для автомобиля по умолчанию «Без НДС»; для услуги — 20 %.",
   },
   {
     level: "important",
-    title: "Юридический адрес и выдача",
-    was: "В образце только Скрыганова 6.",
-    risk: "Клиент может приехать не на ту площадку.",
-    fix: "В реквизитах — Скрыганова 6; отдельно указано, что авто забирать с Горецкого 30.",
-  },
-  {
-    level: "advice",
-    title: "Статус счёта в РБ",
-    was: "Счёт оформлен как коммерческий запрос на оплату.",
-    risk: "Счёт на оплату в РБ не имеет жёсткой обязательной формы первички; это оферта/требование об оплате. Для учёта первичка — договор, ТТН/акт, платёжка.",
-    fix: "Шаблон сохраняет структуру образца и усиливает идентификацию сторон и НДС.",
-  },
-  {
-    level: "advice",
-    title: "Описание товара",
-    was: "Марка, год, VIN — достаточно для легкового авто.",
-    risk: "Низкий, если VIN и год совпадают с договором/ПТС.",
-    fix: "Поля марки/модели/года/VIN в форме; при услуге — свободное наименование.",
+    title: "Адреса",
+    was: "Юр. адрес Скрыганова 6; выдача — Горецкого 30.",
+    risk: "Клиент путает площадку и юр. адрес.",
+    fix: "В шаблоне разделены юр. адрес и строка про выдачу с площадки.",
   },
 ];
 
@@ -73,7 +109,8 @@ export function createInvoiceDefaultData() {
     vehicleVin: "",
     itemQty: "1",
     amount: "",
-    vatMode: "included20",
+    // Авто — без НДС; для услуги форма переключит на included20.
+    vatMode: "none",
     currencyNote: "BYN",
 
     purpose: "",
@@ -85,18 +122,23 @@ export function createInvoiceDefaultData() {
     executorUnp: ex.executorUnp || "193866357",
     executorAddress: INVOICE_LEGAL_ADDRESS,
     executorEmail: ex.executorEmail || "scandimotorsby@gmail.com",
-    executorPhone: ex.executorPhone || "+375 (33) 698-77-99",
+    executorPhone: ex.executorPhone || "+375336987799",
     executorDirector: ex.executorDirector || "Герасимец Максим Сергеевич",
     executorDirectorShort: ex.executorDirectorShort || "Герасимец М.С.",
     executorAccount: ex.executorAccount || "BY58 ALFA 3012 2G91 3900 1027 0000",
-    executorBank: ex.executorBank || "ЗАО «Альфа-Банк», 220013, г. Минск, ул. Сурганова, 43-47",
+    executorBank: ex.executorBank || "ЗАО «АЛЬФА-БАНК». 220013 Минск, ул. Сурганова, 43-47.",
     executorSwift: ex.executorSwift || "ALFABY2X",
     executorBankUnp: ex.executorBankUnp || "101541947",
     executorOkpo: ex.executorOkpo || "37526626",
   };
 }
 
-function itemDescription(d) {
+function resolveVatMode(d) {
+  if (d.vatMode) return d.vatMode;
+  return d.itemKind === "custom" ? "included20" : "none";
+}
+
+function itemNameMultiline(d) {
   if (d.itemKind === "custom") {
     return String(d.itemName || "").trim() || "________________";
   }
@@ -113,133 +155,151 @@ function itemDescription(d) {
 
 function buyerLine(d) {
   if (d.buyerType === "legal") {
-    const parts = [
+    return [
       dash(d.clientCompany, "________________"),
       d.clientUnp ? `УНП ${d.clientUnp}` : "",
       d.clientAddress ? `адрес: ${d.clientAddress}` : "",
       d.clientPhone || "",
-    ].filter(Boolean);
-    return parts.join(", ");
+    ]
+      .filter(Boolean)
+      .join(", ");
   }
-  const parts = [
+  return [
     dash(d.clientName, "________________"),
     d.clientAddress ? `адрес: ${d.clientAddress}` : "",
     d.clientPhone || "",
-  ].filter(Boolean);
-  return parts.join(", ");
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
-export function buildInvoice(d) {
-  const vat = computeVat(d.amount, d.vatMode || "included20");
+function phoneCompact(phone) {
+  return String(phone || "").replace(/[\s()-]/g, "");
+}
+
+function invoiceDateLong(iso) {
+  return formatDateLong(iso)
+    .replace(/^«/, "")
+    .replace(/» /, " ")
+    .replace(/ г\.$/, "г.");
+}
+
+function amounts(d) {
+  const vatMode = resolveVatMode(d);
+  const vat = computeVat(d.amount, vatMode);
   const qty = Math.max(1, parseInt(String(d.itemQty || "1"), 10) || 1);
   const unitGross = vat.gross;
   const lineGross = Math.round(unitGross * qty * 100) / 100;
   const unitNet = vat.net;
   const unitVat = vat.vat;
-  const vatMode = d.vatMode || "included20";
-  const vatCell = vatMode === "none" ? "Без НДС" : formatAmount(unitVat);
-  const priceCell = formatAmount(vatMode === "none" ? unitGross : unitNet);
-  const priceWithVatCell = formatAmount(unitGross);
-  const totalCell = formatAmount(lineGross);
-  const totalWords = moneyToWords(lineGross);
-  const dateLong = formatDateLong(d.invoiceDate)
-    .replace(/^«/, "")
-    .replace(/» /, " ")
-    .replace(/ г\.$/, "г.");
+  return {
+    vatMode,
+    qty,
+    unitNet,
+    unitVat,
+    unitGross,
+    lineGross,
+    price: formatInvoiceAmount(vatMode === "none" ? unitGross : unitNet),
+    vatCell: vatMode === "none" ? "Без НДС" : formatInvoiceAmount(unitVat),
+    priceVat: formatInvoiceAmount(unitGross),
+    total: formatInvoiceAmount(lineGross),
+    totalWords: invoiceTotalWords(lineGross),
+  };
+}
 
-  const legalAddress = String(d.executorAddress || "").trim() || INVOICE_LEGAL_ADDRESS;
+export function buildInvoice(d) {
+  const a = amounts(d);
+  const legalAddress = INVOICE_LEGAL_ADDRESS;
   const pickupAddress = String(d.pickupAddress || "").trim() || INVOICE_PICKUP_ADDRESS;
-
-  const sellerHeader = [
-    d.executorShort || d.executorName,
-    `Юридический адрес: ${legalAddress}`,
-    `УНП: ${d.executorUnp}`,
-    `Тел (Viber / WhatsApp / Telegram): ${String(d.executorPhone || "").replace(/\s/g, "")}`,
-    d.executorEmail,
-    "Банковские реквизиты:",
-    `Р/c ${d.executorAccount} в ${d.currencyNote || "BYN"}`,
-    d.executorBank,
-    `СВИФТ - ${d.executorSwift}, УНП ${d.executorBankUnp}, ОКПО ${d.executorOkpo}.`,
-  ].filter((line) => line != null && String(line).trim() !== "");
-
-  const blocks = [
-    {
-      type: "table",
-      invoice: true,
-      columns: [
-        "№",
-        "Наименование товара, услуги",
-        "Кол-во",
-        "Цена, руб. коп.",
-        "НДС , руб. коп.",
-        "Цена с НДС, руб. коп.",
-        "Всего к оплате, руб. коп.",
-      ],
-      rows: [
-        [
-          "1",
-          itemDescription(d),
-          String(qty),
-          priceCell,
-          vatCell,
-          priceWithVatCell,
-          totalCell,
-        ],
-      ],
-    },
-    {
-      type: "p",
-      text: `Итого к оплате: ${totalCell} руб. (${totalWords}).`,
-    },
-    {
-      type: "note",
-      text: `Автомобиль забирать с площадки по адресу: ${pickupAddress}.`,
-    },
-  ];
-
-  if (vatMode !== "none") {
-    blocks.push({ type: "note", text: vat.label });
-  }
-
-  if (String(d.purpose || "").trim()) {
-    blocks.push({ type: "note", text: `Назначение платежа: ${String(d.purpose).trim()}` });
-  }
-  if (d.payDays) {
-    blocks.push({
-      type: "note",
-      text: `Счёт действителен / оплатить в течение ${d.payDays} банк. дн. с даты выставления (если иное не согласовано договором).`,
-    });
-  }
+  const payDays = d.payDays || "3";
 
   return {
     kind: "invoice",
-    clientType: "legal",
-    kicker: "",
-    title: `Счет № ${dash(d.invoiceNumber, "____")} от ${dateLong}`,
-    subtitle: [],
-    meta: { city: "", date: "" },
-    preamble: "",
-    sellerHeader,
+    logoUrl: LOGO_URL,
+    companyShort: d.executorShort || "ООО «Сканди Моторс»",
+    legalAddress,
+    unp: d.executorUnp || "193866357",
+    phone: phoneCompact(d.executorPhone),
+    email: d.executorEmail || "",
+    account: d.executorAccount || "",
+    bank: d.executorBank || "",
+    swift: d.executorSwift || "ALFABY2X",
+    bankUnp: d.executorBankUnp || "",
+    okpo: d.executorOkpo || "",
+    title: `Счет № ${dash(d.invoiceNumber, "____")} от ${invoiceDateLong(d.invoiceDate)}`,
     buyer: buyerLine(d),
-    blocks,
-    signatures: {
-      leftTitle: "",
-      leftLines: [],
-      leftRole: "",
-      leftSign: "",
-      rightTitle: "",
-      rightLines: [],
-      rightRole: "",
-      rightSign: `___________________ Директор ${d.executorDirectorShort || ""}`.trim(),
-    },
-    amountGross: lineGross,
+    itemName: itemNameMultiline(d),
+    qty: String(a.qty),
+    price: a.price,
+    vatCell: a.vatCell,
+    priceVat: a.priceVat,
+    total: a.total,
+    totalWords: a.totalWords,
+    payNote: `Счёт действителен / оплатить в течение ${payDays} банк. дн. с даты выставления (если иное не согласовано договором).`,
+    pickupNote: `Автомобиль забирать с площадки по адресу: ${pickupAddress}.`,
+    directorShort: d.executorDirectorShort || "Герасимец М.С.",
+    amountGross: a.lineGross,
   };
 }
 
 export function invoiceAmountLabel(d) {
-  const { total } = parseMoney(d.amount);
-  const qty = Math.max(1, parseInt(String(d.itemQty || "1"), 10) || 1);
-  const vat = computeVat(total, d.vatMode || "included20");
-  const gross = Math.round(vat.gross * qty * 100) / 100;
-  return gross ? `${formatAmount(gross)} BYN` : "—";
+  const a = amounts(d);
+  return a.lineGross ? `${a.total} BYN` : "—";
+}
+
+function b64ToUint8(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+export async function downloadInvoiceDocx(data, filename) {
+  await ensureLibs();
+  const b64 = await ensureTemplate();
+  const doc = buildInvoice(data);
+  const PizZip = window.PizZip;
+  const Docxtemplater = window.Docxtemplater;
+  const saveAs = window.saveAs;
+  if (!PizZip || !Docxtemplater || !saveAs) {
+    throw new Error("Библиотеки Word не загрузились.");
+  }
+  const zip = new PizZip(b64ToUint8(b64));
+  const templater = new Docxtemplater(zip, {
+    paragraphLoop: true,
+    linebreaks: true,
+    delimiters: { start: "{{", end: "}}" },
+  });
+  templater.render({
+    company_short: doc.companyShort,
+    legal_address: doc.legalAddress,
+    unp: doc.unp,
+    phone: doc.phone,
+    email: doc.email,
+    account: doc.account,
+    bank: doc.bank,
+    swift: doc.swift,
+    bank_unp: doc.bankUnp,
+    okpo: doc.okpo,
+    invoice_number: dash(data.invoiceNumber, "____"),
+    invoice_date: invoiceDateLong(data.invoiceDate),
+    buyer: doc.buyer,
+    item_name: doc.itemName,
+    qty: doc.qty,
+    price: doc.price,
+    vat_cell: doc.vatCell,
+    price_vat: doc.priceVat,
+    total: doc.total,
+    total_fmt: doc.total,
+    total_words: doc.totalWords,
+    pay_note: doc.payNote,
+    pickup_note: doc.pickupNote,
+    director_short: doc.directorShort,
+  });
+  const out = templater.getZip().generate({
+    type: "blob",
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+  const name = filename.endsWith(".docx") ? filename : `${filename}.docx`;
+  saveAs(out, name);
 }

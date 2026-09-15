@@ -4,7 +4,9 @@ import { buildAct } from "./lib/act.js";
 import {
   buildInvoice,
   createInvoiceDefaultData,
+  downloadInvoiceDocx,
   invoiceAmountLabel,
+  INVOICE_LEGAL_ADDRESS,
 } from "./lib/invoice.js";
 import { moneyPhrase } from "./lib/money.js";
 import { suggestContractNumber, todayIso } from "./lib/format.js";
@@ -42,7 +44,7 @@ const titles = {
   },
   invoice: {
     h: "Счёт на оплату",
-    p: "По образцу Scandi Motors: реквизиты, покупатель, авто/VIN, НДС. Печать и Word справа.",
+    p: "По образцу Scandi Motors (логотип, Скрыганова 6, выдача с Горецкого 30). Word — .docx с границами таблицы.",
   },
   analysis: {
     h: "Предложения по договору",
@@ -210,7 +212,12 @@ async function openRecord(id) {
     data = { ...createCommissionDefaultData(), ...payload, docType: "commission" };
     tab = "commission";
   } else if (payload.docType === "invoice") {
-    data = { ...createInvoiceDefaultData(), ...payload, docType: "invoice" };
+    data = {
+      ...createInvoiceDefaultData(),
+      ...payload,
+      docType: "invoice",
+      executorAddress: INVOICE_LEGAL_ADDRESS,
+    };
     formNeedsPaint = true;
     tab = "invoice";
   } else {
@@ -263,6 +270,12 @@ document.getElementById("form-pane").addEventListener("input", (e) => {
   const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
   data = { ...data, [name]: value };
   if (name === "clientType" || name === "buyerType" || name === "itemKind") formNeedsPaint = true;
+  if (name === "itemKind" && isInvoice()) {
+    data = {
+      ...data,
+      vatMode: value === "custom" ? "included20" : "none",
+    };
+  }
   scheduleSave();
   paint();
 });
@@ -274,6 +287,12 @@ document.getElementById("form-pane").addEventListener("change", (e) => {
   const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
   data = { ...data, [name]: value };
   if (name === "clientType" || name === "buyerType" || name === "itemKind") formNeedsPaint = true;
+  if (name === "itemKind" && isInvoice()) {
+    data = {
+      ...data,
+      vatMode: value === "custom" ? "included20" : "none",
+    };
+  }
   scheduleSave();
   paint();
 });
@@ -361,8 +380,8 @@ document.body.addEventListener("click", async (e) => {
       window.print();
     } else if (action === "word") {
       if (isInvoice()) {
-        const stamp = data.invoiceNumber || "draft";
-        downloadWord(buildInvoice(data), `Schet_${stamp}.doc`);
+        const stamp = String(data.invoiceNumber || "draft").replace(/[^\w.-]+/g, "_");
+        await downloadInvoiceDocx(data, `Schet_${stamp}`);
       } else {
         const stamp = data.contractNumber || "draft";
         downloadWord(

@@ -125,14 +125,14 @@ export function renderInvoiceForm(data) {
           field("Количество", "itemQty", data),
           field("Цена / сумма, BYN", "amount", data, {
             placeholder: "30888.00",
-            hint: "По умолчанию сумма с НДС 20 %",
+            hint: data.itemKind === "vehicle" ? "Авто — обычно без НДС" : "Услуга — обычно с НДС 20 %",
           }),
           field("НДС", "vatMode", data, {
             type: "select",
             options: [
-              ["included20", "20 % включён"],
+              ["none", "Без НДС (авто)"],
+              ["included20", "20 % включён (услуги)"],
               ["onTop20", "20 % сверх"],
-              ["none", "Без НДС"],
             ],
           }),
           field("Назначение платежа", "purpose", data, {
@@ -153,7 +153,7 @@ export function renderInvoiceForm(data) {
           ${field("УНП", "executorUnp", data)}
           ${field("Юридический адрес", "executorAddress", data, {
             wide: true,
-            hint: "В счетах — Скрыганова 6",
+            hint: "В счёте всегда Скрыганова 6 (площадка — отдельно)",
           })}
           ${field("Директор (подписи)", "executorDirectorShort", data)}
           ${field("Телефон", "executorPhone", data)}
