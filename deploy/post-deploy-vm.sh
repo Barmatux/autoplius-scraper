@@ -82,13 +82,18 @@ echo "=== backfill thin photo galleries (background) ==="
 PHOTO_LOG=/var/log/autoplius-scraper/photo-thin-backfill.log
 sudo touch "$PHOTO_LOG"
 sudo chown autoplius:autoplius "$PHOTO_LOG" || true
+# Priority IDs first (do not depend on --limit of the broad thin scan).
+nohup sudo -u autoplius env PYTHONPATH="$APP" "$PY" \
+  tools/re_enrich_listings.py \
+  32154082 32154344 32154358 \
+  --sync-photos --force-photos \
+  >>"$PHOTO_LOG" 2>&1 &
 nohup sudo -u autoplius env PYTHONPATH="$APP" "$PY" \
   tools/backfill_missing_photos.py \
   --include-thin \
   --force-photos \
   --re-enrich \
-  --ids "32154344,32154358" \
-  --limit 80 \
+  --limit 60 \
   >>"$PHOTO_LOG" 2>&1 &
 echo "thin photo backfill started (log: $PHOTO_LOG)"
 

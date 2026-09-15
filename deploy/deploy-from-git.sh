@@ -75,6 +75,9 @@ fi
 if [[ -f "$APP/deploy/autoplius-translate-descriptions.service" ]]; then
   sudo cp "$APP/deploy/autoplius-translate-descriptions.service" "$APP/deploy/autoplius-translate-descriptions.timer" /etc/systemd/system/
 fi
+if [[ -f "$APP/deploy/autoplius-thin-photos.service" ]]; then
+  sudo cp "$APP/deploy/autoplius-thin-photos.service" "$APP/deploy/autoplius-thin-photos.timer" /etc/systemd/system/
+fi
 sudo systemctl daemon-reload
 sudo systemctl enable autoplius-ui.service
 if [[ "$PG_CONSUMER" == "1" ]]; then
@@ -86,6 +89,10 @@ if [[ "$PG_CONSUMER" == "1" ]]; then
   if [[ -f /etc/systemd/system/autoplius-translate-descriptions.timer ]]; then
     sudo systemctl enable --now autoplius-translate-descriptions.timer
   fi
+  # Thin galleries still need Autoplius detail re-fetch + MinIO sync on this host.
+  if [[ -f /etc/systemd/system/autoplius-thin-photos.timer ]]; then
+    sudo systemctl enable --now autoplius-thin-photos.timer
+  fi
 else
   sudo systemctl enable autoplius-scraper.timer
   if [[ -f /etc/systemd/system/autoplius-nightly-reconcile.timer ]]; then
@@ -93,6 +100,9 @@ else
   fi
   if [[ -f /etc/systemd/system/autoplius-translate-descriptions.timer ]]; then
     sudo systemctl enable --now autoplius-translate-descriptions.timer
+  fi
+  if [[ -f /etc/systemd/system/autoplius-thin-photos.timer ]]; then
+    sudo systemctl enable --now autoplius-thin-photos.timer
   fi
 fi
 

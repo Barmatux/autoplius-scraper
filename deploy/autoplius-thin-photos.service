@@ -1,0 +1,14 @@
+[Unit]
+Description=Re-enrich Autoplius listings with thin photo galleries
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=autoplius
+WorkingDirectory=/opt/autoplius-scraper
+EnvironmentFile=-/opt/autoplius-scraper/.env
+Environment=PYTHONPATH=/opt/autoplius-scraper
+ExecStart=/opt/autoplius-scraper/.venv/bin/python tools/backfill_missing_photos.py --include-thin --force-photos --re-enrich --limit 40
+Nice=10
+TimeoutStartSec=0

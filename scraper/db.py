@@ -1734,14 +1734,17 @@ def fetch_all_listings(db_path: Path) -> list[dict[str, Any]]:
 
 def _listing_json_param(value: Any) -> Any:
     """Bind JSON for SQLite TEXT or Postgres JSONB."""
-    if using_postgres():
-        if value is None:
-            return None
-        if isinstance(value, (dict, list)):
-            return json.dumps(value, ensure_ascii=False)
-        return value
     if value is None:
         return None
+    if using_postgres():
+        from psycopg.types.json import Json
+
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                return value
+        return Json(value)
     if isinstance(value, (dict, list)):
         return json.dumps(value, ensure_ascii=False)
     return value

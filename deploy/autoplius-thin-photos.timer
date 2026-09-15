@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic thin photo gallery backfill for Autoplius listings
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=6h
+Persistent=true
+Unit=autoplius-thin-photos.service
+
+[Install]
+WantedBy=timers.target
