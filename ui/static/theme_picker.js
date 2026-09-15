@@ -2,7 +2,7 @@
   var STORAGE_KEY = "eu2-site-theme";
   var DEFAULT_THEME = "docs";
   var PUBLIC_THEMES = ["docs"];
-  var ADMIN_THEMES = ["original", "docs", "parchment", "forest", "carbon"];
+  var ADMIN_THEMES = ["original", "docs", "parchment", "forest", "carbon", "carwow", "carwow-soft", "carwow-night"];
 
   function isAdmin() {
     return window.__EU2_IS_ADMIN__ === true || window.__EU2_IS_ADMIN__ === "true";

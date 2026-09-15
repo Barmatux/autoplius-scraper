@@ -3,15 +3,28 @@
 html[data-theme="docs"],
 html[data-theme="parchment"],
 html[data-theme="forest"],
-html[data-theme="carbon"] {
+html[data-theme="carbon"],
+html[data-theme="carwow"],
+html[data-theme="carwow-soft"],
+html[data-theme="carwow-night"] {
   --font: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
   --font-display: "Cormorant Garamond", Georgia, serif;
+}
+
+html[data-theme="carwow"],
+html[data-theme="carwow-soft"],
+html[data-theme="carwow-night"] {
+  --font: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
 }
 
 html[data-theme="docs"] .brand-name,
 html[data-theme="parchment"] .brand-name,
 html[data-theme="forest"] .brand-name,
-html[data-theme="carbon"] .brand-name {
+html[data-theme="carbon"] .brand-name,
+html[data-theme="carwow"] .brand-name,
+html[data-theme="carwow-soft"] .brand-name,
+html[data-theme="carwow-night"] .brand-name {
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -1314,6 +1327,453 @@ html[data-theme="carbon"] .pill.accent {
   border-color: var(--accent-border);
 }
 
+/* 5–7) Carwow-inspired marketplace themes (admin preview) */
+
+/* Classic: dark charcoal header + cyan CTA + light grey content */
+html[data-theme="carwow"] {
+  --bg: #f1f1f1;
+  --bg-glow: #e7e7e7;
+  --bg-top: #fafafa;
+  --bg-bottom: #e7e7e7;
+  --ink: #171717;
+  --muted: #6e6e6e;
+  --line: #cfcfcf;
+  --card: #ffffff;
+  --accent: #1cdce8;
+  --accent-soft: #dbffff;
+  --accent-border: #00909c;
+  --accent-deep: #005d69;
+  --gold: #1cdce8;
+  --top-bg: #171717;
+  --top-ink: #ffffff;
+  --shadow: 0 2px 10px rgba(23, 23, 23, 0.12);
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="carwow"] .top {
+  backdrop-filter: none;
+  border-bottom: 0;
+  box-shadow: 0 8px 24px rgba(23, 23, 23, 0.18);
+}
+
+html[data-theme="carwow"] .brand-name {
+  color: #fff;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+html[data-theme="carwow"] .brand-sub,
+html[data-theme="carwow"] .brand-tagline-domain,
+html[data-theme="carwow"] .brand-tagline-copy {
+  color: #a0a0a0;
+}
+
+html[data-theme="carwow"] .brand-tagline-divider {
+  background: rgba(28, 220, 232, 0.45);
+}
+
+html[data-theme="carwow"] .brand-link:hover {
+  color: var(--accent);
+}
+
+html[data-theme="carwow"] .nav-btn {
+  color: #cfcfcf;
+}
+
+html[data-theme="carwow"] .nav-btn:hover {
+  color: #fff;
+  background: rgba(28, 220, 232, 0.12);
+}
+
+html[data-theme="carwow"] .nav-btn.active {
+  color: #fff;
+  background: rgba(28, 220, 232, 0.16);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+html[data-theme="carwow"] .nav-auth-login,
+html[data-theme="carwow"] .nav-auth-login:hover,
+html[data-theme="carwow"] .mobile-nav-login,
+html[data-theme="carwow"] .mobile-nav-login:hover {
+  background: var(--accent) !important;
+  color: #171717 !important;
+  box-shadow: 0 6px 18px rgba(28, 220, 232, 0.35);
+  border-radius: 999px;
+}
+
+html[data-theme="carwow"] .mobile-nav-toggle {
+  color: #fff;
+  border-color: rgba(28, 220, 232, 0.45);
+}
+
+html[data-theme="carwow"] .pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-radius: 999px;
+}
+
+html[data-theme="carwow"] .pill.accent {
+  background: rgba(28, 220, 232, 0.18);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="carwow"] .admin-mode-link {
+  color: var(--accent);
+}
+
+html[data-theme="carwow"] .admin-enter-link {
+  border-color: var(--accent);
+  color: #171717;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+html[data-theme="carwow"] .admin-enter-link:hover {
+  background: #33e9f2;
+  color: #171717;
+}
+
+html[data-theme="carwow"] .panel,
+html[data-theme="carwow"] .listing-card,
+html[data-theme="carwow"] table.catalog,
+html[data-theme="carwow"] .auth-panel,
+html[data-theme="carwow"] .filters-panel {
+  background: var(--card);
+  border-color: var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="carwow"] .tab {
+  border-radius: 999px;
+  background: #e7e7e7;
+  color: var(--ink);
+  border-color: transparent;
+}
+
+html[data-theme="carwow"] .tab:hover {
+  background: #dbffff;
+}
+
+html[data-theme="carwow"] .tab.active {
+  background: #171717;
+  color: #fff;
+  box-shadow: none;
+}
+
+html[data-theme="carwow"] .filters button,
+html[data-theme="carwow"] .catalog-save-btn,
+html[data-theme="carwow"] .calc-submit {
+  background: var(--accent);
+  color: #171717;
+  border-color: var(--accent);
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+html[data-theme="carwow"] .filters button:hover,
+html[data-theme="carwow"] .calc-submit:hover {
+  background: #33e9f2;
+}
+
+html[data-theme="carwow"] .filters-panel-toggle {
+  background: #171717;
+  color: #fff;
+  border-radius: 999px;
+}
+
+html[data-theme="carwow"] .feedback-fab,
+html[data-theme="carwow"] .feedback-cta {
+  background: var(--accent);
+  color: #171717;
+}
+
+/* Soft: light marketplace with cyan accents only */
+html[data-theme="carwow-soft"] {
+  --bg: #fafafa;
+  --bg-glow: #f1f1f1;
+  --bg-top: #ffffff;
+  --bg-bottom: #f1f1f1;
+  --ink: #171717;
+  --muted: #6e6e6e;
+  --line: #e7e7e7;
+  --card: #ffffff;
+  --accent: #1cdce8;
+  --accent-soft: #dbffff;
+  --accent-border: #00909c;
+  --gold: #00909c;
+  --top-bg: rgba(255, 255, 255, 0.96);
+  --top-ink: #171717;
+  --shadow: 0 2px 10px rgba(23, 23, 23, 0.08);
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="carwow-soft"] .top {
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 1px 0 rgba(28, 220, 232, 0.35);
+}
+
+html[data-theme="carwow-soft"] .brand-name {
+  color: #171717;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 800;
+}
+
+html[data-theme="carwow-soft"] .nav-btn {
+  color: #444;
+  border-radius: 999px;
+}
+
+html[data-theme="carwow-soft"] .nav-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+}
+
+html[data-theme="carwow-soft"] .nav-btn.active {
+  background: transparent;
+  color: var(--accent-deep);
+  box-shadow: inset 0 -3px 0 var(--accent);
+}
+
+html[data-theme="carwow-soft"] .nav-auth-login,
+html[data-theme="carwow-soft"] .nav-auth-login:hover,
+html[data-theme="carwow-soft"] .mobile-nav-login,
+html[data-theme="carwow-soft"] .mobile-nav-login:hover {
+  background: var(--accent) !important;
+  color: #171717 !important;
+  border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(28, 220, 232, 0.28);
+}
+
+html[data-theme="carwow-soft"] .pill.accent {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-deep);
+  border-radius: 999px;
+}
+
+html[data-theme="carwow-soft"] .admin-enter-link {
+  border-radius: 999px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #171717;
+}
+
+html[data-theme="carwow-soft"] .panel,
+html[data-theme="carwow-soft"] .listing-card,
+html[data-theme="carwow-soft"] table.catalog,
+html[data-theme="carwow-soft"] .auth-panel {
+  background: var(--card);
+  border-color: var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="carwow-soft"] .tab {
+  border-radius: 999px;
+  background: #f1f1f1;
+}
+
+html[data-theme="carwow-soft"] .tab.active {
+  background: #171717;
+  color: #fff;
+}
+
+html[data-theme="carwow-soft"] .filters button,
+html[data-theme="carwow-soft"] .calc-submit,
+html[data-theme="carwow-soft"] .feedback-fab,
+html[data-theme="carwow-soft"] .feedback-cta {
+  background: var(--accent);
+  color: #171717;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+/* Night: full dark charcoal + carwow cyan */
+html[data-theme="carwow-night"] {
+  --bg: #171717;
+  --bg-glow: #242424;
+  --bg-top: #111111;
+  --bg-bottom: #1c1c1c;
+  --ink: #fafafa;
+  --muted: #a0a0a0;
+  --line: #444444;
+  --card: #242424;
+  --accent: #1cdce8;
+  --accent-soft: rgba(28, 220, 232, 0.16);
+  --accent-border: #00909c;
+  --accent-deep: #005d69;
+  --offer: #38c498;
+  --gold: #1cdce8;
+  --top-bg: #111111;
+  --top-ink: #fafafa;
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+  color: var(--ink);
+  background:
+    radial-gradient(1000px 480px at 12% -8%, rgba(28, 220, 232, 0.14), transparent 55%),
+    linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+html[data-theme="carwow-night"] .top {
+  backdrop-filter: none;
+  border-bottom: 1px solid rgba(28, 220, 232, 0.22);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="carwow-night"] .brand-name {
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 800;
+}
+
+html[data-theme="carwow-night"] .brand-sub,
+html[data-theme="carwow-night"] .brand-tagline-domain,
+html[data-theme="carwow-night"] .brand-tagline-copy {
+  color: #a0a0a0;
+}
+
+html[data-theme="carwow-night"] .brand-tagline-divider {
+  background: rgba(28, 220, 232, 0.4);
+}
+
+html[data-theme="carwow-night"] .brand-link:hover {
+  color: var(--accent);
+}
+
+html[data-theme="carwow-night"] .nav-btn {
+  color: #cfcfcf;
+}
+
+html[data-theme="carwow-night"] .nav-btn:hover {
+  color: #fff;
+  background: rgba(28, 220, 232, 0.12);
+}
+
+html[data-theme="carwow-night"] .nav-btn.active {
+  color: #fff;
+  background: rgba(28, 220, 232, 0.16);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+html[data-theme="carwow-night"] .nav-auth-login,
+html[data-theme="carwow-night"] .nav-auth-login:hover,
+html[data-theme="carwow-night"] .mobile-nav-login,
+html[data-theme="carwow-night"] .mobile-nav-login:hover {
+  background: var(--accent) !important;
+  color: #171717 !important;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(28, 220, 232, 0.35);
+}
+
+html[data-theme="carwow-night"] .mobile-nav-toggle {
+  color: #fff;
+  border-color: rgba(28, 220, 232, 0.45);
+}
+
+html[data-theme="carwow-night"] .pill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #fafafa;
+  border-radius: 999px;
+}
+
+html[data-theme="carwow-night"] .pill.accent {
+  background: rgba(28, 220, 232, 0.16);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+html[data-theme="carwow-night"] .admin-mode-link {
+  color: var(--accent);
+}
+
+html[data-theme="carwow-night"] .admin-enter-link {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #171717;
+  border-radius: 999px;
+}
+
+html[data-theme="carwow-night"] .panel,
+html[data-theme="carwow-night"] .listing-card,
+html[data-theme="carwow-night"] table.catalog,
+html[data-theme="carwow-night"] .auth-panel,
+html[data-theme="carwow-night"] .filters-panel,
+html[data-theme="carwow-night"] .calc-form,
+html[data-theme="carwow-night"] .calc-aside,
+html[data-theme="carwow-night"] .calc-result,
+html[data-theme="carwow-night"] .calc-rates {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--ink);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+html[data-theme="carwow-night"] .tab {
+  background: #333;
+  color: #fafafa;
+  border-radius: 999px;
+  border-color: transparent;
+}
+
+html[data-theme="carwow-night"] .tab.active {
+  background: var(--accent);
+  color: #171717;
+}
+
+html[data-theme="carwow-night"] .filters > label,
+html[data-theme="carwow-night"] .summary,
+html[data-theme="carwow-night"] .pager,
+html[data-theme="carwow-night"] .empty,
+html[data-theme="carwow-night"] .check span {
+  color: var(--ink);
+}
+
+html[data-theme="carwow-night"] .filters input,
+html[data-theme="carwow-night"] .filters select,
+html[data-theme="carwow-night"] .catalog-multi-select-trigger,
+html[data-theme="carwow-night"] .calc-field input,
+html[data-theme="carwow-night"] .calc-field select {
+  background: #333;
+  color: #fafafa;
+  border-color: #555;
+  border-radius: 12px;
+}
+
+html[data-theme="carwow-night"] .filters button,
+html[data-theme="carwow-night"] .calc-submit,
+html[data-theme="carwow-night"] .feedback-fab,
+html[data-theme="carwow-night"] .feedback-cta {
+  background: var(--accent);
+  color: #171717;
+  border-radius: 999px;
+  font-weight: 700;
+  box-shadow: 0 8px 22px rgba(28, 220, 232, 0.3);
+}
+
+html[data-theme="carwow-night"] .mobile-nav-shell {
+  background: #111;
+  border-color: #444;
+  color: #fafafa;
+}
+
+html[data-theme="carwow-night"] .mobile-nav-link {
+  color: #fafafa;
+}
+
+html[data-theme="carwow-night"] .mobile-nav-link.is-active,
+html[data-theme="carwow-night"] .mobile-nav-link:hover {
+  color: var(--accent);
+}
+
 /* Theme picker UI */
 .theme-picker-backdrop {
   position: fixed;
@@ -1475,6 +1935,31 @@ html[data-theme="carbon"] .pill.accent {
 .theme-option[data-theme-id="carbon"] {
   --swatch-top: #1c1f26;
   --swatch-bg: #0c0c0e;
+}
+
+.theme-option[data-theme-id="carwow"] .theme-option-swatch span:first-child {
+  background: #171717;
+}
+.theme-option[data-theme-id="carwow"] {
+  --swatch-top: #1cdce8;
+  --swatch-bg: #f1f1f1;
+}
+
+.theme-option[data-theme-id="carwow-soft"] .theme-option-swatch span:first-child {
+  background: #ffffff;
+  box-shadow: inset 0 -3px 0 #1cdce8;
+}
+.theme-option[data-theme-id="carwow-soft"] {
+  --swatch-top: #fafafa;
+  --swatch-bg: #f1f1f1;
+}
+
+.theme-option[data-theme-id="carwow-night"] .theme-option-swatch span:first-child {
+  background: linear-gradient(135deg, #1cdce8 0%, #00909c 100%);
+}
+.theme-option[data-theme-id="carwow-night"] {
+  --swatch-top: #242424;
+  --swatch-bg: #171717;
 }
 
 .theme-picker-note {
