@@ -15,9 +15,45 @@ from typing import Any
 PRICE_RE = re.compile(r"([\d\s]+)\s*(?:€|<span[^>]*>€</span>)")
 PHONE_RE = re.compile(r"\+370[\d\s]{7,}")
 _MEDIA_GALLERY_ITEMS_RE = re.compile(
-    r"var\s+mediaGalleryItems\s*=\s*(\[.*?\])\s*;",
+    r"(?:var|let|const)\s+mediaGalleryItems\s*=\s*|window\.mediaGalleryItems\s*=\s*",
     re.DOTALL,
 )
+
+
+def _extract_json_array_after(text: str, start: int) -> Any | None:
+    """Parse the first JSON array starting at/after ``start`` (balanced brackets)."""
+    idx = text.find("[", start)
+    if idx < 0:
+        return None
+    try:
+        payload, _ = json.JSONDecoder().raw_decode(text[idx:])
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, list) else None
+
+
+def _parse_media_gallery_items(soup: BeautifulSoup) -> list[str]:
+    """Full photo list from Autoplius lightbox JSON (often more than carousel slides)."""
+    for script in soup.find_all("script"):
+        text = script.string or script.get_text() or ""
+        if "mediaGalleryItems" not in text:
+            continue
+        match = _MEDIA_GALLERY_ITEMS_RE.search(text)
+        if not match:
+            continue
+        items = _extract_json_array_after(text, match.end())
+        if not isinstance(items, list):
+            continue
+        urls: list[str] = []
+        for item in items:
+            if not isinstance(item, dict) or item.get("type") != "photo":
+                continue
+            raw = item.get("url") or item.get("thumbnail")
+            if raw:
+                urls.append(best_photo_url(raw) or raw)
+        if urls:
+            return normalize_photo_list(urls)
+    return []
 
 
 def _parse_prices(soup: BeautifulSoup) -> dict[str, Any]:
@@ -119,31 +155,6 @@ def _register_photo(
     existing = bucket.get(key)
     if existing is None or sort_index < existing[0]:
         bucket[key] = (sort_index, url)
-
-
-def _parse_media_gallery_items(soup: BeautifulSoup) -> list[str]:
-    """Full photo list from Autoplius lightbox JSON (often more than carousel slides)."""
-    for script in soup.find_all("script"):
-        text = script.string or script.get_text() or ""
-        if "mediaGalleryItems" not in text:
-            continue
-        match = _MEDIA_GALLERY_ITEMS_RE.search(text)
-        if not match:
-            continue
-        try:
-            items = json.loads(match.group(1))
-        except json.JSONDecodeError:
-            continue
-        urls: list[str] = []
-        for item in items:
-            if not isinstance(item, dict) or item.get("type") != "photo":
-                continue
-            raw = item.get("url") or item.get("thumbnail")
-            if raw:
-                urls.append(best_photo_url(raw) or raw)
-        if urls:
-            return normalize_photo_list(urls)
-    return []
 
 
 def _parse_photos(soup: BeautifulSoup) -> list[str]:

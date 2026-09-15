@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""List or re-enrich active listings that have no stored photos."""
+"""List or re-enrich active listings that have no / thin stored photo galleries."""
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -13,50 +12,31 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scraper.config import Settings
-from scraper.db import connect, init_db
+from scraper.db import (
+    connect,
+    init_db,
+    listing_photo_count,
+    listing_select_columns,
+    load_thin_gallery_ids,
+    row_to_listing,
+)
+from scraper.sql_dialect import listings_source_clause
 
 
 def missing_photo_ids(db_path: Path) -> list[int]:
     init_db(db_path)
+    columns = listing_select_columns("lite")
+    source = listings_source_clause()
+    where = "WHERE COALESCE(status, 'active') = 'active'"
+    if source:
+        where = f"WHERE {source} AND COALESCE(status, 'active') = 'active'"
     with connect(db_path) as conn:
-        rows = conn.execute(
-            """
-            SELECT autoplius_id FROM listings
-            WHERE (status IS NULL OR status = 'active')
-              AND (photo_url IS NULL OR photo_url = '')
-              AND (photo_urls_json IS NULL OR photo_urls_json = '[]')
-            ORDER BY autoplius_id
-            """
-        ).fetchall()
-    return [int(row["autoplius_id"]) for row in rows]
-
-
-def thin_gallery_ids(db_path: Path, *, max_photos: int = 1) -> list[int]:
-    """Active listings with a suspiciously small gallery (often only list thumb)."""
-    init_db(db_path)
-    with connect(db_path) as conn:
-        rows = conn.execute(
-            """
-            SELECT autoplius_id, photo_url, photo_urls_json
-            FROM listings
-            WHERE (status IS NULL OR status = 'active')
-            ORDER BY autoplius_id
-            """
-        ).fetchall()
+        rows = conn.execute(f"SELECT {columns} FROM listings {where}").fetchall()
     ids: list[int] = []
     for row in rows:
-        urls: list[str] = []
-        raw = row["photo_urls_json"] or "[]"
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
-            parsed = []
-        if isinstance(parsed, list):
-            urls = [u for u in parsed if u]
-        if row["photo_url"] and row["photo_url"] not in urls:
-            urls.insert(0, row["photo_url"])
-        if 0 < len(urls) <= max_photos:
-            ids.append(int(row["autoplius_id"]))
+        listing = row_to_listing(row)
+        if listing_photo_count(listing) == 0:
+            ids.append(int(listing["autoplius_id"]))
     return ids
 
 
@@ -77,16 +57,41 @@ def main() -> None:
         action="store_true",
         help="Pass --force-photos to re-enrich (overwrite MinIO objects)",
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="Optional cap on IDs to re-enrich (0 = all)",
+    )
+    parser.add_argument(
+        "--ids",
+        type=str,
+        default="",
+        help="Optional comma/space-separated listing IDs to force into the batch",
+    )
     args = parser.parse_args()
 
     settings = Settings.from_env()
     listing_ids = missing_photo_ids(settings.db_path)
     print(f"missing_photos={len(listing_ids)}")
     if args.include_thin:
-        thin_ids = thin_gallery_ids(settings.db_path)
+        thin_ids = sorted(load_thin_gallery_ids(settings.db_path, max_photos=1))
         thin_only = [listing_id for listing_id in thin_ids if listing_id not in set(listing_ids)]
         print(f"thin_galleries={len(thin_only)}")
         listing_ids = sorted(set(listing_ids) | set(thin_only))
+
+    forced: list[int] = []
+    if args.ids.strip():
+        for part in args.ids.replace(",", " ").split():
+            part = part.strip()
+            if part.isdigit():
+                forced.append(int(part))
+        if forced:
+            listing_ids = sorted(set(listing_ids) | set(forced))
+            print(f"forced_ids={len(forced)}")
+
+    if args.limit > 0:
+        listing_ids = listing_ids[: args.limit]
     if not listing_ids:
         return
     print(" ".join(str(listing_id) for listing_id in listing_ids))

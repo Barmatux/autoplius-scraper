@@ -80,6 +80,7 @@ def main() -> None:
                         auto_captcha=settings.auto_captcha,
                         captcha_api_key=captcha_api_key,
                         interceptor=interceptor,
+                        wait_gallery=True,
                     )
                 except Exception as exc:
                     logger.warning("  skip: %s", exc)

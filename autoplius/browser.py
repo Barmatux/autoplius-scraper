@@ -116,6 +116,25 @@ def has_target_content(page: Page, html: str) -> bool:
     return False
 
 
+def wait_for_listing_gallery(page: Page, *, timeout_ms: int = 8000) -> None:
+    """Best-effort wait for Autoplius lightbox photo JSON / gallery DOM on detail pages."""
+    deadline = time.monotonic() + (timeout_ms / 1000.0)
+    while time.monotonic() < deadline:
+        try:
+            html = page.content()
+        except Exception:
+            return
+        if "mediaGalleryItems" in html:
+            return
+        if page.locator(
+            ".media-gallery-thumbnails [data-index], "
+            ".announcement-gallery-carousel__slide, "
+            ".announcement-gallery img"
+        ).count() > 1:
+            return
+        page.wait_for_timeout(250)
+
+
 def dismiss_cookie_banner(page: Page) -> None:
     for selector in (
         "button:has-text('Sutinku')",
@@ -361,6 +380,7 @@ def goto_and_wait(
     auto_captcha: bool = False,
     captcha_api_key: str | None = None,
     interceptor: TurnstileInterceptor | None = None,
+    wait_gallery: bool = False,
 ) -> None:
     if interceptor is not None:
         interceptor.reset()
@@ -374,6 +394,8 @@ def goto_and_wait(
         captcha_api_key=captcha_api_key,
         interceptor=interceptor,
     )
+    if wait_gallery:
+        wait_for_listing_gallery(page)
 
 
 def resolve_captcha_api_key(enabled: bool) -> str | None:

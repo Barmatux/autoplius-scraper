@@ -1198,11 +1198,63 @@ def load_known_ids(db_path: Path) -> set[int]:
 def load_detail_scraped_ids(db_path: Path) -> set[int]:
     if not _db_available(db_path):
         return set()
+    id_expr = listing_id_expr()
+    source = listings_source_clause()
+    source_sql = f"{source} AND " if source else ""
     with connect(db_path) as conn:
         rows = conn.execute(
-            "SELECT autoplius_id FROM listings WHERE detail_scraped = 1"
+            f"""
+            SELECT {id_expr} AS autoplius_id
+            FROM listings
+            WHERE {source_sql}{truthy_int_bool_sql('detail_scraped')}
+            """
         ).fetchall()
     return {int(row["autoplius_id"]) for row in rows}
+
+
+def listing_photo_count(item_or_row: Any) -> int:
+    """Count stored gallery URLs for a listing dict/row."""
+    if item_or_row is None:
+        return 0
+    if isinstance(item_or_row, dict):
+        urls = item_or_row.get("photo_urls")
+        if urls is None and "photo_urls_json" in item_or_row:
+            urls = _photo_urls_from_row_value(item_or_row.get("photo_urls_json"))
+        urls = urls or []
+        if not isinstance(urls, list):
+            urls = _photo_urls_from_row_value(urls)
+        cover = item_or_row.get("photo_url")
+        cleaned = [u for u in urls if u]
+        if cover and cover not in cleaned:
+            return len(cleaned) + 1
+        return len(cleaned)
+    keys = set(item_or_row.keys()) if hasattr(item_or_row, "keys") else set()
+    raw = item_or_row["photo_urls_json"] if "photo_urls_json" in keys else None
+    urls = _photo_urls_from_row_value(raw)
+    cover = item_or_row["photo_url"] if "photo_url" in keys else None
+    if cover and cover not in urls:
+        return len(urls) + 1
+    return len(urls)
+
+
+def load_thin_gallery_ids(db_path: Path, *, max_photos: int = 1) -> set[int]:
+    """Active listings with a suspiciously small gallery (often only the search thumb)."""
+    if not _db_available(db_path):
+        return set()
+    columns = listing_select_columns("lite")
+    source = listings_source_clause()
+    where = "WHERE COALESCE(status, 'active') = 'active'"
+    if source:
+        where = f"WHERE {source} AND COALESCE(status, 'active') = 'active'"
+    with connect(db_path) as conn:
+        rows = conn.execute(f"SELECT {columns} FROM listings {where}").fetchall()
+    thin: set[int] = set()
+    for row in rows:
+        listing = row_to_listing(row)
+        count = listing_photo_count(listing)
+        if 0 < count <= max_photos:
+            thin.add(int(listing["autoplius_id"]))
+    return thin
 
 
 def fetch_listings_pending_detail(db_path: Path) -> list[dict[str, Any]]:
@@ -1680,6 +1732,21 @@ def fetch_all_listings(db_path: Path) -> list[dict[str, Any]]:
         return [row_to_listing(r) for r in rows]
 
 
+def _listing_json_param(value: Any) -> Any:
+    """Bind JSON for SQLite TEXT or Postgres JSONB."""
+    if using_postgres():
+        if value is None:
+            return None
+        if isinstance(value, (dict, list)):
+            return json.dumps(value, ensure_ascii=False)
+        return value
+    if value is None:
+        return None
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False)
+    return value
+
+
 def update_listing_photos(
     db_path: Path,
     listing_id: int,
@@ -1688,18 +1755,19 @@ def update_listing_photos(
     photo_urls: list[str],
 ) -> None:
     init_db(db_path)
+    photos_col = listing_write_column("photo_urls_json")
     with connect(db_path) as conn:
         conn.execute(
-            """
+            f"""
             UPDATE listings SET
                 photo_url = ?,
-                photo_urls_json = ?,
+                {photos_col} = ?,
                 updated_at = ?
-            WHERE autoplius_id = ?
+            WHERE {listing_pk_where()}
             """,
             (
                 photo_url,
-                json.dumps(photo_urls, ensure_ascii=False),
+                _listing_json_param(list(photo_urls)),
                 _utc_now(),
                 listing_id,
             ),
@@ -1710,13 +1778,17 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
     """Apply a fresh detail scrape (external photo URLs, not MinIO)."""
     photo_urls = normalize_photo_list(detail.get("photo_urls") or [])
     init_db(db_path)
+    photos_col = listing_write_column("photo_urls_json")
+    params_col = listing_write_column("parameters_json")
     with connect(db_path) as conn:
         existing = conn.execute(
-            "SELECT photo_url, photo_urls_json FROM listings WHERE autoplius_id = ?",
+            f"SELECT photo_url, {photos_col} AS photo_urls_json FROM listings WHERE {listing_pk_where()}",
             (listing_id,),
         ).fetchone()
         if not photo_urls and existing is not None:
-            existing_urls = normalize_photo_list(json.loads(existing["photo_urls_json"] or "[]"))
+            existing_urls = normalize_photo_list(
+                _photo_urls_from_row_value(existing["photo_urls_json"])
+            )
             if not existing_urls and existing["photo_url"]:
                 existing_urls = normalize_photo_list([existing["photo_url"]])
             if existing_urls:
@@ -1733,8 +1805,9 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
             "parameters": parameters,
         }
         engine_liters = engine_volume_liters(volume_item)
+        detail_scraped_sql = "TRUE" if using_postgres() else "1"
         conn.execute(
-            """
+            f"""
             UPDATE listings SET
                 url = COALESCE(?, url),
                 title = COALESCE(?, title),
@@ -1745,14 +1818,14 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
                 description = COALESCE(?, description),
                 phone = COALESCE(?, phone),
                 vin_masked = COALESCE(?, vin_masked),
-                parameters_json = COALESCE(?, parameters_json),
+                {params_col} = COALESCE(?, {params_col}),
                 photo_url = ?,
-                photo_urls_json = ?,
+                {photos_col} = ?,
                 engine_liters = COALESCE(?, engine_liters),
-                detail_scraped = 1,
+                detail_scraped = {detail_scraped_sql},
                 detail_error = NULL,
                 updated_at = ?
-            WHERE autoplius_id = ?
+            WHERE {listing_pk_where()}
             """,
             (
                 detail.get("url"),
@@ -1764,9 +1837,9 @@ def update_listing_detail(db_path: Path, listing_id: int, detail: dict[str, Any]
                 detail.get("description"),
                 detail.get("phone"),
                 detail.get("vin_masked"),
-                json.dumps(parameters, ensure_ascii=False) if parameters else None,
+                _listing_json_param(parameters) if parameters else None,
                 photo_url,
-                json.dumps(photo_urls, ensure_ascii=False),
+                _listing_json_param(list(photo_urls)),
                 engine_liters,
                 _utc_now(),
                 listing_id,

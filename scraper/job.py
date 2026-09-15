@@ -31,6 +31,7 @@ from scraper.db import (
     hours_since_last_full_scrape,
     load_detail_scraped_ids,
     load_known_ids,
+    load_thin_gallery_ids,
     save_payload_to_db,
     upsert_listing_item,
 )
@@ -318,6 +319,7 @@ def scrape_search_pages(
             new_previews = [p for p in preview_list if p.autoplius_id not in known_ids]
 
             if settings.enrich_details:
+                thin_gallery_ids = load_thin_gallery_ids(settings.db_path, max_photos=1)
                 if enrich_only:
                     # pending list already filtered in fetch_listings_pending_detail
                     to_enrich = list(preview_list)
@@ -328,12 +330,14 @@ def scrape_search_pages(
                         p
                         for p in preview_list
                         if p.autoplius_id not in detail_scraped_ids
+                        or p.autoplius_id in thin_gallery_ids
                     ]
                 elif target_mode:
                     to_enrich = [
                         p
                         for p in preview_list
                         if p.autoplius_id not in detail_scraped_ids
+                        or p.autoplius_id in thin_gallery_ids
                     ]
                     if settings.enrich_limit > 0:
                         to_enrich = to_enrich[: settings.enrich_limit]
@@ -358,10 +362,12 @@ def scrape_search_pages(
                         len(preview_list),
                     )
                     detail_scraped_ids = load_detail_scraped_ids(settings.db_path)
+                    thin_gallery_ids = load_thin_gallery_ids(settings.db_path, max_photos=1)
                     to_enrich = [
                         p
                         for p in preview_list
                         if p.autoplius_id not in detail_scraped_ids
+                        or p.autoplius_id in thin_gallery_ids
                     ]
                     if settings.enrich_limit > 0:
                         to_enrich = to_enrich[: settings.enrich_limit]
@@ -370,11 +376,12 @@ def scrape_search_pages(
                 skip = [p for p in preview_list if p.autoplius_id not in enrich_ids]
 
                 logger.info(
-                    "Enriching %s/%s listing detail pages (delay=%ss, new_only=%s)",
+                    "Enriching %s/%s listing detail pages (delay=%ss, new_only=%s, thin_galleries=%s)",
                     len(to_enrich),
                     len(preview_list),
                     settings.detail_delay_sec,
                     settings.enrich_new_only and incremental,
+                    len(thin_gallery_ids & enrich_ids),
                 )
                 for idx, preview in enumerate(to_enrich, start=1):
                     logger.info(
@@ -392,6 +399,7 @@ def scrape_search_pages(
                             auto_captcha=settings.auto_captcha,
                             captcha_api_key=captcha_api_key,
                             interceptor=interceptor,
+                            wait_gallery=True,
                         )
                         detail = parse_listing_html(page.content(), preview.url).to_dict()
                         listings.append(

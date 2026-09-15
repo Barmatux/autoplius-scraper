@@ -77,6 +77,21 @@ if systemctl list-unit-files autoplius-translate-descriptions.timer >/dev/null 2
     || echo "WARNING: translate service start failed"
 fi
 
+# Thin galleries (1 list thumb) must be re-fetched from Autoplius detail pages.
+echo "=== backfill thin photo galleries (background) ==="
+PHOTO_LOG=/var/log/autoplius-scraper/photo-thin-backfill.log
+sudo touch "$PHOTO_LOG"
+sudo chown autoplius:autoplius "$PHOTO_LOG" || true
+nohup sudo -u autoplius env PYTHONPATH="$APP" "$PY" \
+  tools/backfill_missing_photos.py \
+  --include-thin \
+  --force-photos \
+  --re-enrich \
+  --ids "32154344,32154358" \
+  --limit 80 \
+  >>"$PHOTO_LOG" 2>&1 &
+echo "thin photo backfill started (log: $PHOTO_LOG)"
+
 if grep -qE '^DATABASE_URL=.+' .env 2>/dev/null || [[ -n "${DATABASE_URL:-}" ]]; then
   echo "=== skip SQLite-only hybrid report (DATABASE_URL set) ==="
 else
