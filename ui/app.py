@@ -103,7 +103,7 @@ from autoplius.detail_display import detail_spec_rows
 from autoplius.labels import resolve_listing_mileage_km
 from autoplius.listing_description import seller_description
 from autoplius.ensure_description_ru import ensure_listing_description_ru
-from autoplius.price_display import catalog_price_lines, price_lt_lines
+from autoplius.price_display import admin_price_triples, catalog_price_lines, price_lt_lines
 from autoplius.engine_volume import (
     engine_volume_from_listing,
     parse_manual_volume_input,
@@ -342,6 +342,12 @@ def photo_srcs(urls: list[str] | None) -> list[str]:
 def catalog_price_lines_filter(item: dict[str, Any]):
     privilege, delivery = _user_rb_extras()
     return catalog_price_lines(item, privilege_usd=privilege, delivery_usd=delivery)
+
+
+@app.template_filter("admin_price_triples")
+def admin_price_triples_filter(item: dict[str, Any]):
+    privilege, _delivery = _user_rb_extras()
+    return admin_price_triples(item, privilege_usd=privilege)
 
 
 @app.template_filter("price_lt_lines")
@@ -1498,14 +1504,14 @@ def cabinet_rb_extras():
     path = require_db()
     try:
         privilege = _parse_usd_input(request.form.get("rb_privilege_usd"))
-        delivery = _parse_usd_input(request.form.get("rb_delivery_usd"))
     except ValueError:
         return redirect(url_for("cabinet", error="invalid"))
+    # Custom delivery removed from cabinet; keep privilege only.
     updated = update_user_rb_extras(
         path,
         int(user["id"]),
         privilege_usd=privilege,
-        delivery_usd=delivery,
+        delivery_usd=0.0,
     )
     if updated is None:
         return redirect(url_for("cabinet", error="save"))

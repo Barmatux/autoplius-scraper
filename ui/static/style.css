@@ -1841,6 +1841,103 @@ main {
 .listings-table col.col-engine { width: calc((100% - 155px) * 0.1348); }
 .listings-table col.col-price-lt { width: calc((100% - 155px) * 0.0801); }
 .listings-table col.col-price-rb { width: calc((100% - 155px) * 0.1171); }
+.listings-table col.col-price-triple { width: calc((100% - 155px) * 0.1972); }
+
+.price-delivery-icon {
+  display: inline-block;
+  width: 36px;
+  height: 24px;
+  vertical-align: middle;
+  color: var(--ink, #1c1916);
+}
+
+.price-triple {
+  width: 100%;
+}
+
+.price-triple + .price-triple {
+  margin-top: 0.45rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--rule, #d3c6b0);
+}
+
+.price-triple-label {
+  font-size: 0.72rem;
+  margin-bottom: 0.2rem;
+}
+
+.price-triple-grid,
+.price-triple-head {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  align-items: start;
+  width: 100%;
+}
+
+.price-triple-head-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.15rem;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.price-triple-head-cell .sort-link {
+  justify-content: center;
+}
+
+.price-triple-cell {
+  min-width: 0;
+  text-align: center;
+}
+
+.price-triple-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  margin-bottom: 0.15rem;
+  min-height: 1.5rem;
+}
+
+.price-triple-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.price-triple-cell .price-rb {
+  justify-content: center;
+}
+
+.price-triple-cell .price-rb-value {
+  font-size: inherit;
+}
+
+th.col-price-triple,
+td.col-price-triple {
+  padding-left: var(--col-gutter-tight);
+  padding-right: var(--col-gutter-tight);
+  text-align: left;
+  vertical-align: top;
+}
+
+.detail-price-triple .price-triple-grid {
+  max-width: 28rem;
+}
+
+.card-price-admin-triple {
+  width: 100%;
+}
+
+.card-price-admin-triple .price-triple-grid {
+  gap: 0.5rem;
+}
+
 .listings-table col.col-city { width: calc((100% - 155px) * 0.1308); }
 .listings-table col.col-description { width: calc((100% - 155px) * 0.3054); }
 .listings-table col.col-date { width: calc((100% - 155px) * 0.1324); }

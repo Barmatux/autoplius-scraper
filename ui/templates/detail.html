@@ -10,7 +10,7 @@
   {% include "_site_styles.html" %}
 </head>
 <body>
-  {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
+  {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat, render_admin_price_triple %}
   <header class="top">
     {% set brand_sub_html %}
       <a href="{{ back_url }}" data-back-to-list>← к списку</a>
@@ -96,8 +96,12 @@
 
     <section class="detail-info">
       <dl class="kv">
+        {% if is_admin %}
+        <div><dt>Цены</dt><dd class="detail-price-rb detail-price-triple">{{ render_admin_price_triple(item) }}</dd></div>
+        {% else %}
         <div><dt>Цена в LT</dt><dd>{{ render_price_lt(item) }}</dd></div>
         <div><dt>Цена в BY</dt><dd class="detail-price-rb">{{ render_price_rb(item) }}</dd></div>
+        {% endif %}
         {% if market_compare %}
         <div class="detail-market-compare">
           <dt>Рынок BY <span class="muted">(ср. {{ market_compare.window_days }} дн.)</span></dt>

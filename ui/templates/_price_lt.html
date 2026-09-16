@@ -13,6 +13,14 @@
 {% endif %}
 {% endmacro %}
 
+{% macro delivery_icon(kind) %}
+{% if kind == 'self' %}
+<img class="price-delivery-icon" src="{{ url_for('static', filename='icons/delivery-self.svg') }}" alt="" width="40" height="26" decoding="async">
+{% elif kind == 'carrier' %}
+<img class="price-delivery-icon" src="{{ url_for('static', filename='icons/delivery-carrier.svg') }}" alt="" width="40" height="26" decoding="async">
+{% endif %}
+{% endmacro %}
+
 {% macro render_price_lt_vat(item) %}
 {% for line in item|catalog_price_lines %}
 <div class="price-vat-slot">
@@ -58,5 +66,29 @@
     {{ render_price_rb_value(line.rb) }}
   </div>
   {% endif %}
+{% endfor %}
+{% endmacro %}
+
+{% macro render_admin_price_triple(item) %}
+{% for triple in item|admin_price_triples %}
+<div class="price-triple{% if triple.label %} price-triple-vat{% endif %}">
+  {% if triple.label %}
+  <div class="price-triple-label muted">{{ triple.label }}</div>
+  {% endif %}
+  <div class="price-triple-grid">
+    <div class="price-triple-cell price-triple-lt">
+      <span class="price-triple-caption muted">LT</span>
+      <span class="price-triple-value">{{ triple.lt_formatted }}</span>
+    </div>
+    <div class="price-triple-cell price-triple-self">
+      <span class="price-triple-caption muted">{{ delivery_icon('self') }} РБ</span>
+      {{ render_price_rb_value(triple.rb_self) }}
+    </div>
+    <div class="price-triple-cell price-triple-carrier">
+      <span class="price-triple-caption muted">{{ delivery_icon('carrier') }} РБ</span>
+      {{ render_price_rb_value(triple.rb_carrier) }}
+    </div>
+  </div>
+</div>
 {% endfor %}
 {% endmacro %}

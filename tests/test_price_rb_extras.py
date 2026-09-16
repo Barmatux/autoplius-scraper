@@ -37,6 +37,36 @@ def test_estimate_price_rb_adds_cabinet_extras(monkeypatch):
     assert lines[-1].startswith("Итого в РБ:")
 
 
+def test_estimate_price_rb_delivery_eur_modes(monkeypatch):
+    monkeypatch.setattr("autoplius.price_rb.eur_usd_rate", lambda: 1.1)
+    monkeypatch.setattr("autoplius.price_rb.usd_byn_rate", lambda: 3.0)
+    monkeypatch.setattr("autoplius.price_rb.listing_age_months", lambda _item: 80)
+    monkeypatch.setattr("autoplius.price_rb.customs_engine_volume_cm3", lambda _item: 1600)
+
+    from autoplius.price_rb import DELIVERY_CARRIER_EUR, DELIVERY_MODE_SELF, DELIVERY_SELF_EUR
+    from autoplius.price_display import admin_price_triples
+
+    base = estimate_price_rb(_sample_item(), delivery_usd=0)
+    assert base is not None
+    self_drive = estimate_price_rb(
+        _sample_item(),
+        delivery_eur=DELIVERY_SELF_EUR,
+        delivery_mode=DELIVERY_MODE_SELF,
+    )
+    assert self_drive is not None
+    assert self_drive.delivery_eur == 500
+    assert self_drive.total_usd == base.total_usd + int(round(500 * 1.1))
+    tip = "\n".join(self_drive.tooltip_lines())
+    assert "Доставка своим ходом: 500 €" in tip
+
+    triples = admin_price_triples(_sample_item())
+    assert len(triples) == 1
+    assert triples[0].rb_self is not None
+    assert triples[0].rb_carrier is not None
+    assert triples[0].rb_carrier.delivery_eur == DELIVERY_CARRIER_EUR
+    assert triples[0].rb_carrier.total_usd == base.total_usd + int(round(700 * 1.1))
+
+
 def test_estimate_price_rb_ignores_negative_extras(monkeypatch):
     monkeypatch.setattr("autoplius.price_rb.eur_usd_rate", lambda: 1.0)
     monkeypatch.setattr("autoplius.price_rb.usd_byn_rate", lambda: 3.0)

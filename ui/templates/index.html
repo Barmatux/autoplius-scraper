@@ -53,7 +53,7 @@
 </th>
 {% endmacro %}
 <body>
-  {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat %}
+  {% from "_price_lt.html" import render_price_lt, render_price_rb, render_price_lt_vat, render_price_rb_vat, render_admin_price_triple %}
   <header class="top">
     <div class="top-main">
       {% include "_brand.html" %}
@@ -272,8 +272,12 @@
           <col class="col-photo" data-col="photo">
           <col class="col-auto" data-col="auto">
           <col class="col-engine" data-col="engine">
+          {% if is_admin %}
+          <col class="col-price-triple" data-col="price-triple">
+          {% else %}
           <col class="col-price-lt" data-col="price-lt">
           <col class="col-price-rb" data-col="price-rb">
+          {% endif %}
           <col class="col-city" data-col="city">
           <col class="col-description" data-col="description">
           <col class="col-date" data-col="date">
@@ -283,8 +287,29 @@
             <th class="photo-col"></th>
             {{ sort_th('Авто', 'title_asc', 'title_desc', 'title_asc', 'col-auto') }}
             {{ sort_th('Регистрация /<br>Характеристики', 'year_asc', 'year_desc', 'year_desc', 'col-engine') }}
+            {% if is_admin %}
+            <th class="col-price-triple th-wrap">
+              <div class="price-triple-head">
+                <span class="price-triple-head-cell">
+                  <a
+                    href="{{ url_for('index', q=q, min_price=min_price, max_price=max_price, sort=('price_desc' if sort == 'price_asc' else 'price_asc'), upto_19l='1' if upto_19l else '0', passable='1' if passable else '0', over_3y='1' if over_3y else '0', tab=tab, page=1) }}{{ filter_qs() }}"
+                    class="sort-link"
+                  >LT,&nbsp;€{% if sort == 'price_desc' %}<span class="sort-indicator" aria-hidden="true">↓</span>{% elif sort == 'price_asc' %}<span class="sort-indicator" aria-hidden="true">↑</span>{% endif %}</a>
+                </span>
+                <span class="price-triple-head-cell">
+                  <img class="price-delivery-icon" src="{{ url_for('static', filename='icons/delivery-self.svg') }}" alt="" width="36" height="24" decoding="async">
+                  <span class="col-head-label">РБ своим</span>
+                </span>
+                <span class="price-triple-head-cell">
+                  <img class="price-delivery-icon" src="{{ url_for('static', filename='icons/delivery-carrier.svg') }}" alt="" width="36" height="24" decoding="async">
+                  <span class="col-head-label">РБ автовоз</span>
+                </span>
+              </div>
+            </th>
+            {% else %}
             {{ sort_th('Цена в LT,&nbsp;€', 'price_asc', 'price_desc', 'price_asc', 'col-price-lt') }}
             <th class="col-price-rb th-wrap"><span class="col-head-label">Цена в РБ, $</span></th>
+            {% endif %}
             <th class="col-city th-wrap city-filter-th{% if selected_cities %} active{% endif %}" data-city-filter>
               <button type="button" class="city-filter-toggle" data-city-filter-toggle aria-expanded="false">
                 <span class="col-head-label sort-label">Город{% if selected_cities %} ({{ selected_cities|length }}){% endif %}</span>
@@ -399,13 +424,19 @@
               {% endif %}
             </td>
             {% set price_lines = item|catalog_price_lines %}
+            {% if is_admin %}
+            <td class="num col-price-triple">
+              {{ render_admin_price_triple(item) }}
+              {% include "_listing_admin_actions.html" %}
+              {% include "_listing_admin_actions_rb.html" %}
+            </td>
+            {% else %}
             <td class="num col-price-lt{% if price_lines and price_lines[0].label %} col-price-vat{% endif %}">
               {% if price_lines and price_lines[0].label %}
               {{ render_price_lt_vat(item) }}
               {% else %}
               {{ render_price_lt(item) }}
               {% endif %}
-              {% include "_listing_admin_actions.html" %}
             </td>
             <td class="num col-price-rb{% if price_lines and price_lines[0].label %} col-price-vat{% endif %}">
               {% if price_lines and price_lines[0].label %}
@@ -413,8 +444,8 @@
               {% else %}
               {{ render_price_rb(item) }}
               {% endif %}
-              {% include "_listing_admin_actions_rb.html" %}
             </td>
+            {% endif %}
             <td class="col-city">
               {% if item.city %}
               <div class="city-name">{{ item.city }}</div>

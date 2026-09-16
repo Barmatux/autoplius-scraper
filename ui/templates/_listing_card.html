@@ -1,4 +1,4 @@
-{% from "_price_lt.html" import render_price_lt, render_price_rb %}
+{% from "_price_lt.html" import render_price_lt, render_price_rb, render_admin_price_triple %}
 <article class="listing-card" data-listing-card="{{ item.autoplius_id }}">
   {% set photos = item|listing_photos %}
   {% set list_photos = photos.thumb if photos.thumb else photos.full %}
@@ -83,7 +83,11 @@
   {% set has_vat = price_lines and price_lines|length >= 2 and price_lines[0].label %}
   {% set net_tip = "Уточните у продавца возможность покупки авто на экспорт по цене нетто (без НДС)" %}
   <div class="listings-feed-price">
-    {% if has_vat %}
+    {% if is_admin %}
+    <div class="card-price-admin-triple">
+      {{ render_admin_price_triple(item) }}
+    </div>
+    {% elif has_vat %}
     <div class="card-price-bar card-price-vat">
       <div class="card-price-cell card-price-net" tabindex="0" data-tip="{{ net_tip }}">
         <span class="card-price-label">LT, без НДС (Экспорт)</span>

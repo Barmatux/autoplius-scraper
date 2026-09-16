@@ -21,6 +21,16 @@ DECLARANT_FEE_BYN = 230.0
 EPTS_FEE_BYN = 80.0
 FIXED_FEES_BYN = UTILIZATION_FEE_BYN + CUSTOMS_FEE_BYN + DECLARANT_FEE_BYN + EPTS_FEE_BYN
 
+# Admin catalog delivery modes (EUR, converted to USD in the estimate).
+DELIVERY_SELF_EUR = 500.0
+DELIVERY_CARRIER_EUR = 700.0
+DELIVERY_MODE_SELF = "self"
+DELIVERY_MODE_CARRIER = "carrier"
+DELIVERY_MODE_LABELS = {
+    DELIVERY_MODE_SELF: "своим ходом",
+    DELIVERY_MODE_CARRIER: "автовозом",
+}
+
 # Указ №140 — 50% preferential customs duty.
 PREFERENTIAL_DUTY_FACTOR = 0.5
 
@@ -68,6 +78,8 @@ class PriceRbBreakdown:
     epts_byn: float = EPTS_FEE_BYN
     privilege_usd: float = 0.0
     delivery_usd: float = 0.0
+    delivery_eur: float = 0.0
+    delivery_mode: str | None = None
 
     @property
     def total_formatted(self) -> str:
@@ -96,7 +108,13 @@ class PriceRbBreakdown:
         ]
         if self.privilege_usd > 0:
             lines.append(f"Льгота: {_fmt_money(self.privilege_usd)} $")
-        if self.delivery_usd > 0:
+        if self.delivery_eur > 0:
+            mode = DELIVERY_MODE_LABELS.get(self.delivery_mode or "", "доставка")
+            lines.append(
+                f"Доставка {mode}: {_fmt_money(self.delivery_eur)} € × {self.eur_usd:.4f} "
+                f"= {_fmt_money(self.delivery_usd)} $"
+            )
+        elif self.delivery_usd > 0:
             lines.append(f"Доставка: {_fmt_money(self.delivery_usd)} $")
         lines.append(f"Итого в РБ: {_fmt_money(self.total_usd)} $")
         return lines
@@ -108,6 +126,8 @@ def estimate_price_rb(
     price_eur: int | None = None,
     privilege_usd: float | int | None = None,
     delivery_usd: float | int | None = None,
+    delivery_eur: float | int | None = None,
+    delivery_mode: str | None = None,
 ) -> PriceRbBreakdown | None:
     base_price = price_eur if price_eur is not None else item.get("price_eur")
     if base_price is None:
@@ -140,9 +160,14 @@ def estimate_price_rb(
     privilege = _nonneg_usd(
         privilege_usd if privilege_usd is not None else item.get("rb_privilege_usd")
     )
-    delivery = _nonneg_usd(
-        delivery_usd if delivery_usd is not None else item.get("rb_delivery_usd")
-    )
+    delivery_eur_val = _nonneg_usd(delivery_eur)
+    if delivery_eur is not None:
+        delivery = delivery_eur_val * eur_usd
+    else:
+        delivery = _nonneg_usd(
+            delivery_usd if delivery_usd is not None else item.get("rb_delivery_usd")
+        )
+        delivery_eur_val = 0.0
     total_usd = int(round(car_plus_duty_usd + fees_usd + privilege + delivery))
 
     return PriceRbBreakdown(
@@ -162,6 +187,8 @@ def estimate_price_rb(
         usd_byn=usd_byn,
         privilege_usd=privilege,
         delivery_usd=delivery,
+        delivery_eur=delivery_eur_val,
+        delivery_mode=delivery_mode,
     )
 
 
