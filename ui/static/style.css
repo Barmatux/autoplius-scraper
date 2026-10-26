@@ -367,37 +367,6 @@ body {
   background: color-mix(in srgb, #fff 88%, transparent);
 }
 
-.calc-catalog-cascade {
-  display: grid;
-  gap: 0.85rem;
-}
-
-.calc-catalog-cascade[hidden] {
-  display: none !important;
-}
-
-.calc-catalog-cascade input[readonly] {
-  background: #f4f0e8;
-  color: #5c564c;
-}
-
-.calc-catalog-hint {
-  margin: -0.25rem 0 0;
-  font-size: 0.82rem;
-  color: var(--muted, #6b655a);
-  line-height: 1.35;
-}
-
-.calc-catalog-hint.is-warn {
-  color: #9a3412;
-}
-
-.calc-field select:disabled {
-  background: #f4f0e8;
-  color: #8a8376;
-  cursor: not-allowed;
-}
-
 .calc-result-col {
   display: grid;
   gap: 0.85rem;

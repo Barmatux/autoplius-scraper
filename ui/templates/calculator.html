@@ -36,39 +36,6 @@
       <section class="calc-grid" id="scroll_calc_rezult" aria-label="Калькулятор растаможки">
         <div class="calc-left">
           <form class="calc-form" id="customs-calc-form" novalidate>
-            <fieldset class="calc-fieldset">
-              <legend>Тип автомобиля</legend>
-              <label class="calc-radio"><input type="radio" name="vehicle_kind" value="ice" checked> Топливо / гибрид PHEV</label>
-              <label class="calc-radio"><input type="radio" name="vehicle_kind" value="electric"> Электромобиль</label>
-              <label class="calc-radio"><input type="radio" name="vehicle_kind" value="erev"> Гибрид EREV</label>
-            </fieldset>
-
-            <div id="calc-catalog-wrap" class="calc-catalog-cascade">
-              <label class="calc-field">
-                <span>Марка</span>
-                <select name="make" id="calc-make" data-calc-make>
-                  <option value="">Выберите марку</option>
-                </select>
-              </label>
-              <label class="calc-field">
-                <span>Модель</span>
-                <select name="model" id="calc-model" data-calc-model disabled>
-                  <option value="">Сначала марка</option>
-                </select>
-              </label>
-              <label class="calc-field">
-                <span>Мотор</span>
-                <select name="engine" id="calc-engine" data-calc-engine disabled>
-                  <option value="">Сначала модель</option>
-                </select>
-              </label>
-              <label class="calc-field" id="calc-volume-wrap">
-                <span>Объём для растаможки, см³</span>
-                <input type="number" name="engine_cm3" id="calc-volume" data-calc-volume min="1" step="1" readonly placeholder="из каталога" tabindex="-1">
-              </label>
-              <p class="calc-catalog-hint" id="calc-catalog-hint" hidden></p>
-            </div>
-
             <label class="calc-field">
               <span>Возраст авто</span>
               <select name="age_band" required>
@@ -83,14 +50,25 @@
               <input type="number" name="price_eur" min="1" step="1" placeholder="например 10000">
             </label>
 
+            <fieldset class="calc-fieldset">
+              <legend>Тип автомобиля</legend>
+              <label class="calc-radio"><input type="radio" name="vehicle_kind" value="ice" checked> Топливо / гибрид PHEV</label>
+              <label class="calc-radio"><input type="radio" name="vehicle_kind" value="electric"> Электромобиль</label>
+              <label class="calc-radio"><input type="radio" name="vehicle_kind" value="erev"> Гибрид EREV</label>
+            </fieldset>
+
+            <label class="calc-field" id="calc-volume-wrap">
+              <span>Объём двигателя, см³</span>
+              <input type="number" name="engine_cm3" min="1" step="1" placeholder="например 1496">
+            </label>
+
             <label class="calc-check" id="calc-privilege-wrap">
               <input type="checkbox" name="privilege_50" checked>
               <span>Таможенная льгота 50% (Указ №140)</span>
             </label>
 
-            <button type="submit" class="calc-submit" id="calc-submit">Рассчитать</button>
+            <button type="submit" class="calc-submit">Рассчитать</button>
           </form>
-          <script type="application/json" id="calc-catalog-data">{{ calc_catalog | tojson }}</script>
 
           <aside class="calc-rates" id="calc-rates" aria-label="Курсы валют">
             <h2>Курсы валют</h2>
@@ -185,10 +163,10 @@
         <h2>Как пользоваться калькулятором</h2>
         <p>Для расчёта укажите:</p>
         <ul>
-          <li>марку → модель → мотор из <a href="{{ url_for('catalog') }}">растаможка базы</a> — объём см³ подставится автоматически;</li>
+          <li>точный рабочий объём двигателя в см³ (например 1496) — для авто с ДВС и PHEV;</li>
           <li>стоимость автомобиля в евро — только для авто младше 3 лет;</li>
           <li>возраст с даты <em>производства</em>, а не с первой регистрации;</li>
-          <li>тип силовой установки (для электро и EREV выбор мотора из каталога не нужен).</li>
+          <li>тип силовой установки.</li>
         </ul>
       </section>
 
@@ -216,6 +194,6 @@
   {% include "_site_footer.html" %}
   {% include "_feedback_modal.html" %}
   {% include "_yandex_metrika.html" %}
-  <script src="{{ url_for('static', filename='customs_calculator.js') }}?v=20261026a" defer></script>
+  <script src="{{ url_for('static', filename='customs_calculator.js') }}?v=20260911f" defer></script>
 </body>
 </html>
