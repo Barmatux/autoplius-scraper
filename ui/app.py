@@ -2126,12 +2126,31 @@ def vin_check():
 @app.get("/calculator")
 def customs_calculator():
     today = date.today()
+    path = require_db()
+    catalog_entries = filter_catalog_entries_upto_liters(
+        fetch_engine_catalog(path),
+        enabled=False,
+    )
+    calc_catalog = [
+        {
+            "id": entry["id"],
+            "make": entry["make"],
+            "model": entry.get("model") or "",
+            "engine_label": entry.get("engine_label") or "",
+            "fuel": entry.get("fuel") or "",
+            "customs_cm3": entry.get("customs_cm3"),
+            "suggested_cm3": entry.get("suggested_cm3"),
+        }
+        for entry in catalog_entries
+        if (entry.get("customs_cm3") or entry.get("suggested_cm3"))
+    ]
     return render_template(
         "calculator.html",
         page_title=calculator_page_title(today),
         year=today.year,
         nbrb_rates=get_nbrb_board(),
         myfin_rates=myfin_best_board(),
+        calc_catalog=calc_catalog,
     )
 
 

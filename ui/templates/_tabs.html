@@ -11,7 +11,7 @@
   <a
     href="{{ url_for('catalog') }}"
     class="tab{% if active_tab == 'catalog' %} active{% endif %}"
-  >Каталог{% if catalog_new_count %} <span class="tab-count">{{ catalog_new_count }}</span>{% endif %}</a>
+  >Растаможка база{% if catalog_new_count %} <span class="tab-count">{{ catalog_new_count }}</span>{% endif %}</a>
   <a
     href="{{ url_for('analytics') }}"
     class="tab{% if active_tab == 'analytics' %} active{% endif %}"
